@@ -364,7 +364,7 @@ async def customer_register(data: CustomerRegisterRequest):
         "expires": datetime.datetime.now()
         + datetime.timedelta(minutes=10)
     }
-
+    print("REGISTER OTP:", email, otp)
 
     send_verification_email(
         email,
