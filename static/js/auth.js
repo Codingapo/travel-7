@@ -120,44 +120,151 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 });
 
 // Signup Handler
+let pendingEmail = "";
+
+
+// Signup Handler
 document.getElementById('signup-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+
     const email = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
     const confirm = document.getElementById('signup-confirm').value;
+
 
     if (!validateEmail(email)) {
         showMessage('error', 'Please enter a valid email address.');
         return;
     }
 
+
     if (password.length < 6) {
         showMessage('error', 'Password must be at least 6 characters.');
         return;
     }
 
+
     if (password !== confirm) {
-        showMessage('error', 'Passwords do not match');
+        showMessage('error', 'Passwords do not match.');
         return;
     }
 
+
     try {
+
         const response = await fetch('/api/auth/register', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email,
+                password
+            })
         });
+
+
         const data = await response.json();
 
+
         if (data.success) {
-            showMessage('success', 'Account created! You can now login.');
-            setTimeout(() => {
-                toggleAuth();
-            }, 1500);
+
+            pendingEmail = email;
+
+            document.getElementById('signup-form').classList.add('hidden');
+            document.getElementById('otp-form').classList.remove('hidden');
+
+            showMessage(
+                'success',
+                'Verification code sent. Check your email.'
+            );
+
         } else {
-            showMessage('error', data.error);
+
+            showMessage(
+                'error',
+                data.error || data.detail
+            );
+
         }
-    } catch (error) {
-        showMessage('error', 'An error occurred. Please try again.');
+
+
+    } catch(error){
+
+        showMessage(
+            'error',
+            'Unable to create account. Try again.'
+        );
+
     }
+
+});
+
+
+document.getElementById('otp-form').addEventListener('submit', async (e)=>{
+
+    e.preventDefault();
+
+
+    const otp = document.getElementById('otp-code').value;
+
+
+    try {
+
+        const response = await fetch('/api/auth/verify-registration',{
+
+            method:'POST',
+
+            headers:{
+                'Content-Type':'application/json'
+            },
+
+            body:JSON.stringify({
+
+                email: pendingEmail,
+
+                otp
+
+            })
+
+        });
+
+
+        const data = await response.json();
+
+
+        if(data.success){
+
+            showMessage(
+                'success',
+                'Account verified. You can now login.'
+            );
+
+
+            setTimeout(()=>{
+
+                toggleAuth();
+
+            },1500);
+
+
+        }else{
+
+            showMessage(
+                'error',
+                data.error || data.detail
+            );
+
+        }
+
+
+    }catch(error){
+
+        showMessage(
+            'error',
+            'Verification failed. Try again.'
+        );
+
+    }
+
 });
