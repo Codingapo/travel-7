@@ -253,47 +253,780 @@ def send_password_reset_email(email: str, otp: str):
     })
     
 def send_booking_email(to_email: str, booking: dict) -> bool:
-    """Send booking confirmation via SMTP; fallback to local outbox file if SMTP is not configured."""
-    smtp_host = os.environ.get("SMTP_HOST", "").strip()
-    smtp_user = os.environ.get("SMTP_USERNAME", "").strip()
-    smtp_pass = os.environ.get("SMTP_PASSWORD", "").strip()
-    smtp_from = os.environ.get("SMTP_FROM", smtp_user or "noreply@travelintel.ai")
-    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    """
+    Send a premium booking confirmation email using Resend.
 
-    subject = f"TravelIntel Booking Confirmation #{booking['booking_id']}"
-    body = (
-        f"Booking Confirmation\n\n"
-        f"Reference: TI-{str(booking['booking_id']).zfill(5)}\n"
-        f"Customer: {booking['name']}\n"
-        f"Email: {booking['email']}\n"
-        f"Phone: {booking['phone']}\n"
-        f"Package: {booking['package_name']}\n"
-        f"Destination: {booking['destination']}\n"
-        f"Travel Date: {booking['travel_date']}\n"
-        f"Travelers: {booking['number_of_travelers']}\n"
-        f"Total: R {booking['total_amount']:,.2f}\n"
-        f"Booking Date: {booking['booking_date']}\n\n"
-        "Thank you for booking with TravelIntel AI."
-    )
+    Returns:
+        True  -> Email successfully submitted to Resend
+        False -> Email could not be sent
+    """
 
-    if smtp_host and smtp_user and smtp_pass:
-        msg = EmailMessage()
-        msg["Subject"] = subject
-        msg["From"] = smtp_from
-        msg["To"] = to_email
-        msg.set_content(body)
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.send_message(msg)
+    try:
+        booking_id = booking["booking_id"]
+
+        # --------------------------------------------------
+        # Booking details
+        # --------------------------------------------------
+
+        reference = f"TI-{str(booking_id).zfill(5)}"
+
+        customer_name = booking.get("name", "Valued Traveller")
+        customer_email = booking.get("email", to_email)
+        phone = booking.get("phone", "Not provided")
+
+        package_name = booking.get(
+            "package_name",
+            "Travel Package"
+        )
+
+        destination = booking.get(
+            "destination",
+            "Destination"
+        )
+
+        duration = booking.get(
+            "duration",
+            "Not specified"
+        )
+
+        travel_date = booking.get(
+            "travel_date",
+            "Not specified"
+        )
+
+        travelers = booking.get(
+            "number_of_travelers",
+            1
+        )
+
+        total_amount = booking.get(
+            "total_amount",
+            0
+        )
+
+        booking_date = booking.get(
+            "booking_date",
+            "Not specified"
+        )
+
+        payment_method = booking.get(
+            "payment_method",
+            "Not specified"
+        )
+
+        subject = (
+            f"✈️ Booking Confirmed — "
+            f"{destination} | {reference}"
+        )
+
+
+        # --------------------------------------------------
+        # Premium HTML Email
+        # --------------------------------------------------
+
+        html = f"""
+        <!DOCTYPE html>
+
+        <html lang="en">
+
+        <head>
+
+            <meta charset="UTF-8">
+
+            <meta name="viewport"
+                  content="width=device-width, initial-scale=1.0">
+
+            <title>
+                Booking Confirmation
+            </title>
+
+        </head>
+
+
+        <body style="
+            margin:0;
+            padding:0;
+            background-color:#f1f5f9;
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                'Segoe UI',
+                Roboto,
+                Arial,
+                sans-serif;
+            color:#0f172a;
+        ">
+
+
+        <!-- Main Wrapper -->
+
+        <table
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="
+                background-color:#f1f5f9;
+                padding:40px 15px;
+            "
+        >
+
+        <tr>
+
+        <td align="center">
+
+
+        <!-- Email Container -->
+
+        <table
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="
+                max-width:620px;
+                background:#ffffff;
+                border-radius:24px;
+                overflow:hidden;
+                box-shadow:
+                    0 20px 50px
+                    rgba(15,23,42,0.10);
+            "
+        >
+
+
+        <!-- Hero Header -->
+
+        <tr>
+
+        <td style="
+            background:
+                linear-gradient(
+                    135deg,
+                    #2563eb 0%,
+                    #1d4ed8 50%,
+                    #1e40af 100%
+                );
+            padding:42px 35px;
+            text-align:center;
+            color:#ffffff;
+        ">
+
+            <div style="
+                font-size:42px;
+                margin-bottom:12px;
+            ">
+                ✈️
+            </div>
+
+            <h1 style="
+                margin:0;
+                font-size:28px;
+                line-height:1.3;
+                font-weight:800;
+                color:#ffffff;
+            ">
+                Your Trip Is Confirmed!
+            </h1>
+
+            <p style="
+                margin:12px 0 0;
+                font-size:16px;
+                line-height:1.6;
+                color:#dbeafe;
+            ">
+                Get ready for an unforgettable journey
+                with TravelIntel AI.
+            </p>
+
+        </td>
+
+        </tr>
+
+
+        <!-- Confirmation Badge -->
+
+        <tr>
+
+        <td style="
+            padding:30px 35px 10px;
+            text-align:center;
+        ">
+
+            <div style="
+                display:inline-block;
+                background:#dcfce7;
+                color:#166534;
+                padding:10px 20px;
+                border-radius:999px;
+                font-size:14px;
+                font-weight:700;
+            ">
+                ✓ BOOKING CONFIRMED
+            </div>
+
+            <p style="
+                margin:15px 0 0;
+                font-size:14px;
+                color:#64748b;
+            ">
+                Booking Reference
+            </p>
+
+            <p style="
+                margin:5px 0 0;
+                font-size:24px;
+                font-weight:800;
+                letter-spacing:2px;
+                color:#2563eb;
+            ">
+                {reference}
+            </p>
+
+        </td>
+
+        </tr>
+
+
+        <!-- Greeting -->
+
+        <tr>
+
+        <td style="
+            padding:25px 35px 10px;
+        ">
+
+            <h2 style="
+                margin:0 0 10px;
+                font-size:22px;
+                color:#0f172a;
+            ">
+                Hello {customer_name}! 👋
+            </h2>
+
+            <p style="
+                margin:0;
+                font-size:15px;
+                line-height:1.7;
+                color:#64748b;
+            ">
+                Thank you for choosing TravelIntel AI.
+                Your booking has been successfully confirmed.
+                Below you'll find everything you need for
+                your upcoming adventure.
+            </p>
+
+        </td>
+
+        </tr>
+
+
+        <!-- Destination Highlight -->
+
+        <tr>
+
+        <td style="
+            padding:25px 35px;
+        ">
+
+            <table
+                width="100%"
+                cellpadding="0"
+                cellspacing="0"
+                style="
+                    background:#eff6ff;
+                    border:1px solid #dbeafe;
+                    border-radius:18px;
+                "
+            >
+
+            <tr>
+
+            <td style="
+                padding:25px;
+                text-align:center;
+            ">
+
+                <div style="
+                    font-size:14px;
+                    color:#64748b;
+                    margin-bottom:8px;
+                ">
+                    YOUR DESTINATION
+                </div>
+
+                <div style="
+                    font-size:28px;
+                    font-weight:800;
+                    color:#1d4ed8;
+                ">
+                    🌍 {destination}
+                </div>
+
+                <div style="
+                    margin-top:8px;
+                    font-size:15px;
+                    color:#64748b;
+                ">
+                    {package_name}
+                </div>
+
+            </td>
+
+            </tr>
+
+            </table>
+
+        </td>
+
+        </tr>
+
+
+        <!-- Booking Details -->
+
+        <tr>
+
+        <td style="
+            padding:0 35px 25px;
+        ">
+
+            <h3 style="
+                margin:0 0 15px;
+                font-size:18px;
+                color:#0f172a;
+            ">
+                🧳 Your Booking Details
+            </h3>
+
+
+            <table
+                width="100%"
+                cellpadding="0"
+                cellspacing="0"
+                style="
+                    border:1px solid #e2e8f0;
+                    border-radius:16px;
+                    overflow:hidden;
+                "
+            >
+
+            <tr style="
+                background:#f8fafc;
+            ">
+
+                <td style="
+                    padding:15px;
+                    color:#64748b;
+                    font-size:14px;
+                ">
+                    Travel Date
+                </td>
+
+                <td style="
+                    padding:15px;
+                    text-align:right;
+                    font-weight:700;
+                    font-size:14px;
+                ">
+                    📅 {travel_date}
+                </td>
+
+            </tr>
+
+
+            <tr>
+
+                <td style="
+                    padding:15px;
+                    color:#64748b;
+                    font-size:14px;
+                ">
+                    Duration
+                </td>
+
+                <td style="
+                    padding:15px;
+                    text-align:right;
+                    font-weight:700;
+                    font-size:14px;
+                ">
+                    ⏱️ {duration}
+                </td>
+
+            </tr>
+
+
+            <tr style="
+                background:#f8fafc;
+            ">
+
+                <td style="
+                    padding:15px;
+                    color:#64748b;
+                    font-size:14px;
+                ">
+                    Travellers
+                </td>
+
+                <td style="
+                    padding:15px;
+                    text-align:right;
+                    font-weight:700;
+                    font-size:14px;
+                ">
+                    👥 {travelers}
+                </td>
+
+            </tr>
+
+
+            <tr>
+
+                <td style="
+                    padding:15px;
+                    color:#64748b;
+                    font-size:14px;
+                ">
+                    Payment Method
+                </td>
+
+                <td style="
+                    padding:15px;
+                    text-align:right;
+                    font-weight:700;
+                    font-size:14px;
+                ">
+                    💳 {payment_method}
+                </td>
+
+            </tr>
+
+
+            <tr style="
+                background:#f8fafc;
+            ">
+
+                <td style="
+                    padding:15px;
+                    color:#64748b;
+                    font-size:14px;
+                ">
+                    Booking Date
+                </td>
+
+                <td style="
+                    padding:15px;
+                    text-align:right;
+                    font-weight:700;
+                    font-size:14px;
+                ">
+                    {booking_date}
+                </td>
+
+            </tr>
+
+            </table>
+
+        </td>
+
+        </tr>
+
+
+        <!-- Total -->
+
+        <tr>
+
+        <td style="
+            padding:0 35px 30px;
+        ">
+
+            <table
+                width="100%"
+                cellpadding="0"
+                cellspacing="0"
+                style="
+                    background:#0f172a;
+                    border-radius:18px;
+                "
+            >
+
+            <tr>
+
+            <td style="
+                padding:25px;
+            ">
+
+                <div style="
+                    color:#94a3b8;
+                    font-size:14px;
+                ">
+                    TOTAL BOOKING VALUE
+                </div>
+
+                <div style="
+                    margin-top:6px;
+                    color:#ffffff;
+                    font-size:30px;
+                    font-weight:800;
+                ">
+                    R {total_amount:,.2f}
+                </div>
+
+            </td>
+
+            <td style="
+                padding:25px;
+                text-align:right;
+                vertical-align:middle;
+            ">
+
+                <div style="
+                    width:48px;
+                    height:48px;
+                    line-height:48px;
+                    text-align:center;
+                    border-radius:50%;
+                    background:#2563eb;
+                    color:#ffffff;
+                    font-size:22px;
+                ">
+                    ✓
+                </div>
+
+            </td>
+
+            </tr>
+
+            </table>
+
+        </td>
+
+        </tr>
+
+
+        <!-- Contact Information -->
+
+        <tr>
+
+        <td style="
+            padding:0 35px 30px;
+        ">
+
+            <div style="
+                background:#f8fafc;
+                border-radius:16px;
+                padding:20px;
+            ">
+
+                <h3 style="
+                    margin:0 0 10px;
+                    font-size:16px;
+                ">
+                    📩 Booking Contact
+                </h3>
+
+                <p style="
+                    margin:5px 0;
+                    font-size:14px;
+                    color:#64748b;
+                ">
+                    Email: {customer_email}
+                </p>
+
+                <p style="
+                    margin:5px 0;
+                    font-size:14px;
+                    color:#64748b;
+                ">
+                    Phone: {phone}
+                </p>
+
+            </div>
+
+        </td>
+
+        </tr>
+
+
+        <!-- Next Steps -->
+
+        <tr>
+
+        <td style="
+            padding:0 35px 30px;
+        ">
+
+            <h3 style="
+                margin:0 0 12px;
+                font-size:18px;
+            ">
+                ✨ What's Next?
+            </h3>
+
+            <p style="
+                margin:0;
+                font-size:14px;
+                line-height:1.8;
+                color:#64748b;
+            ">
+                Keep this email for your records and make sure
+                your travel documents are ready before departure.
+                Your booking reference
+                <strong>{reference}</strong>
+                may be required when contacting our support team.
+            </p>
+
+        </td>
+
+        </tr>
+
+
+        <!-- Footer -->
+
+        <tr>
+
+        <td style="
+            background:#f8fafc;
+            padding:30px 35px;
+            text-align:center;
+            border-top:1px solid #e2e8f0;
+        ">
+
+            <div style="
+                font-size:18px;
+                font-weight:800;
+                color:#2563eb;
+            ">
+                TravelIntel AI
+            </div>
+
+            <p style="
+                margin:8px 0;
+                font-size:13px;
+                color:#64748b;
+            ">
+                Smart travel. Better journeys.
+            </p>
+
+            <p style="
+                margin:15px 0 0;
+                font-size:12px;
+                color:#94a3b8;
+                line-height:1.6;
+            ">
+                This is an automated booking confirmation.
+                Please do not reply directly to this email.
+            </p>
+
+        </td>
+
+        </tr>
+
+
+        </table>
+
+
+        <!-- Copyright -->
+
+        <p style="
+            margin:25px 0 0;
+            font-size:12px;
+            color:#94a3b8;
+            text-align:center;
+        ">
+            © {datetime.datetime.now().year}
+            TravelIntel AI. All rights reserved.
+        </p>
+
+
+        </td>
+
+        </tr>
+
+        </table>
+
+        </body>
+
+        </html>
+        """
+
+
+        # --------------------------------------------------
+        # Plain-text fallback
+        # --------------------------------------------------
+
+        text = f"""
+TravelIntel AI — BOOKING CONFIRMED
+
+Hello {customer_name},
+
+Your trip has been successfully booked!
+
+BOOKING REFERENCE
+{reference}
+
+TRIP DETAILS
+----------------------------------------
+Package: {package_name}
+Destination: {destination}
+Travel Date: {travel_date}
+Duration: {duration}
+Travellers: {travelers}
+
+PAYMENT
+----------------------------------------
+Payment Method: {payment_method}
+Total: R {total_amount:,.2f}
+
+CUSTOMER DETAILS
+----------------------------------------
+Name: {customer_name}
+Email: {customer_email}
+Phone: {phone}
+
+Booking Date: {booking_date}
+
+Thank you for choosing TravelIntel AI.
+
+Smart travel. Better journeys.
+"""
+
+
+        # --------------------------------------------------
+        # Send using Resend
+        # --------------------------------------------------
+
+        response = resend.Emails.send({
+            "from": "TravelIntel AI <bookings@notify.moviewatchtv.fun>",
+            "to": [to_email],
+            "subject": subject,
+            "html": html,
+            "text": text,
+        })
+
+
+        logger.info(
+            "Booking confirmation email sent successfully. "
+            "booking_id=%s email=%s resend_response=%s",
+            booking_id,
+            to_email,
+            response
+        )
+
         return True
 
-    outbox_dir = os.path.join(BASE_DIR, "instance", "outbox")
-    os.makedirs(outbox_dir, exist_ok=True)
-    file_path = os.path.join(outbox_dir, f"booking_{booking['booking_id']}.txt")
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(f"TO: {to_email}\nSUBJECT: {subject}\n\n{body}\n")
-    return False
+
+    except Exception as e:
+
+        logger.exception(
+            "Failed to send booking confirmation email. "
+            "booking_id=%s email=%s error=%s",
+            booking.get("booking_id", "unknown"),
+            to_email,
+            str(e)
+        )
+
+        return False
 
 # --- Global Exception Handlers ---
 @app.exception_handler(HTTPException)
