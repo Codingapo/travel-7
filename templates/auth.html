@@ -3,108 +3,832 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Login / Sign Up - TravelIntel AI</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    >
+
     <style>
+
         :root {
-            --bg-dark: #0f172a;
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.08);
+            --bg-dark: #070b14;
+            --glass-bg: rgba(15, 23, 42, 0.72);
+            --glass-border: rgba(255, 255, 255, 0.10);
+            --primary: #2563eb;
+            --primary-light: #60a5fa;
         }
+
+
+        * {
+            box-sizing: border-box;
+        }
+
+
         body {
-            background-color: var(--bg-dark);
+            margin: 0;
+            min-height: 100vh;
+
+            background:
+                radial-gradient(
+                    circle at 10% 20%,
+                    rgba(37, 99, 235, 0.18),
+                    transparent 35%
+                ),
+                radial-gradient(
+                    circle at 90% 80%,
+                    rgba(14, 165, 233, 0.12),
+                    transparent 35%
+                ),
+                #070b14;
+
             color: #f8fafc;
-            background-image: radial-gradient(circle at top right, rgba(37, 99, 235, 0.05), transparent),
-                              radial-gradient(circle at bottom left, rgba(29, 78, 216, 0.05), transparent);
+
+            font-family:
+                Inter,
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            overflow-x: hidden;
         }
-        .glass {
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+
+
+        /* Animated background glow */
+
+        body::before {
+            content: "";
+
+            position: fixed;
+
+            width: 450px;
+            height: 450px;
+
+            top: -200px;
+            right: -150px;
+
+            background: rgba(37, 99, 235, 0.12);
+
+            filter: blur(100px);
+
+            border-radius: 50%;
+
+            pointer-events: none;
+        }
+
+
+        body::after {
+            content: "";
+
+            position: fixed;
+
+            width: 400px;
+            height: 400px;
+
+            bottom: -200px;
+            left: -150px;
+
+            background: rgba(14, 165, 233, 0.08);
+
+            filter: blur(100px);
+
+            border-radius: 50%;
+
+            pointer-events: none;
+        }
+
+
+        /* Main glass card */
+
+        .auth-card {
+
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(255, 255, 255, 0.055),
+                    rgba(255, 255, 255, 0.018)
+                );
+
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+
             border: 1px solid var(--glass-border);
+
+            box-shadow:
+                0 25px 70px rgba(0, 0, 0, 0.45),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+            position: relative;
+
+            overflow: hidden;
+
+            animation: cardAppear 0.7s ease-out;
         }
+
+
+        @keyframes cardAppear {
+
+            from {
+                opacity: 0;
+                transform: translateY(25px) scale(0.98);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+
+        }
+
+
+        /* Decorative glow inside card */
+
+        .card-glow {
+
+            position: absolute;
+
+            width: 180px;
+            height: 180px;
+
+            top: -100px;
+            right: -80px;
+
+            background: rgba(37, 99, 235, 0.22);
+
+            filter: blur(60px);
+
+            border-radius: 50%;
+
+            pointer-events: none;
+        }
+
+
+        .card-glow-bottom {
+
+            position: absolute;
+
+            width: 150px;
+            height: 150px;
+
+            bottom: -100px;
+            left: -70px;
+
+            background: rgba(14, 165, 233, 0.10);
+
+            filter: blur(50px);
+
+            border-radius: 50%;
+
+            pointer-events: none;
+        }
+
+
+        /* Logo */
+
+        .logo-box {
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #2563eb,
+                    #1d4ed8
+                );
+
+            box-shadow:
+                0 12px 30px rgba(37, 99, 235, 0.35),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
+            transition: all 0.3s ease;
+        }
+
+
+        .logo-box:hover {
+
+            transform: translateY(-3px) rotate(-2deg);
+
+            box-shadow:
+                0 18px 40px rgba(37, 99, 235, 0.45);
+        }
+
+
+        /* Input fields */
+
+        .auth-input {
+
+            background: rgba(255, 255, 255, 0.045);
+
+            border: 1px solid rgba(255, 255, 255, 0.09);
+
+            transition:
+                border-color 0.25s ease,
+                background 0.25s ease,
+                box-shadow 0.25s ease,
+                transform 0.25s ease;
+        }
+
+
+        .auth-input:hover {
+
+            background: rgba(255, 255, 255, 0.06);
+
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+
+        .auth-input:focus {
+
+            background: rgba(37, 99, 235, 0.06);
+
+            border-color: rgba(59, 130, 246, 0.8);
+
+            box-shadow:
+                0 0 0 4px rgba(37, 99, 235, 0.10),
+                0 8px 25px rgba(0, 0, 0, 0.15);
+
+            outline: none;
+        }
+
+
+        /* Main buttons */
+
+        .auth-button {
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #2563eb,
+                    #1d4ed8
+                );
+
+            box-shadow:
+                0 12px 25px rgba(37, 99, 235, 0.25);
+
+            transition:
+                transform 0.25s ease,
+                box-shadow 0.25s ease,
+                filter 0.25s ease;
+        }
+
+
+        .auth-button:hover {
+
+            transform: translateY(-2px);
+
+            filter: brightness(1.08);
+
+            box-shadow:
+                0 18px 35px rgba(37, 99, 235, 0.35);
+        }
+
+
+        .auth-button:active {
+
+            transform: translateY(0);
+        }
+
+
+        /* OTP input */
+
+        .otp-input {
+
+            letter-spacing: 0.65em;
+
+            text-align: center;
+
+            font-size: 1.7rem;
+
+            font-weight: 800;
+
+            padding-left: 0.65em;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(37, 99, 235, 0.08),
+                    rgba(255, 255, 255, 0.03)
+                );
+
+            border: 1px solid rgba(59, 130, 246, 0.25);
+
+            transition: all 0.25s ease;
+        }
+
+
+        .otp-input:focus {
+
+            border-color: #3b82f6;
+
+            box-shadow:
+                0 0 0 4px rgba(37, 99, 235, 0.12),
+                0 10px 30px rgba(37, 99, 235, 0.12);
+
+            outline: none;
+        }
+
+
+        /* Messages */
+
+        #auth-error,
+        #auth-success {
+
+            animation: messageAppear 0.3s ease-out;
+        }
+
+
+        @keyframes messageAppear {
+
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+        }
+
+
+        /* Links */
+
+        .auth-link {
+
+            transition:
+                color 0.2s ease,
+                opacity 0.2s ease;
+        }
+
+
+        .auth-link:hover {
+
+            color: #60a5fa;
+
+            opacity: 0.9;
+        }
+
+
+        /* Divider */
+
+        .divider {
+
+            height: 1px;
+
+            background:
+                linear-gradient(
+                    to right,
+                    transparent,
+                    rgba(255, 255, 255, 0.1),
+                    transparent
+                );
+        }
+
+
+        /* Smooth form switching */
+
+        .form-section {
+
+            animation: formFade 0.35s ease-out;
+        }
+
+
+        @keyframes formFade {
+
+            from {
+                opacity: 0;
+                transform: translateX(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+
+        }
+
+
+        /* Mobile */
+
+        @media (max-width: 640px) {
+
+            .auth-card {
+
+                border-radius: 2rem;
+
+            }
+
+        }
+
     </style>
 </head>
-<body class="h-screen flex items-center justify-center p-4">
-    <div class="glass p-8 md:p-12 rounded-[2.5rem] w-full max-w-lg shadow-2xl relative overflow-hidden">
-        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 blur-3xl -mr-16 -mt-16"></div>
-        
-        <div class="text-center mb-10 relative z-10">
-            <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-600/20">
+
+
+<body class="min-h-screen flex items-center justify-center p-4">
+
+
+    <!-- Main Auth Card -->
+
+    <div
+        class="auth-card w-full max-w-lg rounded-[2.5rem] p-7 sm:p-9 md:p-12"
+    >
+
+        <!-- Decorative effects -->
+
+        <div class="card-glow"></div>
+
+        <div class="card-glow-bottom"></div>
+
+
+        <!-- Header -->
+
+        <div class="text-center mb-9 relative z-10">
+
+            <div
+                class="logo-box w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
+            >
+
                 <i class="fas fa-robot text-2xl text-white"></i>
+
             </div>
-            <h1 class="text-3xl font-black text-white mb-2">TravelIntel <span class="text-blue-500">AI</span></h1>
-            <p class="text-gray-400" id="auth-title">Welcome back! Please login.</p>
+
+
+            <h1 class="text-3xl sm:text-4xl font-black text-white tracking-tight">
+
+                TravelIntel
+                <span class="text-blue-500">AI</span>
+
+            </h1>
+
+
+            <p
+                id="auth-title"
+                class="text-gray-400 mt-3 text-sm sm:text-base"
+            >
+                Welcome back! Please login.
+            </p>
+
         </div>
 
-        <!-- Login Form -->
-        <form id="login-form" class="space-y-6 relative z-10">
-            <div>
-                <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Email Address</label>
-                <input type="email" id="login-email" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition outline-none text-white placeholder-gray-600" placeholder="e.g., explorer@dalani.com" required>
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Password</label>
-                <input type="password" id="login-password" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition outline-none text-white placeholder-gray-600" placeholder="••••••••" required>
-            </div>
-            <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black hover:bg-blue-700 transition shadow-xl shadow-blue-600/20">Sign In</button>
-            <p class="text-right text-sm">
-                <a href="forgot-password.html" class="text-blue-400 hover:underline">Forgot password?</a>
-            </p>
-            <p class="text-center text-sm text-gray-400">
-                New to TravelIntel? <a href="#" onclick="toggleAuth()" class="text-blue-500 font-bold hover:underline">Create Account</a>
-            </p>
-        </form>
 
-        <!-- Signup Form (Hidden by default) -->
-        <form id="signup-form" class="space-y-6 hidden relative z-10">
-            <div>
-                <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Email Address</label>
-                <input type="email" id="signup-email" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition outline-none text-white placeholder-gray-600" placeholder="Choose an email" required>
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Password</label>
-                <input type="password" id="signup-password" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition outline-none text-white placeholder-gray-600" placeholder="Create a password" required>
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Confirm Password</label>
-                <input type="password" id="signup-confirm" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition outline-none text-white placeholder-gray-600" placeholder="Confirm password" required>
-            </div>
-            <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black hover:bg-blue-700 transition shadow-xl shadow-blue-600/20">Register Now</button>
-            <p class="text-center text-sm text-gray-400">
-                Already a member? <a href="#" onclick="toggleAuth()" class="text-blue-500 font-bold hover:underline">Sign In</a>
-            </p>
-        </form>
-        
-        <div id="auth-error" class="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center text-red-400 text-sm hidden"></div>
-        <div id="auth-success" class="mt-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-center text-green-400 text-sm hidden"></div>
-    </div>
-<form id="otp-form" class="space-y-6 hidden relative z-10">
+        <!-- ========================= -->
+        <!-- LOGIN FORM -->
+        <!-- ========================= -->
 
-    <div>
-        <label class="block text-sm font-bold text-gray-400 mb-2">
-            Verification Code
-        </label>
-
-        <input
-            id="otp-code"
-            type="text"
-            maxlength="6"
-            class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white"
-            placeholder="Enter 6 digit code"
-            required
+        <form
+            id="login-form"
+            class="space-y-5 relative z-10 form-section"
         >
+
+            <div>
+
+                <label
+                    class="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                >
+                    Email Address
+                </label>
+
+                <div class="relative">
+
+                    <i
+                        class="fas fa-envelope absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"
+                    ></i>
+
+                    <input
+                        type="email"
+                        id="login-email"
+                        class="auth-input w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder-gray-600"
+                        placeholder="explorer@example.com"
+                        required
+                    >
+
+                </div>
+
+            </div>
+
+
+            <div>
+
+                <label
+                    class="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                >
+                    Password
+                </label>
+
+                <div class="relative">
+
+                    <i
+                        class="fas fa-lock absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"
+                    ></i>
+
+                    <input
+                        type="password"
+                        id="login-password"
+                        class="auth-input w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder-gray-600"
+                        placeholder="Enter your password"
+                        required
+                    >
+
+                </div>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="auth-button w-full text-white py-4 rounded-2xl font-black text-base"
+            >
+
+                <i class="fas fa-right-to-bracket mr-2"></i>
+
+                Sign In
+
+            </button>
+
+
+            <div class="flex justify-end">
+
+                <a
+                    href="forgot-password.html"
+                    class="auth-link text-blue-400 text-sm font-semibold"
+                >
+                    Forgot password?
+                </a>
+
+            </div>
+
+
+            <div class="divider my-5"></div>
+
+
+            <p class="text-center text-sm text-gray-400">
+
+                New to TravelIntel?
+
+                <a
+                    href="#"
+                    onclick="toggleAuth(); return false;"
+                    class="auth-link text-blue-400 font-bold ml-1"
+                >
+                    Create Account
+                </a>
+
+            </p>
+
+        </form>
+
+
+        <!-- ========================= -->
+        <!-- SIGNUP FORM -->
+        <!-- ========================= -->
+
+        <form
+            id="signup-form"
+            class="space-y-5 hidden relative z-10 form-section"
+        >
+
+            <div>
+
+                <label
+                    class="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                >
+                    Email Address
+                </label>
+
+                <div class="relative">
+
+                    <i
+                        class="fas fa-envelope absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"
+                    ></i>
+
+                    <input
+                        type="email"
+                        id="signup-email"
+                        class="auth-input w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder-gray-600"
+                        placeholder="Choose an email"
+                        required
+                    >
+
+                </div>
+
+            </div>
+
+
+            <div>
+
+                <label
+                    class="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                >
+                    Password
+                </label>
+
+                <div class="relative">
+
+                    <i
+                        class="fas fa-lock absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"
+                    ></i>
+
+                    <input
+                        type="password"
+                        id="signup-password"
+                        class="auth-input w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder-gray-600"
+                        placeholder="Create a password"
+                        required
+                    >
+
+                </div>
+
+            </div>
+
+
+            <div>
+
+                <label
+                    class="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                >
+                    Confirm Password
+                </label>
+
+                <div class="relative">
+
+                    <i
+                        class="fas fa-shield-halved absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"
+                    ></i>
+
+                    <input
+                        type="password"
+                        id="signup-confirm"
+                        class="auth-input w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder-gray-600"
+                        placeholder="Confirm your password"
+                        required
+                    >
+
+                </div>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="auth-button w-full text-white py-4 rounded-2xl font-black text-base"
+            >
+
+                <i class="fas fa-user-plus mr-2"></i>
+
+                Register Now
+
+            </button>
+
+
+            <div class="divider my-5"></div>
+
+
+            <p class="text-center text-sm text-gray-400">
+
+                Already a member?
+
+                <a
+                    href="#"
+                    onclick="toggleAuth(); return false;"
+                    class="auth-link text-blue-400 font-bold ml-1"
+                >
+                    Sign In
+                </a>
+
+            </p>
+
+        </form>
+
+
+        <!-- ========================= -->
+        <!-- OTP VERIFICATION FORM -->
+        <!-- ========================= -->
+
+        <form
+            id="otp-form"
+            class="space-y-6 hidden relative z-10 form-section"
+        >
+
+            <div class="text-center mb-6">
+
+                <div
+                    class="w-14 h-14 mx-auto mb-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center"
+                >
+
+                    <i
+                        class="fas fa-envelope-open-text text-xl text-blue-400"
+                    ></i>
+
+                </div>
+
+
+                <h2 class="text-xl font-black text-white">
+
+                    Verify Your Email
+
+                </h2>
+
+
+                <p class="text-gray-400 text-sm mt-2 leading-relaxed">
+
+                    We've sent a 6-digit verification code to your email address.
+
+                </p>
+
+            </div>
+
+
+            <div>
+
+                <label
+                    class="block text-sm font-bold text-gray-400 mb-3 text-center"
+                >
+                    Enter Verification Code
+                </label>
+
+
+                <input
+                    id="otp-code"
+                    type="text"
+                    maxlength="6"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    pattern="[0-9]{6}"
+                    class="otp-input w-full py-5 rounded-2xl text-white placeholder-gray-600"
+                    placeholder="000000"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="auth-button w-full text-white py-4 rounded-2xl font-black"
+            >
+
+                <i class="fas fa-check-circle mr-2"></i>
+
+                Verify Account
+
+            </button>
+
+
+            <p class="text-center text-sm text-gray-500">
+
+                Check your inbox and spam folder for the verification email.
+
+            </p>
+
+        </form>
+
+
+        <!-- ========================= -->
+        <!-- ERROR MESSAGE -->
+        <!-- ========================= -->
+
+        <div
+            id="auth-error"
+            class="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-center text-red-400 text-sm font-medium hidden relative z-10"
+        ></div>
+
+
+        <!-- ========================= -->
+        <!-- SUCCESS MESSAGE -->
+        <!-- ========================= -->
+
+        <div
+            id="auth-success"
+            class="mt-6 p-4 bg-green-500/10 border border-green-500/20 rounded-2xl text-center text-green-400 text-sm font-medium hidden relative z-10"
+        ></div>
+
+
+        <!-- Footer -->
+
+        <div class="relative z-10 mt-8 text-center">
+
+            <p class="text-xs text-gray-600">
+
+                <i class="fas fa-shield-halved mr-1"></i>
+
+                Your account information is securely protected.
+
+            </p>
+
+        </div>
+
     </div>
 
 
-    <button
-        type="submit"
-        class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black">
-        Verify Account
-    </button>
+    <!-- Auth JavaScript -->
 
-</form>
     <script src="/static/js/auth.js"></script>
+
 </body>
 </html>
