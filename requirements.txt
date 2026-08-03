@@ -11,3 +11,4 @@ requests
 apscheduler
 werkzeug
 httpx
+resend
