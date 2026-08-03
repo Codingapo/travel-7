@@ -210,6 +210,48 @@ def send_verification_email(email, otp):
         <p>This code expires in 10 minutes.</p>
         """
     })
+
+
+def send_password_reset_email(email: str, otp: str):
+    resend.Emails.send({
+        "from": "TravelIntel AI <reset@notify.moviewatchtv.fun>",
+        "to": [email],
+        "subject": "Your TravelIntel AI password reset code",
+        "html": f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; background:#f4f7fb; padding:30px;">
+            <div style="max-width:600px; margin:auto; background:white; padding:30px; border-radius:12px;">
+                <h2 style="color:#2563eb;">TravelIntel AI</h2>
+
+                <p>We received a request to reset your password.</p>
+
+                <p>Your password reset verification code is:</p>
+
+                <div style="
+                    font-size:32px;
+                    font-weight:bold;
+                    letter-spacing:8px;
+                    text-align:center;
+                    padding:20px;
+                    background:#f1f5f9;
+                    border-radius:10px;
+                    margin:20px 0;
+                ">
+                    {otp}
+                </div>
+
+                <p>This code expires in 10 minutes.</p>
+
+                <p>If you did not request a password reset, you can safely ignore this email.</p>
+
+                <p>TravelIntel AI</p>
+            </div>
+        </body>
+        </html>
+        """
+    })
+    
 def send_booking_email(to_email: str, booking: dict) -> bool:
     """Send booking confirmation via SMTP; fallback to local outbox file if SMTP is not configured."""
     smtp_host = os.environ.get("SMTP_HOST", "").strip()
@@ -507,27 +549,80 @@ async def customer_login(data: CustomerLoginRequest):
 
 @app.post("/api/auth/forgot-password/request")
 async def request_password_reset(data: CustomerLoginRequest):
+
     identifier = normalize_email(data.email)
+
+    if not is_valid_email(identifier):
+        raise HTTPException(
+            status_code=400,
+            detail="Please enter a valid email address"
+        )
+
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT user_id, email FROM Users WHERE email=? OR username=?", (identifier, identifier))
+
+    c.execute(
+        "SELECT user_id, email FROM Users WHERE email=? OR username=?",
+        (identifier, identifier)
+    )
+
     user = c.fetchone()
     conn.close()
-    if not user:
-        raise HTTPException(status_code=404, detail="Account not found")
 
-    # Generate 3-digit OTP
-    otp = f"{secrets.randbelow(1000):03d}"
-    password_reset_otps[identifier] = {
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="Account not found"
+        )
+
+    # Always send the reset email to the actual email stored in the database
+    account_email = normalize_email(user["email"])
+
+    # Generate secure 6-digit OTP
+    otp = f"{secrets.randbelow(1000000):06d}"
+
+    # Store OTP temporarily
+    password_reset_otps[account_email] = {
         "otp": otp,
-        "expires_at": datetime.datetime.now() + datetime.timedelta(minutes=10),
+        "expires_at": datetime.datetime.utcnow()
+        + datetime.timedelta(minutes=10),
         "attempts": 0,
     }
-    
-    # In a real app, send email. For prototype, return it.
-    logger.info("Generated 3-digit OTP %s for %s", otp, identifier)
-    return {"success": True, "data": {"message": "OTP generated", "otp": otp}}
 
+    try:
+        # Send OTP through Resend
+        send_password_reset_email(
+            account_email,
+            otp
+        )
+
+        logger.info(
+            "Password reset OTP sent to %s",
+            account_email
+        )
+
+        return {
+            "success": True,
+            "data": {
+                "message": "Password reset code sent to your email"
+            }
+        }
+
+    except Exception as e:
+
+        # Remove OTP if email failed
+        password_reset_otps.pop(account_email, None)
+
+        logger.error(
+            "Failed to send password reset email to %s: %s",
+            account_email,
+            str(e)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to send password reset email. Please try again."
+        )
 
 class PasswordResetVerifyRequest(BaseModel):
     email: str
@@ -537,29 +632,108 @@ class PasswordResetVerifyRequest(BaseModel):
 
 @app.post("/api/auth/forgot-password/verify")
 async def verify_password_reset(data: PasswordResetVerifyRequest):
-    identifier = normalize_email(data.email)
-    record = password_reset_otps.get(identifier)
-    if not record:
-        raise HTTPException(status_code=400, detail="OTP not requested or expired")
-    if datetime.datetime.now() > record["expires_at"]:
-        del password_reset_otps[identifier]
-        raise HTTPException(status_code=400, detail="OTP expired")
-    if record["attempts"] >= 5:
-        del password_reset_otps[identifier]
-        raise HTTPException(status_code=429, detail="Too many attempts, request new OTP")
-    if record["otp"] != (data.otp or "").strip():
-        record["attempts"] += 1
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-    if len(data.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
+    email = normalize_email(data.email)
+    otp = (data.otp or "").strip()
+
+    if not is_valid_email(email):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid email address"
+        )
+
+    if not otp.isdigit() or len(otp) != 6:
+        raise HTTPException(
+            status_code=400,
+            detail="Please enter the 6-digit verification code"
+        )
+
+    if len(data.password) < 6:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 6 characters"
+        )
+
+    record = password_reset_otps.get(email)
+
+    if not record:
+        raise HTTPException(
+            status_code=400,
+            detail="OTP not requested or expired"
+        )
+
+    # Check expiry
+    if datetime.datetime.utcnow() > record["expires_at"]:
+
+        del password_reset_otps[email]
+
+        raise HTTPException(
+            status_code=400,
+            detail="OTP expired. Please request a new code."
+        )
+
+    # Limit incorrect attempts
+    if record["attempts"] >= 5:
+
+        del password_reset_otps[email]
+
+        raise HTTPException(
+            status_code=429,
+            detail="Too many incorrect attempts. Please request a new OTP."
+        )
+
+    # Verify OTP
+    if record["otp"] != otp:
+
+        record["attempts"] += 1
+
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid OTP"
+        )
+
+    # Update password
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("UPDATE Users SET password_hash=? WHERE email=? OR username=?", (generate_password_hash(data.password), identifier, identifier))
-    conn.commit()
-    conn.close()
-    del password_reset_otps[identifier]
-    return {"success": True, "data": {"message": "Password reset successful"}}
+
+    try:
+
+        c.execute(
+            """
+            UPDATE Users
+            SET password_hash=?
+            WHERE email=?
+            """,
+            (
+                generate_password_hash(data.password),
+                email
+            )
+        )
+
+        if c.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Account not found"
+            )
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+    # Delete OTP after successful password reset
+    del password_reset_otps[email]
+
+    return {
+        "success": True,
+        "data": {
+            "message": "Password reset successful. You can now login with your new password."
+        }
+    }
 
 # ============================================================
 # PROFILE API ROUTES (NEW — were missing entirely)
