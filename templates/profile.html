@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - TravelIntel AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            background-image: radial-gradient(circle at top right, rgba(37, 99, 235, 0.05), transparent),
+                              radial-gradient(circle at bottom left, rgba(29, 78, 216, 0.05), transparent);
+        }
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+        }
+    </style>
+</head>
+<body class="font-sans min-h-screen">
+    <nav class="glass fixed w-full z-50 top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                <a href="index.html" class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-robot text-white"></i>
+                    </div>
+                    <span class="text-xl font-black text-white">TravelIntel AI</span>
+                </a>
+                <div class="flex items-center space-x-6">
+                    <a href="index.html" class="text-gray-400 hover:text-white transition font-medium">Home</a>
+                    <button onclick="logout()" class="text-gray-400 hover:text-red-400 transition font-medium"><i class="fas fa-power-off mr-2"></i> Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-3xl mx-auto pt-32 px-4 pb-20">
+        <div class="glass p-8 md:p-12 rounded-[2.5rem]">
+            <div class="flex items-center space-x-6 mb-12">
+                <div class="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center shadow-xl shadow-blue-600/20">
+                    <i class="fas fa-user text-3xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-black text-white">Your Profile</h1>
+                    <p class="text-gray-400" id="profile-email-display">--</p>
+                </div>
+            </div>
+
+            <form id="profile-form" class="space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Full Name</label>
+                        <input type="text" id="full-name" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="e.g., Alexander Hamilton">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Contact Number</label>
+                        <input type="tel" id="phone" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="+27 82 000 0000">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Residential Address</label>
+                    <textarea id="address" rows="3" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="Street name, Suburb, City, Postal Code"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Default Payment Method</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                        <label class="relative glass p-4 rounded-2xl cursor-pointer flex items-center space-x-4 border-2 border-transparent hover:border-blue-500 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-600/10">
+                            <input type="radio" name="payment" value="credit_card" class="hidden" onchange="togglePaymentFields(this.value)">
+                            <i class="fas fa-credit-card text-blue-400 text-xl"></i>
+                            <span class="text-white font-bold">Credit / Debit Card</span>
+                        </label>
+                        <label class="relative glass p-4 rounded-2xl cursor-pointer flex items-center space-x-4 border-2 border-transparent hover:border-blue-500 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-600/10">
+                            <input type="radio" name="payment" value="eft" class="hidden" onchange="togglePaymentFields(this.value)">
+                            <i class="fas fa-university text-blue-400 text-xl"></i>
+                            <span class="text-white font-bold">EFT Transfer</span>
+                        </label>
+                    </div>
+
+                    <!-- Card Details -->
+                    <div id="card-details" class="payment-fields hidden space-y-4 mb-6">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">Card Number</label>
+                            <input type="text" id="card-number" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="XXXX XXXX XXXX XXXX">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">Expiry Date</label>
+                                <input type="text" id="card-expiry" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="MM/YY">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">CVV</label>
+                                <input type="password" id="card-cvv" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="***">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EFT Details -->
+                    <div id="eft-details" class="payment-fields hidden space-y-4 mb-6">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">Bank Name</label>
+                            <input type="text" id="bank-name" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="e.g. Standard Bank">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">Account Number</label>
+                            <input type="text" id="account-number" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="XXXXXXXXXX">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-6">
+                    <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-blue-700 transition shadow-2xl shadow-blue-600/30">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+            <div id="profile-msg" class="mt-6 text-center hidden"></div>
+        </div>
+
+        <!-- My Bookings Section -->
+        <div id="bookings" class="glass p-8 md:p-12 rounded-[2.5rem] mt-10">
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-blue-600/20 rounded-2xl flex items-center justify-center">
+                        <i class="fas fa-suitcase text-xl text-blue-500"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-white">My Bookings</h2>
+                </div>
+                <span id="booking-count" class="bg-blue-600/10 text-blue-400 px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest border border-blue-500/20">0 Trips</span>
+            </div>
+
+            <div id="bookings-list" class="space-y-4">
+                <!-- Loading State -->
+                <div class="animate-pulse flex space-x-4 p-6 glass rounded-3xl">
+                    <div class="flex-1 space-y-4 py-1">
+                        <div class="h-4 bg-white/5 rounded w-3/4"></div>
+                        <div class="space-y-2">
+                            <div class="h-4 bg-white/5 rounded"></div>
+                            <div class="h-4 bg-white/5 rounded w-5/6"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function checkAuthStatus() {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                const display = document.getElementById('profile-email-display');
+                if (display) display.textContent = user.email;
+            }
+        }
+
+        function togglePaymentFields(method) {
+            document.querySelectorAll('.payment-fields').forEach(el => el.classList.add('hidden'));
+            if (method === 'credit_card') {
+                document.getElementById('card-details').classList.remove('hidden');
+            } else if (method === 'eft') {
+                document.getElementById('eft-details').classList.remove('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check if user is logged in
+            const user = localStorage.getItem('user');
+            if (!user) {
+                window.location.href = 'auth.html';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/profile');
+                const data = await res.json();
+                if (data.success && data.user) {
+                    const u = data.user;
+                    document.getElementById('profile-email-display').textContent = u.email;
+                    if (u.full_name) document.getElementById('full-name').value = u.full_name;
+                    if (u.phone) document.getElementById('phone').value = u.phone;
+                    if (u.address) document.getElementById('address').value = u.address;
+                    if (u.payment_method) {
+                        const radio = document.querySelector(`input[name="payment"][value="${u.payment_method}"]`);
+                        if (radio) {
+                            radio.checked = true;
+                            togglePaymentFields(u.payment_method);
+                        }
+                    }
+                    if (u.card_number) document.getElementById('card-number').value = u.card_number;
+                    if (u.card_expiry) document.getElementById('card-expiry').value = u.card_expiry;
+                    if (u.bank_name) document.getElementById('bank-name').value = u.bank_name;
+                    if (u.account_number) document.getElementById('account-number').value = u.account_number;
+                }
+                
+                // Fetch bookings
+                loadBookings();
+            } catch (err) {
+                window.location.href = 'auth.html';
+            }
+        });
+
+        async function loadBookings() {
+            const list = document.getElementById('bookings-list');
+            const countDisplay = document.getElementById('booking-count');
+            
+            try {
+                const res = await fetch('/api/my-bookings');
+                const data = await res.json();
+                
+                if (data.success && data.data) {
+                    const bookings = data.data;
+                    countDisplay.textContent = `${bookings.length} Trip${bookings.length !== 1 ? 's' : ''}`;
+                    
+                    if (bookings.length === 0) {
+                        list.innerHTML = `
+                            <div class="text-center py-10">
+                                <p class="text-gray-500 mb-6">You haven't made any bookings yet.</p>
+                                <a href="index.html" class="text-blue-500 font-bold hover:underline">Explore Destinations</a>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    list.innerHTML = bookings.map(b => `
+                        <div class="glass p-6 rounded-3xl hover:bg-white/5 transition border border-white/5 hover:border-white/10 group">
+                            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                <div class="flex items-center space-x-5">
+                                    <div class="w-14 h-14 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-500 group-hover:scale-110 transition">
+                                        <i class="fas fa-map-marked-alt text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-black text-white">${b.package_name}</h4>
+                                        <p class="text-blue-500 text-xs font-bold uppercase tracking-widest">${b.destination}</p>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-8 flex-grow md:ml-10">
+                                    <div>
+                                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Travel Date</p>
+                                        <p class="text-sm font-bold text-white">${b.travel_date}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Total Paid</p>
+                                        <p class="text-sm font-black text-teal-400">R ${b.total_amount.toLocaleString()}</p>
+                                    </div>
+                                    <div class="col-span-2 md:col-span-1">
+                                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Status</p>
+                                        <span class="px-3 py-1 bg-green-500/10 text-green-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-500/20">
+                                            ${b.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                list.innerHTML = '<p class="text-red-400 text-center py-10">Unable to load your bookings. Please try again.</p>';
+            }
+        }
+
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('profile-msg');
+            const profileData = {
+                full_name: document.getElementById('full-name').value,
+                phone: document.getElementById('phone').value,
+                address: document.getElementById('address').value,
+                payment_method: document.querySelector('input[name="payment"]:checked')?.value || '',
+                card_number: document.getElementById('card-number').value,
+                card_expiry: document.getElementById('card-expiry').value,
+                bank_name: document.getElementById('bank-name').value,
+                account_number: document.getElementById('account-number').value,
+            };
+
+            try {
+                const res = await fetch('/api/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(profileData)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Update local storage user info
+                    const userStr = localStorage.getItem('user');
+                    if (userStr) {
+                        const user = JSON.parse(userStr);
+                        user.full_name = profileData.full_name;
+                        localStorage.setItem('user', JSON.stringify(user));
+                        
+                        // Update UI immediately
+                        checkAuthStatus(); 
+                    }
+                    
+                    msg.textContent = 'Profile updated successfully!';
+                    msg.className = 'mt-6 text-center text-green-400 font-bold';
+                    msg.classList.remove('hidden');
+                } else {
+                    msg.textContent = data.error || 'Update failed.';
+                    msg.className = 'mt-6 text-center text-red-400 font-bold';
+                    msg.classList.remove('hidden');
+                }
+            } catch (err) {
+                msg.textContent = 'Update failed. Please try again.';
+                msg.className = 'mt-6 text-center text-red-400 font-bold';
+                msg.classList.remove('hidden');
+            }
+        });
+
+        async function logout() {
+            try { await fetch('/admin/logout', { method: 'POST' }); } catch(e) {}
+            localStorage.clear();
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

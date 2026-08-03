@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - TravelIntel AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --bg-dark: #0f172a; 
+            --card-bg: rgba(255,255,255,0.03); 
+            --border-color: rgba(255,255,255,0.08); 
+            --accent: #2dd4bf; 
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #f8fafc; min-height: 100vh; }
+        .sidebar { width: 260px; height: 100vh; position: fixed; left: 0; top: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); padding: 32px 20px; z-index: 50; }
+        .main { margin-left: 260px; padding: 80px 40px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .main-container { width: 100%; max-width: 1000px; }
+        .nav-link { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-radius: 14px; color: #94a3b8; font-weight: 500; transition: all 0.3s; margin-bottom: 8px; }
+        .nav-link:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-link.active { background: var(--accent); color: #0f172a; font-weight: 700; box-shadow: 0 10px 15px -3px rgba(45, 212, 191, 0.2); }
+        .card { background: var(--card-bg); border-radius: 24px; padding: 32px; border: 1px solid var(--border-color); backdrop-filter: blur(20px); }
+        .glass { background: var(--card-bg); border: 1px solid var(--border-color); backdrop-filter: blur(20px); border-radius: 24px; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar flex flex-col">
+        <div class="flex items-center gap-3 mb-12 px-2">
+            <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20">
+                <i class="fas fa-layer-group text-slate-900 text-xl"></i>
+            </div>
+            <h1 class="text-xl font-bold text-white tracking-tight">TravelIntel AI</h1>
+        </div>
+        <nav class="flex-grow">
+            <a href="/dashboard" class="nav-link"><i class="fas fa-th-large w-5"></i><span>Dashboard</span></a>
+            <a href="/admin/reports.html" class="nav-link active"><i class="fas fa-file-alt w-5"></i><span>Reports</span></a>
+            <a href="/admin/reviews.html" class="nav-link"><i class="fas fa-star w-5"></i><span>Reviews</span></a>
+        </nav>
+        <button onclick="logout()" class="w-full text-left nav-link hover:text-red-400"><i class="fas fa-sign-out-alt w-5"></i><span>Logout</span></button>
+    </aside>
+
+    <main class="main">
+        <div class="main-container">
+            <div class="card mb-10 py-16 px-12">
+                <div class="max-w-2xl mx-auto text-center mb-12">
+                    <h2 class="text-4xl font-black mb-4">Generate Analytics Report</h2>
+                    <p class="text-slate-400 text-lg">Select a date range to compile a comprehensive summary of booking performance, user growth, and destination insights.</p>
+                </div>
+                
+                <div id="setupArea" class="max-w-3xl mx-auto">
+                    <form id="reportForm" class="grid grid-cols-1 md:grid-cols-5 gap-6 items-end glass p-8">
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-3 ml-1">Start Date</label>
+                            <input type="date" id="startDate" class="w-full rounded-xl bg-slate-900/70 border border-white/5 px-4 py-3.5 focus:border-teal-500/50 outline-none transition" required>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-3 ml-1">End Date</label>
+                            <input type="date" id="endDate" class="w-full rounded-xl bg-slate-900/70 border border-white/5 px-4 py-3.5 focus:border-teal-500/50 outline-none transition" required>
+                        </div>
+                        <button id="generateBtn" type="submit" class="w-full bg-teal-500 hover:bg-teal-400 text-slate-900 px-6 py-3.5 rounded-xl font-black text-sm uppercase tracking-widest transition shadow-lg shadow-teal-500/20">
+                            Generate
+                        </button>
+                    </form>
+                </div>
+                <div id="downloadArea" class="mt-8 flex flex-col items-center gap-6 hidden max-w-xl mx-auto text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <div class="w-20 h-20 bg-teal-500/10 rounded-full flex items-center justify-center mb-2">
+                        <i class="fas fa-check-circle text-4xl text-teal-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-black text-white mb-2">Report Ready</h3>
+                        <p class="text-slate-400">Your analytics summary for the selected period has been compiled and is ready for download.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-4 items-center w-full">
+                        <button id="downloadBtn" onclick="downloadPDF()" class="w-full sm:flex-1 bg-teal-500 hover:bg-teal-400 text-slate-900 px-8 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition shadow-xl shadow-teal-500/20">
+                            Download PDF
+                        </button>
+                        <button onclick="window.location.reload()" class="w-full sm:w-auto px-8 py-4 rounded-xl font-black text-sm uppercase tracking-widest text-slate-400 hover:text-white transition">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+                <div id="errorMsg" class="text-red-300 mt-3 hidden"></div>
+            </div>
+
+            <div id="reportView" class="space-y-6"></div>
+
+            <div class="mt-12 mb-8 text-center">
+                <span id="generatedAt" class="text-xs font-black uppercase tracking-widest text-slate-500">Last generated: --</span>
+            </div>
+
+            <div style="display:none">
+                <div id="printable-report" class="p-6" style="background:#0f172a; color:#f8fafc;">
+                    <h1 style="font-size:28px; font-weight:800; margin-bottom:8px;">TravelIntel AI - Full Analytics Summary</h1>
+                    <p id="pdfGeneratedAt" style="margin-bottom:16px; color:#cbd5e1;"></p>
+                    <div id="pdfBody"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentReport = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchLastGenerated();
+        });
+
+        async function fetchLastGenerated() {
+            try {
+                const res = await fetch('/api/reports/last-generated');
+                if (res.status === 401 || res.status === 403) return;
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('generatedAt').textContent = `Last generated: ${data.generated_at || '--'}`;
+                }
+            } catch (e) {
+                console.error("Failed to fetch last generated timestamp:", e);
+            }
+        }
+
+        async function logout() {
+            try { await fetch('/admin/logout', { method:'POST' }); } catch (e) {}
+            window.location.href = '/admin/login';
+        }
+
+        function renderReport(report) {
+            const view = document.getElementById('reportView');
+            const topDest = (report.bookings.top_destinations || []).map(d => `
+                <div class="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
+                    <span class="text-slate-300">${d.destination}</span>
+                    <span class="font-bold text-white">${d.bookings} bookings</span>
+                </div>
+            `).join('');
+            
+            const paymentSplit = (report.bookings.payment_split || []).map(p => `
+                <div class="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
+                    <span class="text-slate-300">${p.payment_method}</span>
+                    <span class="font-bold text-white">${p.count}</span>
+                </div>
+            `).join('');
+
+            const reportHtml = `
+                <div class="space-y-8 p-4">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="glass p-6 rounded-2xl">
+                            <p class="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Total Bookings</p>
+                            <h4 class="text-3xl font-black text-white">${report.bookings.total_bookings}</h4>
+                        </div>
+                        <div class="glass p-6 rounded-2xl">
+                            <p class="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Total Revenue</p>
+                            <h4 class="text-3xl font-black text-teal-400">${report.bookings.total_revenue}</h4>
+                        </div>
+                    </div>
+
+                    <div class="glass p-8 rounded-3xl">
+                        <h3 class="text-xl font-black text-white mb-6 flex items-center gap-3">
+                            <i class="fas fa-map-marker-alt text-blue-500"></i> Destination Performance
+                        </h3>
+                        <div class="space-y-1">${topDest || '<p class="text-slate-500 italic">No destination data available.</p>'}</div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="glass p-8 rounded-3xl">
+                            <h3 class="text-lg font-black text-white mb-6">Payment Methods</h3>
+                            <div class="space-y-1">${paymentSplit || '<p class="text-slate-500 italic">No payment data.</p>'}</div>
+                        </div>
+                        <div class="glass p-8 rounded-3xl">
+                            <h3 class="text-lg font-black text-white mb-6">User Growth</h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-300">Total Registered</span>
+                                    <span class="font-bold text-white">${report.users.total_users}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-300">New (30 Days)</span>
+                                    <span class="font-bold text-teal-400">+${report.users.new_users_30_days}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Clear the view to satisfy "nothing else" requirement
+            view.innerHTML = '';
+
+            document.getElementById('pdfGeneratedAt').textContent = `TravelIntel AI Analytics Summary | Period: ${report.period}`;
+            document.getElementById('pdfBody').innerHTML = reportHtml;
+        }
+
+        document.getElementById('reportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            const btn = document.getElementById('generateBtn');
+            const error = document.getElementById('errorMsg');
+
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+            error.classList.add('hidden');
+            try {
+                const r = await fetch('/api/reports/generate', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ start_date:start, end_date:end })
+                });
+                if (r.status === 401 || r.status === 403) { window.location.href = '/admin/login'; return; }
+                const payload = await r.json();
+                if (!payload.success) {
+                    error.textContent = payload.error || 'Failed to generate report.';
+                    error.classList.remove('hidden');
+                    return;
+                }
+                currentReport = payload.report;
+                renderReport(currentReport);
+                document.getElementById('setupArea').classList.add('hidden');
+                document.getElementById('downloadArea').classList.remove('hidden');
+                fetchLastGenerated();
+            } catch (ex) {
+                error.textContent = 'Network error. Please try again.';
+                error.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate';
+            }
+        });
+
+        function downloadPDF() {
+            const element = document.getElementById('printable-report');
+            element.parentElement.style.display = 'block';
+            element.parentElement.style.position = 'absolute';
+            element.parentElement.style.left = '-9999px';
+            html2pdf().set({
+                margin: [10, 10, 10, 10],
+                filename: 'TravelIntel_Analytics_Summary.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, backgroundColor: '#0f172a' },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).from(element).save().then(() => {
+                element.parentElement.style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>

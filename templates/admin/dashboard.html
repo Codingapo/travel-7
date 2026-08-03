@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - TravelIntel AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --bg-dark: #0f172a; 
+            --card-bg: rgba(255,255,255,0.03); 
+            --border-color: rgba(255,255,255,0.08); 
+            --accent: #2dd4bf; 
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #f8fafc; min-height: 100vh; }
+        .sidebar { width: 260px; height: 100vh; position: fixed; left: 0; top: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); padding: 32px 20px; z-index: 50; }
+        .main-content { margin-left: 260px; padding: 40px; }
+        .nav-link { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-radius: 14px; color: #94a3b8; font-weight: 500; transition: all 0.3s; margin-bottom: 8px; }
+        .nav-link:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-link.active { background: var(--accent); color: #0f172a; font-weight: 700; box-shadow: 0 10px 15px -3px rgba(45, 212, 191, 0.2); }
+        .card { background: var(--card-bg); border-radius: 24px; padding: 24px; border: 1px solid var(--border-color); backdrop-filter: blur(20px); transition: all 0.3s ease; }
+        .card:hover { transform: translateY(-4px); border-color: rgba(45, 212, 191, 0.3); }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 16px 20px; border-bottom: 1px solid var(--border-color); color: #64748b; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; }
+        td { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.02); color: #cbd5e1; font-size: 13px; }
+        .glass-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); color: #fff; padding: 10px 20px; border-radius: 12px; font-weight: 600; transition: all 0.3s; }
+        .glass-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
+        .kpi-card { display: flex; flex-direction: column; justify-content: space-between; }
+        .status-pill { padding: 4px 12px; border-radius: 9999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+        .status-confirmed { background: rgba(45, 212, 191, 0.1); color: #2dd4bf; }
+        .status-pending { background: rgba(251, 191, 36, 0.1); color: #fbbf24; }
+    </style>
+</head>
+<body class="selection:bg-teal-500 selection:text-white">
+    <div class="sidebar flex flex-col">
+        <div class="flex items-center gap-3 mb-12 px-2">
+            <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20">
+                <i class="fas fa-layer-group text-slate-900 text-xl"></i>
+            </div>
+            <h1 class="text-xl font-black text-white tracking-tight">TravelIntel AI</h1>
+        </div>
+        <nav class="flex-grow">
+            <a href="/dashboard" class="nav-link active"><i class="fas fa-th-large w-5"></i><span>Dashboard</span></a>
+            <a href="/admin/reports.html" class="nav-link"><i class="fas fa-file-alt w-5"></i><span>Reports</span></a>
+            <a href="/admin/reviews.html" class="nav-link"><i class="fas fa-star w-5"></i><span>Reviews</span></a>
+        </nav>
+        <div>
+            <button onclick="logout()" class="w-full text-left nav-link hover:text-red-400 transition"><i class="fas fa-sign-out-alt w-5"></i><span>Logout</span></button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h2 class="text-3xl font-black text-white mb-1">System Overview</h2>
+                <p class="text-slate-400 text-sm">Real-time performance analytics and booking trends.</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="syncStatus" class="bg-slate-900/50 border border-slate-800 text-slate-400 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all duration-300">
+                    <div class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></div> <span id="syncText">LIVE FEED</span>
+                </div>
+                <button onclick="fetchDashboardData()" class="glass-btn text-sm flex items-center gap-2">
+                    <i class="fas fa-sync-alt text-teal-400"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div class="card kpi-card h-40">
+                <div class="flex justify-between items-start">
+                    <div class="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 border border-blue-500/20">
+                        <i class="fas fa-shopping-cart text-xl"></i>
+                    </div>
+                    <span class="text-teal-400 text-xs font-bold bg-teal-400/10 px-2 py-1 rounded-lg">+12%</span>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Total Bookings</p>
+                    <h3 class="text-3xl font-black text-white" id="totalBookings">0</h3>
+                </div>
+            </div>
+            <div class="card kpi-card h-40">
+                <div class="flex justify-between items-start">
+                    <div class="w-12 h-12 bg-teal-500/10 rounded-2xl flex items-center justify-center text-teal-400 border border-teal-500/20">
+                        <i class="fas fa-wallet text-xl"></i>
+                    </div>
+                    <span class="text-teal-400 text-xs font-bold bg-teal-400/10 px-2 py-1 rounded-lg">+8%</span>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Total Revenue</p>
+                    <h3 class="text-3xl font-black text-white" id="totalRevenue">R 0</h3>
+                </div>
+            </div>
+            <div class="card kpi-card h-40">
+                <div class="flex justify-between items-start">
+                    <div class="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 border border-purple-500/20">
+                        <i class="fas fa-users text-xl"></i>
+                    </div>
+                    <span class="text-slate-500 text-xs font-bold bg-slate-500/10 px-2 py-1 rounded-lg">Stable</span>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Active Users</p>
+                    <h3 class="text-3xl font-black text-white" id="totalUsers">0</h3>
+                </div>
+            </div>
+            <div class="card kpi-card h-40">
+                <div class="flex justify-between items-start">
+                    <div class="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-400 border border-amber-500/20">
+                        <i class="fas fa-chart-line text-xl"></i>
+                    </div>
+                    <span class="text-teal-400 text-xs font-bold bg-teal-400/10 px-2 py-1 rounded-lg">+5%</span>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Avg. Order Value</p>
+                    <h3 class="text-3xl font-black text-white" id="avgOrderValue">R 0</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+            <div class="card lg:col-span-2">
+                <div class="flex justify-between items-center mb-8">
+                    <h4 class="text-lg font-black text-white">Booking & Revenue Trends</h4>
+                    <div class="flex gap-2">
+                        <span class="flex items-center gap-2 text-[10px] font-bold text-slate-400"><div class="w-2 h-2 rounded-full bg-teal-400"></div> REVENUE</span>
+                        <span class="flex items-center gap-2 text-[10px] font-bold text-slate-400"><div class="w-2 h-2 rounded-full bg-blue-500"></div> BOOKINGS</span>
+                    </div>
+                </div>
+                <div class="h-80"><canvas id="mainTrendChart"></canvas></div>
+            </div>
+            <div class="card">
+                <h4 class="text-lg font-black text-white mb-8">Destination Mix</h4>
+                <div class="h-80"><canvas id="destinationMixChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Recent Bookings -->
+            <div class="card lg:col-span-2">
+                <div class="flex justify-between items-center mb-6">
+                    <h4 class="text-lg font-black text-white">Recent Activity</h4>
+                </div>
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead><tr><th>ID</th><th>Customer</th><th>Package</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                        <tbody id="recentBookingsTable">
+                            <tr><td colspan="6" class="text-center text-slate-500 py-10">Initializing live feed...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Top Packages -->
+            <div class="card">
+                <h4 class="text-lg font-black text-white mb-6">Top Performing Packages</h4>
+                <div class="space-y-6" id="topPackagesList">
+                    <p class="text-slate-500 text-sm text-center py-10">Loading rankings...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function logout() {
+            try { await fetch('/admin/logout', { method: 'POST' }); } catch(e) {}
+            localStorage.clear();
+            window.location.href = '/admin/login';
+        }
+
+        let trendChart, mixChart;
+        const TC = '#2dd4bf'; // Teal
+        const BC = '#3b82f6'; // Blue
+
+        function initCharts() {
+            Chart.defaults.color = '#64748b';
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            
+            // Main Trend Chart
+            const trendCtx = document.getElementById('mainTrendChart').getContext('2d');
+            const trendGrad = trendCtx.createLinearGradient(0, 0, 0, 300);
+            trendGrad.addColorStop(0, 'rgba(45, 212, 191, 0.2)');
+            trendGrad.addColorStop(1, 'rgba(45, 212, 191, 0)');
+
+            trendChart = new Chart(trendCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Monthly Revenue',
+                            data: [],
+                            backgroundColor: TC,
+                            borderRadius: 8,
+                            borderWidth: 0,
+                            barPercentage: 0.7,
+                            categoryPercentage: 0.8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { 
+                            display: true,
+                            position: 'top',
+                            labels: { color: '#94a3b8', font: { size: 12, weight: 'bold' } }
+                        } 
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.03)' },
+                            ticks: { 
+                                color: '#94a3b8',
+                                callback: value => 'R ' + (value >= 1000 ? value/1000 + 'k' : value) 
+                            },
+                            title: {
+                                display: true,
+                                text: 'Revenue (ZAR)',
+                                color: '#94a3b8',
+                                font: { size: 12, weight: 'black', family: 'Inter' }
+                            }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' },
+                            title: {
+                                display: true,
+                                text: 'Month',
+                                color: '#94a3b8',
+                                font: { size: 12, weight: 'black', family: 'Inter' }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Destination Mix Chart
+            mixChart = new Chart(document.getElementById('destinationMixChart').getContext('2d'), {
+                type: 'polarArea',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            'rgba(45, 212, 191, 0.7)', 
+                            'rgba(59, 130, 246, 0.7)', 
+                            'rgba(139, 92, 246, 0.7)', 
+                            'rgba(245, 158, 11, 0.7)', 
+                            'rgba(236, 72, 153, 0.7)'
+                        ],
+                        borderWidth: 1,
+                        borderColor: 'rgba(255,255,255,0.1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            display: false,
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            angleLines: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { padding: 20, usePointStyle: true, boxWidth: 6, font: { size: 10, weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function fetchDashboardData() {
+            const syncText = document.getElementById('syncText');
+            const syncStatus = document.getElementById('syncStatus');
+            try {
+                if (syncText) syncText.textContent = 'SYNCING...';
+                if (syncStatus) syncStatus.classList.add('border-teal-500/50');
+                
+                const res = await fetch('/api/admin/dashboard-stats?v=' + Date.now());
+                if (res.status === 401 || res.status === 403) {
+                    window.location.href = '/admin/login';
+                    return;
+                }
+                
+                const data = await res.json();
+                if (!data.success || !data.data) {
+                    console.error("Dashboard data error:", data.error || "Unknown error");
+                    if (syncText) syncText.textContent = 'SYNC ERROR';
+                    return;
+                }
+
+                const stats = data.data;
+
+                // 1. Update KPIs
+                if (stats.kpis) {
+                    document.getElementById('totalBookings').textContent = (stats.kpis.total_bookings || 0).toLocaleString();
+                    document.getElementById('totalRevenue').textContent = 'R ' + (stats.kpis.total_revenue || 0).toLocaleString();
+                    document.getElementById('totalUsers').textContent = (stats.kpis.total_users || 0).toLocaleString();
+                    document.getElementById('avgOrderValue').textContent = 'R ' + (stats.kpis.avg_order_value || 0).toLocaleString();
+                }
+
+                // 2. Update Trend Chart
+                if (stats.monthly_trends && trendChart) {
+                    const trendLabels = stats.monthly_trends.map(m => {
+                        if (!m.month) return 'Unknown';
+                        const parts = m.month.split('-');
+                        if (parts.length < 2) return m.month;
+                        const [y, mm] = parts;
+                        const d = new Date(y, parseInt(mm)-1);
+                        return d.toLocaleString('default', { month: 'short' });
+                    });
+                    trendChart.data.labels = trendLabels;
+                    trendChart.data.datasets[0].data = stats.monthly_trends.map(m => m.revenue || 0);
+                    trendChart.update();
+                }
+
+                // 3. Update Mix Chart
+                if (stats.destinations && mixChart) {
+                    mixChart.data.labels = stats.destinations.map(d => d.destination || 'Unknown');
+                    mixChart.data.datasets[0].data = stats.destinations.map(d => d.count || 0);
+                    mixChart.update();
+                }
+
+                // 4. Update Recent Bookings
+                const tb = document.getElementById('recentBookingsTable');
+                if (tb && stats.recent_bookings) {
+                    if (stats.recent_bookings.length === 0) {
+                        tb.innerHTML = '<tr><td colspan="6" class="text-center text-slate-500 py-10">No recent activity</td></tr>';
+                    } else {
+                        tb.innerHTML = stats.recent_bookings.map(b => `
+                            <tr>
+                                <td><span class="text-[10px] font-black text-slate-500">#${b.booking_id}</span></td>
+                                <td class="font-bold text-white">${b.name || 'Guest'}</td>
+                                <td><span class="text-slate-400">${b.package_name || '-'}</span></td>
+                                <td class="font-black text-teal-400">R ${(b.total_amount || 0).toLocaleString()}</td>
+                                <td><span class="status-pill ${b.status === 'confirmed' ? 'status-confirmed' : 'status-pending'}">${b.status || 'pending'}</span></td>
+                                <td class="text-slate-500 text-xs">${b.booking_date || '-'}</td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+
+                // 5. Update Top Packages
+                const pkgList = document.getElementById('topPackagesList');
+                if (pkgList && stats.top_packages) {
+                    if (stats.top_packages.length === 0) {
+                        pkgList.innerHTML = '<p class="text-slate-500 text-sm text-center py-10">No package data available</p>';
+                    } else {
+                        const totalForPercent = (stats.kpis ? stats.kpis.total_bookings : 0) || 1;
+                        pkgList.innerHTML = stats.top_packages.map((p, i) => `
+                            <div class="flex items-center gap-4">
+                                <div class="text-xl font-black text-slate-800 w-6">${i + 1}</div>
+                                <div class="flex-grow">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-sm font-bold text-white">${p.package_name || 'Package'}</span>
+                                        <span class="text-xs font-black text-teal-400">${p.count || 0} bookings</span>
+                                    </div>
+                                    <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div class="h-full bg-teal-500 rounded-full" style="width: ${Math.max(5, ((p.count || 0) / totalForPercent) * 100)}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+
+            } catch (e) {
+                console.error("Dashboard update failed:", e);
+                if (syncText) syncText.textContent = 'SYNC ERROR';
+            } finally {
+                setTimeout(() => {
+                    if (syncText && syncText.textContent !== 'SYNC ERROR') syncText.textContent = 'LIVE FEED';
+                    if (syncStatus) syncStatus.classList.remove('border-teal-500/50');
+                }, 1000);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            fetchDashboardData();
+            // Update every 5 seconds for almost immediate updates
+            setInterval(fetchDashboardData, 5000);
+        });
+    </script>
+</body>
+</html>

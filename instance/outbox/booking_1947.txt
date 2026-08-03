@@ -1,0 +1,17 @@
+TO: travelintel2026@mail.com
+SUBJECT: TravelIntel Booking Confirmation #1947
+
+Booking Confirmation
+
+Reference: TI-01947
+Customer: Alex
+Email: travelintel2026@mail.com
+Phone: 067 307 1228
+Package: Cape Town
+Destination: Cape Town
+Travel Date: 2026-05-21
+Travelers: 1
+Total: R 12,900.00
+Booking Date: 2026-05-01
+
+Thank you for booking with TravelIntel AI.

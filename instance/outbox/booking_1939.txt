@@ -1,0 +1,17 @@
+TO: ajayipeter135@gmail.com
+SUBJECT: TravelIntel Booking Confirmation #1939
+
+Booking Confirmation
+
+Reference: TI-01939
+Customer: Ajayi Peter
+Email: ajayipeter135@gmail.com
+Phone: 067 307 1228
+Package: Dubai (4 Star)
+Destination: Dubai
+Travel Date: 2026-05-21
+Travelers: 1
+Total: R 24,900.00
+Booking Date: 2026-05-01
+
+Thank you for booking with TravelIntel AI.

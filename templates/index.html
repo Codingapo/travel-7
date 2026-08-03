@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TravelIntel AI - Your Smart Travel Partner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+        }
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+        }
+        .hero-gradient {
+            background: radial-gradient(circle at top right, rgba(30, 58, 138, 0.2), transparent),
+                        radial-gradient(circle at bottom left, rgba(30, 27, 75, 0.2), transparent);
+        }
+        .card-hover:hover {
+            transform: translateY(-8px);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.15);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="font-sans selection:bg-blue-500 selection:text-white">
+    <!-- Navbar -->
+    <nav class="glass fixed w-full z-50 top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                <div class="flex items-center space-x-2">
+                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                        <i class="fas fa-robot text-xl text-white"></i>
+                    </div>
+                    <span class="text-2xl font-black tracking-tighter text-white">TravelIntel <span class="text-blue-500">AI</span></span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-center space-x-8">
+                        <a href="index.html" class="text-gray-300 hover:text-white transition font-medium">Home</a>
+                        <a href="#packages" class="text-gray-300 hover:text-white transition font-medium">Explore</a>
+                        <div id="auth-links" class="flex items-center space-x-4">
+                            <a href="auth.html" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full font-bold transition shadow-lg shadow-blue-600/20">Sign In</a>
+                        </div>
+                        <div id="user-info" class="hidden flex items-center space-x-6">
+                            <div class="flex flex-col items-end">
+                                <span id="username-display" class="text-white font-bold text-sm"></span>
+                                <div class="flex space-x-3">
+                                    <a href="profile.html" class="text-blue-400 text-xs hover:underline">Manage Profile</a>
+                                    <span class="text-gray-700 text-xs">•</span>
+                                    <a href="profile.html#bookings" class="text-blue-400 text-xs hover:underline">My Bookings</a>
+                                </div>
+                            </div>
+                            <button onclick="logout()" class="text-gray-400 hover:text-red-400 transition"><i class="fas fa-power-off"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero-gradient pt-48 pb-32 relative overflow-hidden">
+        <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+        <div class="max-w-7xl mx-auto px-4 relative z-10 text-center">
+            <h1 class="text-5xl md:text-7xl font-black mb-8 leading-tight">
+                Your Intelligent <br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">Gateway to the World</span>
+            </h1>
+            <p class="text-xl md:text-2xl mb-12 text-gray-400 max-w-3xl mx-auto leading-relaxed">
+                Experience AI-driven travel curation. From Cape Town's peaks to Bali's serene beaches, discover packages tailored just for you.
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
+                <a href="#packages" class="w-full sm:w-auto bg-blue-600 text-white px-10 py-4 rounded-full font-black text-lg hover:bg-blue-700 transition shadow-2xl shadow-blue-600/40">Browse Packages</a>
+                <a href="profile.html#bookings" id="hero-bookings-btn" class="hidden w-full sm:w-auto glass text-white px-10 py-4 rounded-full font-black text-lg hover:bg-white/10 transition">My Bookings</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Packages Section -->
+    <section id="packages" class="py-32 bg-[#0a0f1d]">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 space-y-4 md:space-y-0">
+                <div>
+                    <h2 class="text-4xl font-black text-white mb-4">Travel Packages</h2>
+                </div>
+            </div>
+            
+            <div id="packages-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                <!-- Loading State -->
+                <div class="glass p-4 rounded-3xl animate-pulse">
+                    <div class="bg-white/5 h-64 rounded-2xl mb-6"></div>
+                    <div class="h-8 bg-white/5 rounded-full w-3/4 mb-4"></div>
+                    <div class="h-4 bg-white/5 rounded-full w-1/2 mb-8"></div>
+                    <div class="flex justify-between items-center">
+                        <div class="h-10 bg-white/5 rounded-full w-1/3"></div>
+                        <div class="h-10 bg-white/5 rounded-full w-1/3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="glass border-t-0 border-b-0 border-x-0 pt-20 pb-10">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+                <div class="col-span-1 md:col-span-2">
+                    <div class="flex items-center space-x-2 mb-6">
+                        <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                            <i class="fas fa-robot text-white"></i>
+                        </div>
+                        <span class="text-xl font-black text-white">TravelIntel AI</span>
+                    </div>
+                    <p class="text-gray-500 max-w-md leading-relaxed">
+                        Redefining travel planning through artificial intelligence. We combine human expertise from Dalani Trip Planners with smart technology to create unforgettable journeys.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="text-white font-bold mb-6 uppercase text-sm tracking-widest">Quick Links</h4>
+                    <ul class="space-y-4 text-gray-500">
+                        <li><a href="#" class="hover:text-blue-400 transition">About Us</a></li>
+                        <li><a href="#" class="hover:text-blue-400 transition">Destinations</a></li>
+                        <li><a href="#" class="hover:text-blue-400 transition">Contact</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-bold mb-6 uppercase text-sm tracking-widest">Connect</h4>
+                    <div class="flex space-x-4">
+                        <a href="#" class="glass w-10 h-10 flex items-center justify-center rounded-lg hover:bg-blue-600 transition"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="glass w-10 h-10 flex items-center justify-center rounded-lg hover:bg-pink-600 transition"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="glass w-10 h-10 flex items-center justify-center rounded-lg hover:bg-blue-400 transition"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-white/5 pt-10 text-center text-gray-600 text-sm">
+                &copy; 2026 TravelIntel AI. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Booking Modal (Prompt to sign in) -->
+    <div id="booking-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[100] px-4">
+        <div class="glass p-10 rounded-[2.5rem] max-w-md w-full text-center">
+            <div class="w-20 h-20 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-8">
+                <i class="fas fa-user-lock text-3xl text-blue-500"></i>
+            </div>
+            <h3 class="text-3xl font-black text-white mb-4">Start Your Journey</h3>
+            <p class="text-gray-400 mb-10 leading-relaxed">Please create an account or sign in to finalize your booking and unlock exclusive AI-curated travel benefits.</p>
+            <div class="flex flex-col space-y-4">
+                <a href="auth.html" class="bg-blue-600 text-white py-4 rounded-2xl font-black hover:bg-blue-700 transition shadow-xl shadow-blue-600/20">Sign In / Register</a>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-white transition font-bold">Maybe Later</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/package-images.js"></script>
+    <script src="/static/js/main.js?v=1.1"></script>
+    <script>
+        async function logout() {
+            try { await fetch('/admin/logout', { method: 'POST' }); } catch(e) {}
+            localStorage.clear();
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>

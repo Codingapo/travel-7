@@ -1,0 +1,17 @@
+TO: a@g.com
+SUBJECT: TravelIntel Booking Confirmation #1874
+
+Booking Confirmation
+
+Reference: TI-01874
+Customer: apo
+Email: a@g.com
+Phone: 0660958962
+Package: Cape Town
+Destination: Cape Town
+Travel Date: 2026-05-01
+Travelers: 1
+Total: R 12,900.00
+Booking Date: 2026-04-30
+
+Thank you for booking with TravelIntel AI.

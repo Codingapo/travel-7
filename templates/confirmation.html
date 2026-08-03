@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Confirmation - TravelIntel AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent: #2dd4bf;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            font-family: 'Inter', system-ui, sans-serif;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(45, 212, 191, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.1) 0px, transparent 50%);
+        }
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .check-icon {
+            background: linear-gradient(135deg, #2dd4bf 0%, #0ea5e9 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center px-4">
+    <main class="glass rounded-[2.5rem] p-12 md:p-20 max-w-2xl w-full text-center">
+        <div class="check-icon w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-teal-500/20">
+            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4 text-white">
+            Booking Confirmed!
+        </h1>
+        <p class="text-xl text-slate-400 mb-12 font-medium">
+            We've sent the details to your email.
+        </p>
+        <a href="index.html" class="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-200 transition-all font-bold rounded-2xl px-10 py-4 text-lg">
+            <span>Back to Home</span>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l7-7-7-7"></path>
+            </svg>
+        </a>
+    </main>
+</body>
+</html>

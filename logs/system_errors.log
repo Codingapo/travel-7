@@ -1,0 +1,504 @@
+2026-04-27 13:05:23,915 ERROR Unhandled exception on path=/
+Traceback (most recent call last):
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 29, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 130, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 46, in __call__
+    await self.app(scope, receive, self.send_with_compression)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 328, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\app.py", line 229, in index
+    return templates.TemplateResponse("index.html", {"request": request})
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\templating.py", line 148, in TemplateResponse
+    template = self.get_template(name)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\templating.py", line 115, in get_template
+    return self.env.get_template(name)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\jinja2\environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\jinja2\environment.py", line 964, in _load_template
+    template = self.cache.get(cache_key)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\jinja2\utils.py", line 477, in get
+    return self[key]
+           ~~~~^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\jinja2\utils.py", line 515, in __getitem__
+    rv = self._mapping[key]
+         ~~~~~~~~~~~~~^^^^^
+TypeError: cannot use 'tuple' as a dict key (unhashable type: 'dict')
+2026-04-27 13:13:23,295 WARNING Admin login failure username=admin ip=127.0.0.1
+2026-04-27 13:13:38,861 INFO Admin login success username=admin ip=127.0.0.1
+2026-04-27 13:19:09,636 INFO Admin login success username=admin ip=127.0.0.1
+2026-04-27 16:12:00,153 INFO Admin login success username=admin ip=127.0.0.1
+2026-04-27 16:38:33,829 INFO Admin login success username=admin ip=127.0.0.1
+2026-04-27 16:39:30,671 INFO Admin login success username=admin ip=127.0.0.1
+2026-04-30 14:31:00,585 INFO Admin login success username=admin ip=127.0.0.1
+2026-04-30 14:36:07,224 INFO Admin login success username=admin ip=127.0.0.1
+2026-04-30 15:10:54,178 INFO Admin login success username=admin ip=127.0.0.1
+2026-04-30 15:37:44,079 INFO Admin login success username=admin ip=127.0.0.1
+2026-04-30 16:54:02,606 INFO Admin login success username=admin ip=127.0.0.1
+2026-04-30 17:00:47,297 INFO Admin login success username=admin ip=127.0.0.1
+2026-04-30 17:35:17,444 INFO Admin login success username=admin ip=127.0.0.1
+2026-04-30 17:44:02,617 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 00:19:33,296 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 01:00:22,819 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 01:06:44,736 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 01:32:15,901 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 01:36:02,057 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 02:21:06,352 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 06:04:08,398 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 07:19:02,761 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 07:23:07,410 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 07:30:41,535 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 08:05:07,998 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 08:40:20,417 ERROR Unhandled exception on path=/api/reviews
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\app.py", line 942, in get_reviews_dashboard
+    SUM(CASE WHEN sentiment_score < -0.1 THEN 1 ELSE 0 END) as negative
+                     ^^^^^^^^^^^^^^
+NameError: name 'google_summary' is not defined
+2026-05-01 08:40:31,630 ERROR Unhandled exception on path=/api/reviews
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\app.py", line 942, in get_reviews_dashboard
+    SUM(CASE WHEN sentiment_score < -0.1 THEN 1 ELSE 0 END) as negative
+                     ^^^^^^^^^^^^^^
+NameError: name 'google_summary' is not defined
+2026-05-01 08:43:44,443 ERROR Unhandled exception on path=/api/reviews
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\app.py", line 942, in get_reviews_dashboard
+    SUM(CASE WHEN sentiment_score < -0.1 THEN 1 ELSE 0 END) as negative
+                     ^^^^^^^^^^^^^^
+NameError: name 'google_summary' is not defined
+2026-05-01 08:51:59,247 ERROR Unhandled exception on path=/api/reviews
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\app.py", line 942, in get_reviews_dashboard
+    SUM(CASE WHEN sentiment_score > 0.1 THEN 1 ELSE 0 END) as positive,
+                     ^^^^^^^^^^^^^^
+NameError: name 'google_summary' is not defined
+2026-05-01 08:52:03,580 ERROR Unhandled exception on path=/api/reviews
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\app.py", line 942, in get_reviews_dashboard
+    SUM(CASE WHEN sentiment_score > 0.1 THEN 1 ELSE 0 END) as positive,
+                     ^^^^^^^^^^^^^^
+NameError: name 'google_summary' is not defined
+2026-05-01 09:09:41,899 INFO Generated 3-digit OTP 643 for ajayipeter135@gmail.com
+2026-05-01 09:10:51,185 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 09:19:46,208 INFO Generated 3-digit OTP 913 for ajayipeter135@gmail.com
+2026-05-01 09:20:39,524 ERROR Unhandled exception on path=/api/reviews
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\app.py", line 942, in get_reviews_dashboard
+    reviews = [dict(row) for row in rows]
+                                ^^^^^^^^^
+NameError: name 'google_summary' is not defined
+2026-05-01 09:20:40,060 ERROR Unhandled exception on path=/api/reviews
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\app.py", line 942, in get_reviews_dashboard
+    reviews = [dict(row) for row in rows]
+                                ^^^^^^^^^
+NameError: name 'google_summary' is not defined
+2026-05-01 09:24:27,272 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 09:24:31,933 ERROR Unhandled exception on path=/api/reviews
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\app.py", line 942, in get_reviews_dashboard
+    reviews = [dict(row) for row in rows]
+                                ^^^^^^^^^
+NameError: name 'google_summary' is not defined
+2026-05-01 09:24:34,638 ERROR Unhandled exception on path=/api/reviews
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\BSc in Mathematical and Computer Science\3RD YEAR\1ST SEMESTER\COSC300\TravelIntel AI\app.py", line 942, in get_reviews_dashboard
+    reviews = [dict(row) for row in rows]
+                                ^^^^^^^^^
+NameError: name 'google_summary' is not defined
+2026-05-01 09:29:48,079 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 09:30:46,528 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 09:31:45,188 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 09:37:36,625 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 09:46:11,606 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 09:47:41,784 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 09:49:42,821 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 10:03:28,251 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 10:30:02,907 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 10:33:19,366 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 10:40:37,839 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 10:46:21,275 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 10:56:09,912 WARNING Admin login failure username=admin ip=127.0.0.1
+2026-05-01 10:56:19,028 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 10:56:33,632 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 10:58:09,590 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 10:59:23,127 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 11:00:40,048 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 11:04:00,584 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 11:15:19,085 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 11:41:09,260 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 11:46:53,970 INFO Generated 3-digit OTP 949 for test@gmail.com
+2026-05-01 11:53:15,260 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 11:54:29,954 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 11:56:02,209 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 12:13:11,059 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 12:16:51,470 WARNING Admin login failure username=admin ip=127.0.0.1
+2026-05-01 12:17:00,236 WARNING Admin login failure username=admin ip=127.0.0.1
+2026-05-01 12:17:01,657 WARNING Admin login failure username=admin ip=127.0.0.1
+2026-05-01 12:17:03,543 WARNING Admin login failure username=admin ip=127.0.0.1
+2026-05-01 12:17:11,669 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 12:23:35,635 INFO Generated 3-digit OTP 618 for ajayipeter135@gmail.com
+2026-05-01 12:24:03,251 INFO Generated 3-digit OTP 717 for ajayipeter135@gmail.com
+2026-05-01 12:24:36,124 INFO Admin login success username=admin ip=127.0.0.1
+2026-05-01 12:27:13,664 INFO Admin login success username=admin ip=127.0.0.1

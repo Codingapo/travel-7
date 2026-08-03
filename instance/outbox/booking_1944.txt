@@ -1,0 +1,17 @@
+TO: test@gmail.com
+SUBJECT: TravelIntel Booking Confirmation #1944
+
+Booking Confirmation
+
+Reference: TI-01944
+Customer: James
+Email: test@gmail.com
+Phone: 067 307 1228
+Package: Zanzibar, Jambiani
+Destination: Zanzibar
+Travel Date: 2026-05-12
+Travelers: 1
+Total: R 17,500.00
+Booking Date: 2026-05-01
+
+Thank you for booking with TravelIntel AI.

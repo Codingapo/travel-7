@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reviews - TravelIntel AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --bg-dark: #0f172a; 
+            --card-bg: rgba(255,255,255,0.03); 
+            --border-color: rgba(255,255,255,0.08); 
+            --accent: #2dd4bf; 
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #f8fafc; min-height: 100vh; }
+        .sidebar { width: 260px; height: 100vh; position: fixed; left: 0; top: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); padding: 32px 20px; z-index: 50; }
+        .main { margin-left: 260px; padding: 40px; }
+        .nav-link { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-radius: 14px; color: #94a3b8; font-weight: 500; transition: all 0.3s; margin-bottom: 8px; }
+        .nav-link:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-link.active { background: var(--accent); color: #0f172a; font-weight: 700; box-shadow: 0 10px 15px -3px rgba(45, 212, 191, 0.2); }
+        .glass { background: var(--card-bg); border: 1px solid var(--border-color); backdrop-filter: blur(20px); border-radius: 24px; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar flex flex-col">
+        <div class="flex items-center gap-3 mb-12 px-2">
+            <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20">
+                <i class="fas fa-layer-group text-slate-900 text-xl"></i>
+            </div>
+            <h1 class="text-xl font-bold text-white tracking-tight">TravelIntel AI</h1>
+        </div>
+        <nav class="flex-grow">
+            <a href="/dashboard" class="nav-link"><i class="fas fa-th-large w-5"></i><span>Dashboard</span></a>
+            <a href="/admin/reports.html" class="nav-link"><i class="fas fa-file-alt w-5"></i><span>Reports</span></a>
+            <a href="/admin/reviews.html" class="nav-link active"><i class="fas fa-star w-5"></i><span>Reviews</span></a>
+        </nav>
+        <button onclick="logout()" class="w-full text-left nav-link hover:text-red-400"><i class="fas fa-sign-out-alt w-5"></i><span>Logout</span></button>
+    </aside>
+
+    <main class="main">
+        <section class="glass p-8 mb-6 bg-cover bg-center" style="background-image:url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=1600&auto=format&fit=crop');">
+            <div class="bg-black/55 rounded-xl p-6">
+                <div class="text-5xl font-black mb-4">Google Reviews</div>
+                <div class="flex items-center gap-5 mb-4">
+                    <span id="avgRating" class="text-7xl font-black">0.0</span>
+                    <span id="starLine" class="text-5xl text-yellow-400">★★★★★</span>
+                    <span id="reviewCount" class="text-4xl text-slate-300">(0)</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="reviewsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"></section>
+
+        <div class="flex items-center justify-between mt-8">
+            <div class="flex items-center gap-4">
+                <button id="refreshBtn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-2.5 rounded-xl font-bold transition flex items-center gap-2">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <div id="syncStatus" class="bg-slate-900/50 border border-slate-800 text-slate-400 px-4 py-2.5 rounded-xl text-[10px] font-black tracking-widest flex items-center gap-2 transition-all duration-300">
+                    <div class="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></div> <span id="syncText">LIVE FEED</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="prevBtn" class="glass w-12 h-12 flex items-center justify-center rounded-xl hover:bg-white/10 transition disabled:opacity-30" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span id="pageIndicator" class="text-sm font-bold text-slate-400">Page 1</span>
+                <button id="nextBtn" class="glass w-12 h-12 flex items-center justify-center rounded-xl hover:bg-white/10 transition disabled:opacity-30">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let allReviews = [];
+        let currentPage = 1;
+        const reviewsPerPage = 20;
+
+        async function logout() {
+            try { await fetch('/admin/logout', { method:'POST' }); } catch (e) {}
+            window.location.href = '/admin/login';
+        }
+
+        function renderReviewCards() {
+            const grid = document.getElementById('reviewsGrid');
+            const start = (currentPage - 1) * reviewsPerPage;
+            const end = start + reviewsPerPage;
+            const paginatedReviews = allReviews.slice(start, end);
+
+            if (!paginatedReviews.length && currentPage === 1) {
+                grid.innerHTML = '<div class="glass p-6 text-lg col-span-2 text-center text-slate-400">No reviews available.</div>';
+                return;
+            }
+
+            grid.innerHTML = paginatedReviews.map(r => `
+                <article class="glass p-5 flex flex-col h-full border border-white/5 hover:border-teal-500/30 transition-all duration-300 group">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-teal-500/20 to-blue-500/20 rounded-xl flex items-center justify-center text-teal-400 font-black border border-teal-500/10 shadow-inner">
+                                ${(r.reviewer_name || 'G')[0]}
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-white leading-tight group-hover:text-teal-400 transition">${r.reviewer_name || 'Google Reviewer'}</h3>
+                                <div class="flex items-center gap-1.5 mt-0.5">
+                                    <div class="text-yellow-400 text-[10px] flex">${'★'.repeat(Math.max(1, Math.min(5, r.rating || 0)))}</div>
+                                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">${r.review_date || '-'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass px-2 py-1 rounded-md border border-white/5">
+                            <i class="fab fa-google text-[10px] text-teal-500"></i>
+                        </div>
+                    </div>
+                    <p class="text-slate-300 leading-relaxed text-xs mb-4 flex-grow italic line-clamp-4 group-hover:line-clamp-none transition-all">"${r.review_text || ''}"</p>
+                </article>
+            `).join('');
+
+            // Update buttons
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = end >= allReviews.length;
+            document.getElementById('pageIndicator').textContent = `Showing ${start + 1}-${Math.min(end, allReviews.length)} of ${allReviews.length}`;
+        }
+
+        async function loadReviews() {
+            const syncText = document.getElementById('syncText');
+            const syncStatus = document.getElementById('syncStatus');
+            try {
+                if (syncText) syncText.textContent = 'SYNCING...';
+                if (syncStatus) syncStatus.classList.add('border-teal-500/50');
+
+                // Add cache-buster to ensure we get the full 138 set every time
+                const r = await fetch('/api/reviews?v=' + Date.now());
+                if (r.status === 401 || r.status === 403) { window.location.href = '/admin/login'; return; }
+                const payload = await r.json();
+                if (!payload.success) return;
+                const data = payload.data;
+
+                document.getElementById('avgRating').textContent = Number(data.average_rating || 0).toFixed(1);
+                document.getElementById('reviewCount').textContent = `(${data.total_reviews || 0})`;
+                
+                allReviews = data.reviews || [];
+                console.log(`Loaded ${allReviews.length} reviews from API`);
+                renderReviewCards();
+            } catch (e) {
+                if (syncText) syncText.textContent = 'SYNC ERROR';
+            } finally {
+                setTimeout(() => {
+                    if (syncText) syncText.textContent = 'LIVE FEED';
+                    if (syncStatus) syncStatus.classList.remove('border-teal-500/50');
+                }, 1000);
+            }
+        }
+
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderReviewCards();
+            }
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentPage * reviewsPerPage < allReviews.length) {
+                currentPage++;
+                renderReviewCards();
+            }
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            try {
+                const r = await fetch('/api/reviews/refresh', { method:'POST' });
+                if (r.status === 401 || r.status === 403) { window.location.href = '/admin/login'; return; }
+                await loadReviews();
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadReviews();
+            // Faster interval for auto-update check (5 seconds)
+            setInterval(loadReviews, 5000); 
+        });
+    </script>
+</body>
+</html>
