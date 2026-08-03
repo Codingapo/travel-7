@@ -1,3 +1,5 @@
+import resend
+import random
 import os
 import datetime
 import traceback
@@ -94,6 +96,7 @@ async def lifespan(app: FastAPI):
 
 # --- App Init ---
 app = FastAPI(title="TravelIntel AI", lifespan=lifespan)
+resend.api_key = os.getenv("RESEND_API_KEY")
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -114,6 +117,7 @@ if not logger.handlers:
 # persistent session and lockout tracking
 login_attempts = {}
 password_reset_otps = {}
+registration_otps = {}
 
 def create_session(user_id: int, role: str):
     session_id = os.urandom(24).hex()
@@ -190,7 +194,22 @@ def is_valid_email(raw: str) -> bool:
     parsed = parseaddr(raw)[1]
     return "@" in parsed and "." in parsed.split("@")[-1]
 
+def send_verification_email(email, otp):
 
+    resend.Emails.send({
+        "from": "TravelIntel AI <verify@notify.moviewatchtv.fun>",
+        "to": [email],
+        "subject": "Verify your TravelIntel AI account",
+        "html": f"""
+        <h2>Welcome to TravelIntel AI</h2>
+
+        <p>Your verification code is:</p>
+
+        <h1>{otp}</h1>
+
+        <p>This code expires in 10 minutes.</p>
+        """
+    })
 def send_booking_email(to_email: str, booking: dict) -> bool:
     """Send booking confirmation via SMTP; fallback to local outbox file if SMTP is not configured."""
     smtp_host = os.environ.get("SMTP_HOST", "").strip()
@@ -302,47 +321,151 @@ async def render_page(request: Request, page: str):
 
 @app.post("/api/auth/register")
 async def customer_register(data: CustomerRegisterRequest):
+
     email = normalize_email(data.email)
+
     if not is_valid_email(email):
-        raise HTTPException(status_code=400, detail="Please provide a valid email address")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid email"
+        )
 
     if len(data.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        raise HTTPException(
+            status_code=400,
+            detail="Password too short"
+        )
+
 
     conn = get_db_connection()
     c = conn.cursor()
 
-    c.execute("SELECT * FROM Users WHERE email=?", (email,))
+    c.execute(
+        "SELECT * FROM Users WHERE email=?",
+        (email,)
+    )
+
     if c.fetchone():
         conn.close()
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    try:
-        # Use email as default full_name if not provided
-        username = email.split('@')[0]
-        full_name = username
-        
-        c.execute(
-            '''INSERT INTO Users (username, password_hash, role, full_name, email) 
-               VALUES (?, ?, ?, ?, ?)''',
-            (username, generate_password_hash(data.password), 'customer', full_name, email)
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
         )
-        user_id = c.lastrowid
-        
-        # Create an empty customer record linked to this user.
-        c.execute("INSERT INTO Customers (user_id, name, email, phone, address) VALUES (?, NULL, NULL, NULL, NULL)", (user_id,))
-        
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Registration error: {e}")
-        raise HTTPException(status_code=400, detail="Registration failed. Please try again.")
-    finally:
-        conn.close()
 
-    return {"success": True, "data": {"message": "Account created successfully"}}
+    conn.close()
 
 
+    otp = str(random.randint(100000,999999))
+
+
+    registration_otps[email] = {
+        "otp": otp,
+        "password": data.password,
+        "expires": datetime.datetime.now()
+        + datetime.timedelta(minutes=10)
+    }
+
+
+    send_verification_email(
+        email,
+        otp
+    )
+
+
+    return {
+        "success": True,
+        "message": "Verification email sent"
+    }
+
+class VerifyRegistrationRequest(BaseModel):
+    email: str
+    otp: str
+
+
+
+@app.post("/api/auth/verify-registration")
+async def verify_registration(data: VerifyRegistrationRequest):
+
+    email = normalize_email(data.email)
+
+
+    record = registration_otps.get(email)
+
+
+    if not record:
+        raise HTTPException(
+            status_code=400,
+            detail="OTP expired or not requested"
+        )
+
+
+    if datetime.datetime.now() > record["expires"]:
+        del registration_otps[email]
+
+        raise HTTPException(
+            status_code=400,
+            detail="OTP expired"
+        )
+
+
+    if record["otp"] != data.otp:
+        raise HTTPException(
+            status_code=400,
+            detail="Incorrect OTP"
+        )
+
+
+    conn = get_db_connection()
+    c = conn.cursor()
+
+
+    username = email.split("@")[0]
+
+
+    c.execute(
+        """
+        INSERT INTO Users
+        (username,password_hash,role,full_name,email)
+        VALUES (?,?,?,?,?)
+        """,
+        (
+            username,
+            generate_password_hash(record["password"]),
+            "customer",
+            username,
+            email
+        )
+    )
+
+
+    user_id = c.lastrowid
+
+
+    c.execute(
+        """
+        INSERT INTO Customers
+        (user_id,name,email)
+        VALUES (?,?,?)
+        """,
+        (
+            user_id,
+            username,
+            email
+        )
+    )
+
+
+    conn.commit()
+    conn.close()
+
+
+    del registration_otps[email]
+
+
+    return {
+        "success": True,
+        "message": "Account created successfully"
+    }
 @app.post("/api/auth/login")
 async def customer_login(data: CustomerLoginRequest):
     email = normalize_email(data.email)
