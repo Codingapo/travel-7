@@ -206,9 +206,7 @@ document.getElementById('otp-form').addEventListener('submit', async (e)=>{
     e.preventDefault();
 
 
-    const otp = document.getElementById('otp-code').value;
-
-
+const otp = document.getElementById('otp-code').value.trim();
     try {
 
         const response = await fetch('/api/auth/verify-registration',{
