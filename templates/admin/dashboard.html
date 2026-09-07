@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - TravelIntel AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --bg-dark: #0f172a; 
+            --card-bg: rgba(255,255,255,0.03); 
+            --border-color: rgba(255,255,255,0.08); 
+            --accent: #2dd4bf; 
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #f8fafc; min-height: 100vh; }
+        .sidebar { width: 260px; height: 100vh; position: fixed; left: 0; top: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); padding: 32px 20px; z-index: 50; }
+        .main-content { margin-left: 260px; padding: 40px; }
+        .nav-link { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-radius: 14px; color: #94a3b8; font-weight: 500; transition: all 0.3s; margin-bottom: 8px; }
+        .nav-link:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-link.active { background: var(--accent); color: #0f172a; font-weight: 700; box-shadow: 0 10px 15px -3px rgba(45, 212, 191, 0.2); }
+        .card { background: var(--card-bg); border-radius: 24px; padding: 24px; border: 1px solid var(--border-color); backdrop-filter: blur(20px); transition: all 0.3s ease; }
+        .card:hover { transform: translateY(-4px); border-color: rgba(45, 212, 191, 0.3); }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 16px 20px; border-bottom: 1px solid var(--border-color); color: #64748b; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; }
+        td { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.02); color: #cbd5e1; font-size: 13px; }
+        .glass-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); color: #fff; padding: 10px 20px; border-radius: 12px; font-weight: 600; transition: all 0.3s; }
+        .glass-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
+        .kpi-card { display: flex; flex-direction: column; justify-content: space-between; }
+        .status-pill { padding: 4px 12px; border-radius: 9999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+        .status-confirmed { background: rgba(45, 212, 191, 0.1); color: #2dd4bf; }
+        .status-pending { background: rgba(251, 191, 36, 0.1); color: #fbbf24; }
+    </style>
+</head>
+<body class="selection:bg-teal-500 selection:text-white">
+    <div class="sidebar flex flex-col">
+        <div class="flex items-center gap-3 mb-12 px-2">
+            <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20">
+                <i class="fas fa-robot text-slate-900 text-xl"></i>
+            </div>
+            <h1 class="text-xl font-black text-white tracking-tight">TravelIntel AI</h1>
+        </div>
+<nav class="flex-grow">
+            <a href="/dashboard" class="nav-link active"><i class="fas fa-th-large w-5"></i><span>Dashboard</span></a>
+            <a href="/admin/packages.html" class="nav-link"><i class="fas fa-box-open w-5"></i><span>Packages</span></a>
+            <a href="/admin/ai-analysis.html" class="nav-link"><i class="fas fa-brain w-5"></i><span>AI Analysis</span></a>
+            <a href="/admin/reports.html" class="nav-link"><i class="fas fa-file-alt w-5"></i><span>Reports</span></a>
+            <a href="/admin/reviews.html" class="nav-link"><i class="fas fa-star w-5"></i><span>Reviews</span></a> <a href="/admin/admins.html" class="nav-link"><i class="fas fa-user-shield w-5"></i><span>Administrators</span></a>
+        </nav>
+        <button onclick="logout()" class="w-full text-left nav-link hover:text-red-400 transition"><i class="fas fa-sign-out-alt w-5"></i><span>Logout</span></button>
+    </div>
+
+    <div class="main-content">
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h2 class="text-3xl font-black text-white mb-1">System Overview</h2>
+                <p class="text-slate-400 text-sm">Real-time performance analytics and booking trends.</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="syncStatus" class="bg-slate-900/50 border border-slate-800 text-slate-400 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all duration-300">
+                    <div class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></div> <span id="syncText">LIVE FEED</span>
+                </div>
+                <button onclick="fetchDashboardData()" class="glass-btn text-sm flex items-center gap-2">
+                    <i class="fas fa-sync-alt text-teal-400"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div class="card kpi-card h-40">
+                <div class="flex justify-between items-start">
+                    <div class="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 border border-blue-500/20">
+                        <i class="fas fa-shopping-cart text-xl"></i>
+                    </div>
+                    <span class="text-teal-400 text-xs font-bold bg-teal-400/10 px-2 py-1 rounded-lg">+12%</span>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Packages Booked</p>
+                    <h3 class="text-3xl font-black text-white" id="totalBookings">{{ initial_dashboard.total_bookings if initial_dashboard is defined else 0 }}</h3>
+                    <p class="text-[10px] text-slate-500 mt-1"><span id="totalTravelers">{{ initial_dashboard.total_travelers if initial_dashboard is defined else 0 }}</span> travellers booked</p>
+                </div>
+            </div>
+            <div class="card kpi-card h-40">
+                <div class="flex justify-between items-start">
+                    <div class="w-12 h-12 bg-teal-500/10 rounded-2xl flex items-center justify-center text-teal-400 border border-teal-500/20">
+                        <i class="fas fa-wallet text-xl"></i>
+                    </div>
+                    <span class="text-teal-400 text-xs font-bold bg-teal-400/10 px-2 py-1 rounded-lg">+8%</span>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Total Revenue</p>
+                    <h3 class="text-3xl font-black text-white" id="totalRevenue">R {{ "{:,.2f}".format(initial_dashboard.total_revenue) if initial_dashboard is defined else "0.00" }}</h3>
+                </div>
+            </div>
+            <div class="card kpi-card h-40">
+                <div class="flex justify-between items-start">
+                    <div class="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 border border-purple-500/20">
+                        <i class="fas fa-users text-xl"></i>
+                    </div>
+                    <span class="text-slate-500 text-xs font-bold bg-slate-500/10 px-2 py-1 rounded-lg">Stable</span>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Active Users</p>
+                    <h3 class="text-3xl font-black text-white" id="totalUsers">{{ initial_dashboard.total_customers if initial_dashboard is defined else 0 }}</h3>
+                </div>
+            </div>
+            <div class="card kpi-card h-40">
+                <div class="flex justify-between items-start">
+                    <div class="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-400 border border-amber-500/20">
+                        <i class="fas fa-chart-line text-xl"></i>
+                    </div>
+                    <span class="text-teal-400 text-xs font-bold bg-teal-400/10 px-2 py-1 rounded-lg">+5%</span>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Avg. Order Value</p>
+                    <h3 class="text-3xl font-black text-white" id="avgOrderValue">R {{ "{:,.2f}".format(initial_dashboard.avg_order_value) if initial_dashboard is defined else "0.00" }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+            <div class="card lg:col-span-2">
+                <div class="flex justify-between items-center mb-8">
+                    <h4 class="text-lg font-black text-white">Booking & Revenue Trends</h4>
+                    <div class="flex gap-2">
+                        <span class="flex items-center gap-2 text-[10px] font-bold text-slate-400"><div class="w-2 h-2 rounded-full bg-teal-400"></div> REVENUE</span>
+                        <span class="flex items-center gap-2 text-[10px] font-bold text-slate-400"><div class="w-2 h-2 rounded-full bg-blue-500"></div> BOOKINGS</span>
+                    </div>
+                </div>
+                <div class="h-80"><canvas id="mainTrendChart"></canvas></div>
+            </div>
+            <div class="card">
+                <h4 class="text-lg font-black text-white mb-8">Destination Mix</h4>
+                <div class="h-80"><canvas id="destinationMixChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Protected Admin Data Tool -->
+        <div class="card mb-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+                <div class="flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-black text-white">Booking Data Tools</h4>
+                        <p class="text-xs text-slate-500 mt-1">
+                            Production data is never seeded, reset, or restored automatically. The legacy demo restore tool is disabled.
+                        </p>
+                        <p id="restoreBookingStatus" class="text-xs text-slate-400 mt-2">
+                            Existing packages and bookings are preserved across every restart and deployment.
+                        </p>
+                    </div>
+                </div>
+                <button id="restoreBookingsBtn" onclick="restoreDemoBookings()" class="glass-btn text-xs whitespace-nowrap">
+                    <i class="fas fa-database mr-2"></i>Restore 72 Bookings
+                </button>
+            </div>
+        </div>
+
+        <!-- Reviews Summary -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <div class="card lg:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h4 class="text-lg font-black text-white">Google Reviews</h4>
+                        <p class="text-xs text-slate-500 mt-1">Live review summary from Google Business Profile via SerpApi.</p>
+                    </div>
+                    <a href="/admin/reviews.html" class="glass-btn text-xs">View Reviews</a>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4"><p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Reviews</p><p id="dashboardReviewCount" class="text-2xl font-black text-white mt-1">0</p></div>
+                    <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4"><p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Rating</p><p id="dashboardReviewRating" class="text-2xl font-black text-amber-400 mt-1">0.0/5</p></div>
+                    <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4"><p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Source</p><p class="text-sm font-black text-teal-400 mt-2">Google</p></div>
+                    <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4"><p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Sync</p><button onclick="syncDashboardReviews()" class="text-sm font-black text-blue-400 mt-2">Sync now</button></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="flex items-center gap-3 mb-4"><div class="w-10 h-10 rounded-xl bg-amber-400/10 text-amber-400 flex items-center justify-center"><i class="fas fa-star"></i></div><div><h4 class="font-black text-white">Customer Feedback</h4><p class="text-xs text-slate-500">Feeds the AI analysis.</p></div></div>
+                <p class="text-sm text-slate-400 leading-relaxed">Reviews are stored locally after SerpApi sync, scored for sentiment, and included in the AI insights and recommendations.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Recent Bookings -->
+            <div class="card lg:col-span-2">
+                <div class="flex justify-between items-center mb-6">
+                    <h4 class="text-lg font-black text-white">Recent Activity</h4>
+                </div>
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead><tr><th>ID</th><th>Customer</th><th>Package</th><th>People</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                        <tbody id="recentBookingsTable">
+{% if initial_dashboard is defined and initial_dashboard.recent_bookings %}
+{% for b in initial_dashboard.recent_bookings %}
+<tr>
+<td><span class="text-[10px] font-black text-slate-500">#{{ b.booking_id }}</span></td>
+<td class="font-bold text-white">{{ b.name or 'Guest' }}</td>
+<td><span class="text-slate-400">{{ b.package_name or '-' }}</span></td>
+<td class="font-black text-blue-400">{{ b.number_of_travelers or 0 }}</td>
+<td class="font-black text-teal-400">R {{ "{:,.2f}".format(b.total_amount or 0) }}</td>
+<td><span class="status-pill {{ 'status-confirmed' if b.status == 'confirmed' else 'status-pending' }}">{{ b.status or 'pending' }}</span></td>
+<td class="text-slate-500 text-xs">{{ b.booking_date or '-' }}</td>
+</tr>
+{% endfor %}
+{% else %}
+<tr><td colspan="7" class="text-center text-slate-500 py-10">No booking activity</td></tr>
+{% endif %}
+</tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Top Packages -->
+            <div class="card">
+                <h4 class="text-lg font-black text-white mb-6">Top Performing Packages</h4>
+                <div class="space-y-6" id="topPackagesList">
+                    <p class="text-slate-500 text-sm text-center py-10">Loading rankings...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-6">
+            <div class="flex justify-between items-center mb-6"><div><h4 class="text-lg font-black text-white">Administrator Activity</h4><p class="text-xs text-slate-500 mt-1">Shared audit trail — see which administrator made each system change.</p></div><button onclick="fetchAuditLog()" class="glass-btn text-xs">Refresh</button></div>
+            <div class="overflow-x-auto"><table><thead><tr><th>Time</th><th>Administrator</th><th>Action</th><th>Details</th></tr></thead><tbody id="adminAuditTable"><tr><td colspan="4" class="text-center text-slate-500 py-8">Loading administrator activity...</td></tr></tbody></table></div>
+        </div>
+    </div>
+
+    <script>
+        async function logout() {
+            try { await fetch('/admin/logout', { method: 'POST' }); } catch(e) {}
+            localStorage.clear();
+            window.location.href = '/auth/login';
+        }
+
+        let trendChart, mixChart;
+        const TC = '#2dd4bf'; // Teal
+        const BC = '#3b82f6'; // Blue
+
+        function initCharts() {
+            Chart.defaults.color = '#64748b';
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            
+            // Main Trend Chart
+            const trendCtx = document.getElementById('mainTrendChart').getContext('2d');
+            const trendGrad = trendCtx.createLinearGradient(0, 0, 0, 300);
+            trendGrad.addColorStop(0, 'rgba(45, 212, 191, 0.2)');
+            trendGrad.addColorStop(1, 'rgba(45, 212, 191, 0)');
+
+            trendChart = new Chart(trendCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Monthly Revenue',
+                            data: [],
+                            backgroundColor: TC,
+                            borderRadius: 8,
+                            borderWidth: 0,
+                            barPercentage: 0.7,
+                            categoryPercentage: 0.8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { 
+                            display: true,
+                            position: 'top',
+                            labels: { color: '#94a3b8', font: { size: 12, weight: 'bold' } }
+                        } 
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.03)' },
+                            ticks: { 
+                                color: '#94a3b8',
+                                callback: value => 'R ' + (value >= 1000 ? value/1000 + 'k' : value) 
+                            },
+                            title: {
+                                display: true,
+                                text: 'Revenue (ZAR)',
+                                color: '#94a3b8',
+                                font: { size: 12, weight: 'black', family: 'Inter' }
+                            }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' },
+                            title: {
+                                display: true,
+                                text: 'Month',
+                                color: '#94a3b8',
+                                font: { size: 12, weight: 'black', family: 'Inter' }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Destination Mix Chart
+            mixChart = new Chart(document.getElementById('destinationMixChart').getContext('2d'), {
+                type: 'polarArea',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            'rgba(45, 212, 191, 0.7)', 
+                            'rgba(59, 130, 246, 0.7)', 
+                            'rgba(139, 92, 246, 0.7)', 
+                            'rgba(245, 158, 11, 0.7)', 
+                            'rgba(236, 72, 153, 0.7)'
+                        ],
+                        borderWidth: 1,
+                        borderColor: 'rgba(255,255,255,0.1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            display: false,
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            angleLines: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { padding: 20, usePointStyle: true, boxWidth: 6, font: { size: 10, weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function fetchAuditLog() {
+            const tb = document.getElementById('adminAuditTable');
+            try {
+                const r = await fetch('/api/admin/audit-log?limit=25');
+                const p = await r.json();
+                if (!p.success) throw new Error(p.error || 'Unable to load audit log');
+                tb.innerHTML = (p.data || []).map(a => `<tr><td class="text-xs text-slate-500">${a.created_at || '-'}</td><td class="font-bold text-white">${a.actor_name || 'Admin'}</td><td class="text-teal-400 font-bold">${a.action || '-'}</td><td class="text-slate-400">${a.details || '-'}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center text-slate-500 py-8">No administrator changes yet.</td></tr>';
+            } catch (e) { tb.innerHTML = '<tr><td colspan="4" class="text-center text-red-400 py-8">Unable to load administrator activity.</td></tr>'; }
+        }
+
+        async function fetchDashboardData() {
+            const syncText = document.getElementById('syncText');
+            const syncStatus = document.getElementById('syncStatus');
+            try {
+                if (syncText) syncText.textContent = 'SYNCING...';
+                if (syncStatus) syncStatus.classList.add('border-teal-500/50');
+                
+                const res = await fetch('/api/admin/dashboard-stats?v=' + Date.now());
+                if (res.status === 401 || res.status === 403) {
+                    window.location.href = '/auth/login';
+                    return;
+                }
+                
+                const data = await res.json();
+                if (!data.success || !data.data) {
+                    console.error("Dashboard data error:", data.error || "Unknown error");
+                    if (syncText) syncText.textContent = 'SYNC ERROR';
+                    return;
+                }
+
+                const stats = data.data;
+
+                // 1. Update KPIs
+                if (stats.kpis) {
+                    document.getElementById('totalBookings').textContent = (stats.kpis.total_packages_booked || stats.kpis.total_bookings || 0).toLocaleString();
+                    document.getElementById('totalTravelers').textContent = (stats.kpis.total_travelers || 0).toLocaleString();
+                    document.getElementById('totalRevenue').textContent = 'R ' + (stats.kpis.total_revenue || 0).toLocaleString();
+                    document.getElementById('totalUsers').textContent = (stats.kpis.total_users || 0).toLocaleString();
+                    document.getElementById('avgOrderValue').textContent = 'R ' + (stats.kpis.avg_order_value || 0).toLocaleString();
+                }
+
+                // 2. Update Trend Chart
+                if (stats.monthly_trends && trendChart) {
+                    const trendLabels = stats.monthly_trends.map(m => {
+                        if (!m.month) return 'Unknown';
+                        const parts = m.month.split('-');
+                        if (parts.length < 2) return m.month;
+                        const [y, mm] = parts;
+                        const d = new Date(y, parseInt(mm)-1);
+                        return d.toLocaleString('default', { month: 'short' });
+                    });
+                    trendChart.data.labels = trendLabels;
+                    trendChart.data.datasets[0].data = stats.monthly_trends.map(m => m.revenue || 0);
+                    trendChart.update();
+                }
+
+                // 3. Update Mix Chart
+                if (stats.destinations && mixChart) {
+                    mixChart.data.labels = stats.destinations.map(d => d.destination || 'Unknown');
+                    mixChart.data.datasets[0].data = stats.destinations.map(d => d.count || 0);
+                    mixChart.update();
+                }
+
+                // 4. Update Recent Bookings
+                const tb = document.getElementById('recentBookingsTable');
+                if (tb && stats.recent_bookings) {
+                    if (stats.recent_bookings.length === 0) {
+                        tb.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-10">No recent activity</td></tr>';
+                    } else {
+                        tb.innerHTML = stats.recent_bookings.map(b => `
+                            <tr>
+                                <td><span class="text-[10px] font-black text-slate-500">#${b.booking_id}</span></td>
+                                <td class="font-bold text-white">${b.name || 'Guest'}</td>
+                                <td><span class="text-slate-400">${b.package_name || '-'}</span></td>
+                                <td class="font-black text-blue-400">${b.number_of_travelers || 0}</td>
+                                <td class="font-black text-teal-400">R ${(b.total_amount || 0).toLocaleString()}</td>
+                                <td><span class="status-pill ${b.status === 'confirmed' ? 'status-confirmed' : 'status-pending'}">${b.status || 'pending'}</span></td>
+                                <td class="text-slate-500 text-xs">${b.booking_date || '-'}</td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+
+                // 5. Google Reviews summary
+                const reviewCount = document.getElementById('dashboardReviewCount');
+                const reviewRating = document.getElementById('dashboardReviewRating');
+                if (reviewCount) reviewCount.textContent = Number(stats.kpis.review_count || 0).toLocaleString();
+                if (reviewRating) reviewRating.textContent = Number(stats.kpis.review_average || 0).toFixed(1) + '/5';
+
+                // 6. Update Top Packages
+                const pkgList = document.getElementById('topPackagesList');
+                if (pkgList && stats.top_packages) {
+                    if (stats.top_packages.length === 0) {
+                        pkgList.innerHTML = '<p class="text-slate-500 text-sm text-center py-10">No package data available</p>';
+                    } else {
+                        const totalForPercent = (stats.kpis ? stats.kpis.total_bookings : 0) || 1;
+                        pkgList.innerHTML = stats.top_packages.map((p, i) => `
+                            <div class="flex items-center gap-4">
+                                <div class="text-xl font-black text-slate-800 w-6">${i + 1}</div>
+                                <div class="flex-grow">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-sm font-bold text-white">${p.package_name || 'Package'}</span>
+                                        <span class="text-xs font-black text-teal-400">${p.count || 0} bookings</span>
+                                    </div>
+                                    <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div class="h-full bg-teal-500 rounded-full" style="width: ${Math.max(5, ((p.count || 0) / totalForPercent) * 100)}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+
+            } catch (e) {
+                console.error("Dashboard update failed:", e);
+                if (syncText) syncText.textContent = 'SYNC ERROR';
+            } finally {
+                setTimeout(() => {
+                    if (syncText && syncText.textContent !== 'SYNC ERROR') syncText.textContent = 'LIVE FEED';
+                    if (syncStatus) syncStatus.classList.remove('border-teal-500/50');
+                }, 1000);
+            }
+        }
+
+        async function restoreDemoBookings() {
+            alert('Demo-data restoration is disabled in production. Existing packages and bookings are never reset or overwritten.');
+        }
+
+        async function syncDashboardReviews() {
+            try {
+                const r = await fetch('/api/reviews/refresh', { method: 'POST' });
+                const d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Review sync failed');
+                await fetchDashboardData();
+                alert(d.message || 'Google reviews synced successfully.');
+            } catch (e) {
+                alert(e.message || 'Unable to sync Google reviews.');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            fetchDashboardData();
+            fetchAuditLog();
+            // Update every 5 seconds for almost immediate updates
+            setInterval(fetchDashboardData, 5000);
+            setInterval(fetchAuditLog, 10000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Analysis - TravelIntel AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: rgba(255,255,255,0.03);
+            --border-color: rgba(255,255,255,0.08);
+            --accent: #2dd4bf;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #f8fafc; min-height: 100vh; }
+        .sidebar { width: 260px; height: 100vh; position: fixed; left: 0; top: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); padding: 32px 20px; z-index: 50; }
+        .main { margin-left: 260px; padding: 40px; }
+        .nav-link { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-radius: 14px; color: #94a3b8; font-weight: 500; transition: all 0.3s; margin-bottom: 8px; }
+        .nav-link:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-link.active { background: var(--accent); color: #0f172a; font-weight: 700; box-shadow: 0 10px 15px -3px rgba(45, 212, 191, 0.2); }
+        .card { background: var(--card-bg); border-radius: 24px; padding: 24px; border: 1px solid var(--border-color); backdrop-filter: blur(20px); transition: all 0.3s ease; }
+        .card:hover { transform: translateY(-4px); border-color: rgba(45, 212, 191, 0.3); }
+        .glass { background: var(--card-bg); border: 1px solid var(--border-color); backdrop-filter: blur(20px); border-radius: 24px; }
+        .insight-item { border-left: 3px solid var(--accent); }
+        .reco-item { border-left: 3px solid #60a5fa; }
+    </style>
+</head>
+<body class="selection:bg-teal-500 selection:text-white">
+    <aside class="sidebar flex flex-col">
+        <div class="flex items-center gap-3 mb-12 px-2">
+            <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20">
+                <i class="fas fa-robot text-slate-900 text-xl"></i>
+            </div>
+            <h1 class="text-xl font-bold text-white tracking-tight">TravelIntel AI</h1>
+        </div>
+        <nav class="flex-grow">
+            <a href="/dashboard" class="nav-link"><i class="fas fa-th-large w-5"></i><span>Dashboard</span></a>
+            <a href="/admin/packages.html" class="nav-link"><i class="fas fa-box-open w-5"></i><span>Packages</span></a>
+            <a href="/admin/ai-analysis.html" class="nav-link active"><i class="fas fa-brain w-5"></i><span>AI Analysis</span></a>
+            <a href="/admin/reports.html" class="nav-link"><i class="fas fa-file-alt w-5"></i><span>Reports</span></a>
+            <a href="/admin/reviews.html" class="nav-link"><i class="fas fa-star w-5"></i><span>Reviews</span></a> <a href="/admin/admins.html" class="nav-link"><i class="fas fa-user-shield w-5"></i><span>Administrators</span></a>
+        </nav>
+        <button onclick="logout()" class="w-full text-left nav-link hover:text-red-400"><i class="fas fa-sign-out-alt w-5"></i><span>Logout</span></button>
+    </aside>
+
+    <main class="main">
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h2 class="text-3xl font-black text-white mb-1">AI Business Analysis</h2>
+                <p class="text-slate-400 text-sm">A comprehensive, AI-engine-generated analysis of the entire business based on dashboard KPIs and customer reviews.</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="generatedAt" class="bg-slate-900/50 border border-slate-800 text-slate-400 px-4 py-2 rounded-xl text-xs font-bold">Last generated: --</div>
+                <button onclick="loadAnalysis()" class="glass px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-white/5">
+                    <i class="fas fa-sync-alt text-teal-400"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="card mb-8 flex flex-col md:flex-row md:items-end gap-4">
+            <div>
+                <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">From</label>
+                <input id="aiStartDate" type="date" class="bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 outline-none">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">To</label>
+                <input id="aiEndDate" type="date" class="bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 outline-none">
+            </div>
+            <button onclick="loadAnalysis()" class="bg-teal-500 hover:bg-teal-400 text-slate-950 px-6 py-3 rounded-xl font-black">Apply Date Filter</button>
+            <span id="aiDateRange" class="text-xs text-slate-500 pb-2"></span>
+        </div>
+
+        <!-- Overview KPI Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10" id="overviewGrid">
+            <div class="card text-center"><p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Bookings</p><h3 class="text-2xl font-black text-white" data-kpi="total_bookings">-</h3></div>
+            <div class="card text-center"><p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Revenue</p><h3 class="text-2xl font-black text-teal-400" data-kpi="total_revenue">-</h3></div>
+            <div class="card text-center"><p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Customers</p><h3 class="text-2xl font-black text-white" data-kpi="total_customers">-</h3></div>
+            <div class="card text-center"><p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Avg Order</p><h3 class="text-2xl font-black text-white" data-kpi="avg_order_value">-</h3></div>
+            <div class="card text-center"><p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Reviews</p><h3 class="text-2xl font-black text-white" data-kpi="total_reviews">-</h3></div>
+            <div class="card text-center"><p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Rating</p><h3 class="text-2xl font-black text-amber-400" data-kpi="average_rating">-</h3></div>
+        </div>
+
+        <!-- Text-based Monthly Revenue Trend -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+            <div class="card">
+                <h4 class="text-lg font-black text-white mb-6">Monthly Revenue Trend</h4>
+                <div id="monthlyTrendList" class="space-y-3">
+                    <p class="text-slate-500 text-sm p-6 text-center">Loading revenue trend...</p>
+                </div>
+            </div>
+            <div class="card">
+                <h4 class="text-lg font-black text-white mb-6">Customer Sentiment</h4>
+                <div id="sentimentList" class="space-y-3">
+                    <p class="text-slate-500 text-sm p-6 text-center">Loading sentiment...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-10">
+            <div class="flex items-center justify-between gap-4 mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/20"><i class="fas fa-microchip"></i></div>
+                    <div><h4 class="text-lg font-black text-white">Model Training & Transparency</h4><p class="text-sm text-slate-400">See exactly what data trains the demand model and when it was last retrained.</p></div>
+                </div>
+                <button onclick="retrainModels()" class="glass px-4 py-2 rounded-xl text-xs font-black hover:bg-white/5"><i class="fas fa-rotate mr-2 text-blue-400"></i>Retrain Models</button>
+            </div>
+            <div id="trainingInfo" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="glass p-4"><p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Status</p><p id="trainStatus" class="text-sm font-black text-white mt-1">Loading...</p></div>
+                <div class="glass p-4"><p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Algorithm</p><p id="trainModel" class="text-sm font-black text-white mt-1">--</p></div>
+                <div class="glass p-4"><p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Samples</p><p id="trainSamples" class="text-sm font-black text-white mt-1">--</p></div>
+                <div class="glass p-4"><p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">MAE / R²</p><p id="trainMetrics" class="text-sm font-black text-white mt-1">--</p></div>
+            </div>
+            <div id="trainingExplanation" class="mt-4 text-sm text-slate-400 leading-relaxed"></div>
+        </div>
+
+        <div class="card mb-10">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-400 border border-purple-500/20"><i class="fas fa-gears"></i></div>
+                <div><h4 class="text-lg font-black text-white">How the AI Analysis Works</h4><p id="aiHowSummary" class="text-sm text-slate-400"></p></div>
+            </div>
+            <ol id="aiHowSteps" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-300"></ol>
+        </div>
+
+        <!-- AI Insights -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+            <div class="card">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-teal-500/10 rounded-xl flex items-center justify-center text-teal-400 border border-teal-500/20"><i class="fas fa-lightbulb"></i></div>
+                    <h4 class="text-lg font-black text-white">AI Insights</h4>
+                </div>
+                <div id="insightsList" class="space-y-4">
+                    <p class="text-slate-500 text-sm p-6 text-center">Loading insights...</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/20"><i class="fas fa-robot"></i></div>
+                    <h4 class="text-lg font-black text-white">AI Recommendations</h4>
+                </div>
+                <div id="recommendationsList" class="space-y-4">
+                    <p class="text-slate-500 text-sm p-6 text-center">Loading recommendations...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top destinations and packages -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+            <div class="card">
+                <h4 class="text-lg font-black text-white mb-6">Top Destinations</h4>
+                <div id="destinationsList" class="space-y-4"></div>
+            </div>
+            <div class="card">
+                <h4 class="text-lg font-black text-white mb-6">Top Packages</h4>
+                <div id="packagesList" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <!-- Recent Alerts -->
+        <div class="card mb-10">
+            <h4 class="text-lg font-black text-white mb-6">Recent AI Alerts</h4>
+            <div id="alertsList" class="space-y-3"></div>
+        </div>
+    </main>
+
+    <script>
+        async function logout() {
+            try { await fetch('/admin/logout', { method:'POST' }); } catch (e) {}
+            window.location.href = '/auth/login';
+        }
+
+        async function loadTrainingInfo() {
+            try {
+                const r = await fetch('/api/admin/ai/training?v=' + Date.now());
+                const p = await r.json();
+                const d = p.data || {};
+                document.getElementById('trainStatus').textContent = d.trained ? `Trained ${d.trained_at || ''}` : 'Not trained';
+                document.getElementById('trainModel').textContent = d.model || 'LinearRegression';
+                document.getElementById('trainSamples').textContent = d.training_samples ?? '--';
+                document.getElementById('trainMetrics').textContent = d.trained ? `${d.mae_training ?? '--'} / ${d.r2_training ?? '--'}` : '--';
+                document.getElementById('trainingExplanation').textContent = d.trained
+                    ? `Training uses the previous ${d.training_window_days} days of daily booking counts. The feature is day_index and the target is daily_demand. The model is retrained automatically each day when at least ${d.minimum_samples} days of history exist, then forecasts the next ${d.forecast_horizon_days} days. MAE and R² are shown as training-set diagnostics.`
+                    : (d.message || 'The model needs at least five days of booking history before it can be trained.');
+            } catch (e) {
+                document.getElementById('trainingExplanation').textContent = 'Training information is temporarily unavailable.';
+            }
+        }
+
+        async function retrainModels() {
+            if (!confirm('Retrain the AI models using the latest booking and customer data?')) return;
+            try {
+                const r = await fetch('/api/admin/ai/retrain', { method: 'POST' });
+                const p = await r.json();
+                if (!p.success) throw new Error(p.error || 'Retraining failed');
+                await loadTrainingInfo();
+                await loadAnalysis();
+                alert('AI models retrained successfully.');
+            } catch (e) { alert(e.message || 'Unable to retrain the AI models.'); }
+        }
+
+        async function loadAnalysis() {
+            const genEl = document.getElementById('generatedAt');
+            try {
+                genEl.textContent = 'Last generated: SYNCING...';
+                const startDate = document.getElementById('aiStartDate').value;
+                const endDate = document.getElementById('aiEndDate').value;
+                const params = new URLSearchParams();
+                if (startDate) params.set('start_date', startDate);
+                if (endDate) params.set('end_date', endDate);
+                const res = await fetch('/api/admin/ai-analysis?' + params.toString() + '&v=' + Date.now());
+                if (res.status === 401 || res.status === 403) { window.location.href = '/auth/login'; return; }
+                const payload = await res.json();
+                if (!payload.success) { genEl.textContent = 'Last generated: ERROR'; return; }
+
+                const d = payload.data;
+                genEl.textContent = `Last generated: ${d.generated_at || '--'}`;
+                if (d.date_range) {
+                    document.getElementById('aiDateRange').textContent = `Analysing ${d.date_range.start} → ${d.date_range.end}`;
+                }
+
+                // Overview KPIs
+                const ov = d.overview || {};
+                document.querySelector('[data-kpi="total_bookings"]').textContent = (ov.total_bookings || 0).toLocaleString();
+                document.querySelector('[data-kpi="total_revenue"]').textContent = 'R ' + (ov.total_revenue || 0).toLocaleString();
+                document.querySelector('[data-kpi="total_customers"]').textContent = (ov.total_customers || 0).toLocaleString();
+                document.querySelector('[data-kpi="avg_order_value"]').textContent = 'R ' + (ov.avg_order_value || 0).toLocaleString();
+                document.querySelector('[data-kpi="total_reviews"]').textContent = (ov.total_reviews || 0).toLocaleString();
+                document.querySelector('[data-kpi="average_rating"]').textContent = (ov.average_rating || 0).toFixed(1);
+
+                // Monthly revenue trend (text-based)
+                const monthly = d.monthly_trends || [];
+                document.getElementById('monthlyTrendList').innerHTML = monthly.length
+                    ? monthly.map(m => `
+                        <div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                            <span class="font-bold text-white text-sm">${m.month || ''}</span>
+                            <span class="text-teal-400 font-black text-sm">R ${Number(m.revenue || 0).toLocaleString()}</span>
+                        </div>`).join('')
+                    : '<p class="text-slate-500 text-sm py-6 text-center">No monthly revenue data.</p>';
+
+                // Customer sentiment (text-based)
+                const sent = d.sentiment || {};
+                const totalSent = (sent.positive || 0) + (sent.neutral || 0) + (sent.negative || 0);
+                document.getElementById('sentimentList').innerHTML = totalSent > 0
+                    ? `
+                        <div class="flex items-center justify-between py-2 border-b border-white/5">
+                            <span class="font-bold text-white text-sm"><i class="fas fa-smile text-teal-400 mr-2"></i>Positive</span>
+                            <span class="text-teal-400 font-black text-sm">${sent.positive || 0}</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-white/5">
+                            <span class="font-bold text-white text-sm"><i class="fas fa-meh text-amber-400 mr-2"></i>Neutral</span>
+                            <span class="text-amber-400 font-black text-sm">${sent.neutral || 0}</span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                            <span class="font-bold text-white text-sm"><i class="fas fa-frown text-red-400 mr-2"></i>Negative</span>
+                            <span class="text-red-400 font-black text-sm">${sent.negative || 0}</span>
+                        </div>`
+                    : '<p class="text-slate-500 text-sm py-6 text-center">No sentiment data available.</p>';
+
+                const how = d.how_it_works || {};
+                document.getElementById('aiHowSummary').textContent = how.summary || 'Analysis is calculated from the selected date range and the latest AI models and alerts.';
+                document.getElementById('aiHowSteps').innerHTML = (how.steps || []).map((step, i) => `<li class="glass p-3 rounded-xl"><span class="text-teal-400 font-black mr-2">${i + 1}.</span>${step}</li>`).join('');
+
+                // Insights
+                const insights = d.insights || [];
+                document.getElementById('insightsList').innerHTML = insights.length
+                    ? insights.map(i => `<div class="insight-item glass p-4 rounded-xl text-sm text-slate-300 leading-relaxed">${i}</div>`).join('')
+                    : '<p class="text-slate-500 text-sm p-6 text-center">No insights available yet.</p>';
+
+                // Recommendations
+                const recos = d.recommendations || [];
+                document.getElementById('recommendationsList').innerHTML = recos.length
+                    ? recos.map(r => `<div class="reco-item glass p-4 rounded-xl text-sm text-slate-300 leading-relaxed"><i class="fas fa-arrow-right text-blue-400 mr-2"></i>${r}</div>`).join('')
+                    : '<p class="text-slate-500 text-sm p-6 text-center">No recommendations available yet.</p>';
+
+                // Destinations
+                const dests = d.destinations || [];
+                document.getElementById('destinationsList').innerHTML = dests.length
+                    ? dests.map((x, i) => `
+                        <div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                            <div class="flex items-center gap-3">
+                                <span class="text-lg font-black text-slate-700 w-6">${i+1}</span>
+                                <span class="font-bold text-white">${x.destination}</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-teal-400 font-black text-sm">${x.bookings} bookings</span>
+                                <span class="text-slate-500 text-xs block">R ${Number(x.revenue||0).toLocaleString()}</span>
+                            </div>
+                        </div>`).join('')
+                    : '<p class="text-slate-500 text-sm py-6 text-center">No destination data.</p>';
+
+                // Packages
+                const pkgs = d.packages || [];
+                document.getElementById('packagesList').innerHTML = pkgs.length
+                    ? pkgs.map((x, i) => `
+                        <div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                            <div class="flex items-center gap-3">
+                                <span class="text-lg font-black text-slate-700 w-6">${i+1}</span>
+                                <span class="font-bold text-white">${x.package_name}</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-blue-400 font-black text-sm">${x.bookings} bookings</span>
+                                <span class="text-slate-500 text-xs block">R ${Number(x.revenue||0).toLocaleString()}</span>
+                            </div>
+                        </div>`).join('')
+                    : '<p class="text-slate-500 text-sm py-6 text-center">No package data.</p>';
+
+                // Alerts
+                const alerts = d.recent_alerts || [];
+                document.getElementById('alertsList').innerHTML = alerts.length
+                    ? alerts.map(a => `
+                        <div class="glass p-4 rounded-xl flex items-start justify-between">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-lg ${a.severity === 'red' ? 'bg-red-500/10 text-red-400' : a.severity === 'orange' ? 'bg-amber-500/10 text-amber-400' : 'bg-yellow-500/10 text-yellow-400'} flex items-center justify-center"><i class="fas fa-exclamation-triangle"></i></div>
+                                <div>
+                                    <p class="font-bold text-white text-sm">${a.alert_type || 'Alert'}</p>
+                                    <p class="text-slate-400 text-xs mt-1">${a.description || ''}</p>
+                                </div>
+                            </div>
+                            <span class="text-[10px] text-slate-500 font-bold whitespace-nowrap ml-4">${a.detected_at || ''}</span>
+                        </div>`).join('')
+                    : '<p class="text-slate-500 text-sm py-6 text-center">No alerts detected.</p>';
+            } catch (e) {
+                genEl.textContent = 'Last generated: ERROR';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTrainingInfo();
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - 30);
+            document.getElementById('aiStartDate').value = start.toISOString().slice(0,10);
+            document.getElementById('aiEndDate').value = end.toISOString().slice(0,10);
+            loadAnalysis();
+            setInterval(loadAnalysis, 15000);
+        });
+    </script>
+</body>
+</html>

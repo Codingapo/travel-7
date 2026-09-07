@@ -1,0 +1,12 @@
+
+# Python generated files
+__pycache__/
+*.pyc
+.env
+*.db
+instance/*.db
+__pycache__/
+*.pyc
+.env
+*.db
+instance/*.db

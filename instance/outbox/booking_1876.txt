@@ -1,0 +1,17 @@
+TO: travelintel@gmail.com
+SUBJECT: TravelIntel Booking Confirmation #1876
+
+Booking Confirmation
+
+Reference: TI-01876
+Customer: travelintel
+Email: travelintel@gmail.com
+Phone: 067 307 1228
+Package: Zanzibar, Jambiani
+Destination: Zanzibar
+Travel Date: 2026-05-07
+Travelers: 1
+Total: R 17,500.00
+Booking Date: 2026-05-01
+
+Thank you for booking with TravelIntel AI.

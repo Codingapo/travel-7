@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TravelIntel AI - Choose Your Role</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            background-image:
+                radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent),
+                radial-gradient(circle at bottom left, rgba(29, 78, 216, 0.10), transparent);
+        }
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+        }
+        .role-card {
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .role-card:hover {
+            transform: translateY(-10px);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 25px 50px -12px rgba(37, 99, 235, 0.25);
+        }
+        .role-icon {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .role-card:hover .role-icon {
+            transform: scale(1.1) rotate(-4deg);
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(25px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up { animation: fadeUp 0.7s ease-out; }
+    </style>
+</head>
+<body class="font-sans min-h-screen flex items-center justify-center p-4 selection:bg-blue-500 selection:text-white">
+
+    <div class="w-full max-w-4xl animate-fade-up">
+
+        <!-- Logo & Title -->
+        <div class="text-center mb-14">
+            <div class="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-7 shadow-2xl shadow-blue-600/30">
+                <i class="fas fa-robot text-3xl text-white"></i>
+            </div>
+            <h1 class="text-4xl md:text-5xl font-black text-white tracking-tight mb-3">
+                TravelIntel <span class="text-blue-500">AI</span>
+            </h1>
+            <p class="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
+                Welcome! Please choose your role to continue to your personalized experience.
+            </p>
+        </div>
+
+        <!-- Role Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            <!-- Customer -->
+            <a href="/home" class="block">
+                <div class="role-card glass rounded-[2.5rem] p-10 text-center h-full">
+                    <div class="w-20 h-20 bg-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-7 role-icon">
+                        <i class="fas fa-user text-3xl text-blue-400"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-white mb-3">Customer</h2>
+                    <p class="text-gray-400 leading-relaxed mb-8">
+                        Browse travel packages, plan your dream vacation, and book your journey with AI-curated recommendations.
+                    </p>
+                    <span class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-black transition shadow-lg shadow-blue-600/30">
+                        Continue as Customer
+                    </span>
+                </div>
+            </a>
+
+
+        </div>
+
+        <!-- Footer -->
+        <p class="text-center text-xs text-gray-600 mt-14">
+            <i class="fas fa-shield-halved mr-1"></i>
+            Your account information is securely protected.
+        </p>
+
+    </div>
+
+</body>
+</html>

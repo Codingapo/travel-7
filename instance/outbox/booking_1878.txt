@@ -1,0 +1,17 @@
+TO: exam@ple.com
+SUBJECT: TravelIntel Booking Confirmation #1878
+
+Booking Confirmation
+
+Reference: TI-01878
+Customer: exam
+Email: exam@ple.com
+Phone: 0673071128
+Package: Cape Town
+Destination: Cape Town
+Travel Date: 2026-05-30
+Travelers: 1
+Total: R 12,900.00
+Booking Date: 2026-05-01
+
+Thank you for booking with TravelIntel AI.

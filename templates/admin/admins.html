@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrators - TravelIntel AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background:#070b14; color:#f8fafc; }
+        .glass { background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08); backdrop-filter:blur(16px); }
+        .input { width:100%; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); color:white; border-radius:14px; padding:13px 15px; outline:none; }
+        .input:focus { border-color:#14b8a6; box-shadow:0 0 0 3px rgba(20,184,166,.12); }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+                <p class="text-teal-400 text-xs font-black uppercase tracking-[.25em]">System Access</p>
+                <h1 class="text-3xl font-black mt-2">Administrator Accounts</h1>
+                <p class="text-slate-500 mt-2">Multiple admins are supported. Disabled admins immediately lose dashboard access.</p>
+            </div>
+            <div class="flex gap-3">
+                <a href="/dashboard" class="glass px-5 py-3 rounded-xl font-bold hover:bg-white/5">Dashboard</a>
+                <button onclick="logout()" class="bg-red-500/10 text-red-400 border border-red-500/20 px-5 py-3 rounded-xl font-bold">Logout</button>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-[380px_1fr] gap-6">
+            <section class="glass rounded-3xl p-6">
+                <h2 class="text-xl font-black mb-5">Add Administrator</h2>
+                <form id="createAdminForm" class="space-y-4">
+                    <input id="username" class="input" placeholder="Username" minlength="3" required>
+                    <input id="email" class="input" type="email" placeholder="Admin email" required>
+                    <input id="fullName" class="input" placeholder="Full name">
+                    <p class="text-xs text-slate-500">A secure temporary password is generated automatically and emailed to the new administrator. They must change it on first login.</p>
+                    <button class="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 py-3.5 rounded-xl font-black">Create Admin</button>
+                </form>
+                <div id="msg" class="hidden mt-4 text-sm font-bold"></div>
+            </section>
+
+            <section class="glass rounded-3xl p-6 overflow-hidden">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-xl font-black">Registered Administrators</h2>
+                    <button onclick="loadAdmins()" class="text-teal-400 font-bold text-sm"><i class="fas fa-sync mr-1"></i> Refresh</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead><tr class="text-xs uppercase tracking-widest text-slate-500 border-b border-white/10">
+                            <th class="py-4 pr-4">Admin</th><th class="py-4 pr-4">Email</th><th class="py-4 pr-4">Status</th><th class="py-4 text-right">Action</th>
+                        </tr></thead>
+                        <tbody id="adminsBody"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 pb-10">
+        <section class="glass rounded-3xl p-6">
+            <div class="flex justify-between items-center mb-5">
+                <div><h2 class="text-xl font-black">Admin Activity</h2><p class="text-slate-500 text-sm mt-1">Every administrator sees who changed packages or administrator access.</p></div>
+                <button onclick="loadAudit()" class="text-teal-400 font-bold text-sm">Refresh</button>
+            </div>
+            <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="text-xs uppercase tracking-widest text-slate-500 border-b border-white/10"><th class="py-3 pr-4">Time</th><th class="py-3 pr-4">Admin</th><th class="py-3 pr-4">Action</th><th class="py-3">Details</th></tr></thead><tbody id="auditBody"></tbody></table></div>
+        </section>
+    </div>
+
+<script>
+async function logout() {
+    try { await fetch('/admin/logout', {method:'POST'}); } catch(e) {}
+    window.location.href='/auth/login';
+}
+function escapeHtml(value) {
+    return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showMsg(text, ok=false) {
+    const el=document.getElementById('msg');
+    el.textContent=text;
+    el.className='mt-4 text-sm font-bold '+(ok?'text-teal-400':'text-red-400');
+}
+async function loadAudit() {
+    const body=document.getElementById('auditBody');
+    try {
+        const r=await fetch('/api/admin/audit-log?limit=50'); const p=await r.json();
+        if (!p.success) throw new Error(p.error||'Unable to load activity');
+        body.innerHTML=(p.data||[]).map(x=>`<tr class="border-b border-white/5"><td class="py-3 pr-4 text-xs text-slate-500">${escapeHtml(x.created_at)}</td><td class="py-3 pr-4 font-bold">${escapeHtml(x.actor_name)}</td><td class="py-3 pr-4 text-teal-400">${escapeHtml(x.action)}</td><td class="py-3 text-slate-400 text-sm">${escapeHtml(x.details)}</td></tr>`).join('') || '<tr><td colspan="4" class="py-8 text-center text-slate-500">No admin activity yet.</td></tr>';
+    } catch(e) { body.innerHTML='<tr><td colspan="4" class="py-8 text-center text-red-400">Unable to load activity.</td></tr>'; }
+}
+
+async function loadAdmins() {
+    const body=document.getElementById('adminsBody');
+    try {
+        const r=await fetch('/api/admin/admins?v='+Date.now());
+        if (r.status===401 || r.status===403) { window.location.href='/auth/login'; return; }
+        const p=await r.json();
+        if (!p.success) throw new Error(p.error||'Unable to load admins');
+        body.innerHTML=(p.data||[]).map(a => {
+            const active=a.account_status==='active';
+            return `<tr class="border-b border-white/5">
+                <td class="py-4 pr-4"><div class="font-bold">${escapeHtml(a.full_name||a.username)}</div><div class="text-xs text-slate-500">@${escapeHtml(a.username)}</div></td>
+                <td class="py-4 pr-4 text-slate-300">${escapeHtml(a.email)}</td>
+                <td class="py-4 pr-4"><span class="px-3 py-1 rounded-full text-xs font-black ${active?'bg-teal-500/10 text-teal-400':'bg-red-500/10 text-red-400'}">${active?'Active':'Disabled'}</span></td>
+                <td class="py-4 text-right"><button onclick="toggleAdmin(${a.user_id}, '${active?'disabled':'active'}')" class="text-xs font-black ${active?'text-red-400':'text-teal-400'}">${active?'Disable':'Reactivate'}</button></td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="4" class="py-10 text-center text-slate-500">No administrators found.</td></tr>';
+    } catch(e) {
+        body.innerHTML='<tr><td colspan="4" class="py-10 text-center text-red-400">Unable to load administrators.</td></tr>';
+    }
+}
+async function toggleAdmin(id,status) {
+    if (!confirm(status==='disabled'?'Disable this administrator?':'Reactivate this administrator?')) return;
+    const r=await fetch('/api/admin/admins/'+id+'/status',{
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({account_status:status})
+    });
+    const p=await r.json();
+    if (!p.success) { alert(p.error||'Unable to update administrator.'); return; }
+    loadAdmins();
+}
+document.getElementById('createAdminForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const r=await fetch('/api/admin/admins',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+            username:document.getElementById('username').value,
+            email:document.getElementById('email').value,
+            full_name:document.getElementById('fullName').value
+        })
+    });
+    const p=await r.json();
+    if (!p.success) { showMsg(p.error||'Unable to create administrator.'); return; }
+    showMsg('Administrator created successfully.',true);
+    e.target.reset();
+    loadAdmins();
+    loadAudit();
+});
+loadAdmins();
+loadAudit();
+</script>
+</body>
+</html>

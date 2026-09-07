@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Your Booking - TravelIntel AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            background-image: radial-gradient(circle at top right, rgba(37, 99, 235, 0.05), transparent),
+                              radial-gradient(circle at bottom left, rgba(29, 78, 216, 0.05), transparent);
+        }
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+        }
+    </style>
+</head>
+<body class="font-sans min-h-screen pb-20">
+    <nav class="glass fixed w-full z-50 top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                <a href="/home" class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-robot text-white"></i>
+                    </div>
+                    <span class="text-xl font-black text-white">TravelIntel AI</span>
+                </a>
+                <div id="nav-auth" class="flex items-center space-x-6">
+                    <!-- Auth links will be injected here -->
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto pt-32 px-4 pb-20">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <!-- Left: Package Details -->
+            <div class="lg:col-span-1">
+                <div class="glass rounded-[2.5rem] overflow-hidden sticky top-32">
+                    <div class="h-64 relative">
+                        <img id="pkg-image" src="" alt="" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-[#0a0f1d] to-transparent"></div>
+                        <div id="pkg-status" class="absolute top-6 left-6 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-current"></div>
+                    </div>
+                    <div class="p-8">
+                        <h2 id="pkg-name" class="text-3xl font-black text-white mb-2"></h2>
+                        <p id="pkg-destination" class="text-blue-500 font-bold uppercase tracking-widest text-sm mb-6"></p>
+                        <p id="pkg-description" class="text-gray-400 text-sm leading-relaxed mb-8"></p>
+                        <div class="flex items-center space-x-4 text-white font-bold">
+                            <div class="glass px-4 py-2 rounded-xl flex items-center">
+                                <i class="far fa-clock mr-2 text-blue-400"></i>
+                                <span id="pkg-duration"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Booking Form -->
+            <div class="lg:col-span-2">
+                <div class="glass p-8 md:p-12 rounded-[2.5rem]">
+                    <h1 class="text-4xl font-black text-white mb-2">Complete Booking</h1>
+                    <p class="text-gray-400 mb-10">Please review and complete your information to finalize your journey.</p>
+
+            <form id="booking-details-form" class="space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Full Name</label>
+                        <input type="text" id="full-name" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="e.g., Alexander Hamilton" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Email Address</label>
+                        <input type="email" id="email" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="alexander@travelintel.ai" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Contact Number</label>
+                        <input type="tel" id="phone" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="+27 82 000 0000" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Preferred Travel Date</label>
+                        <input type="date" id="travel-date" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" style="color-scheme: dark;" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Traveler Count</label>
+                        <input type="number" id="travelers" min="1" max="10" value="1" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" required onchange="updateTotalPrice()">
+                        <p id="traveler-limit-msg" class="hidden text-xs font-bold text-red-400 mt-2"></p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Residential Address</label>
+                    <textarea id="address" rows="3" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="Street name, Suburb, City, Postal Code" required></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Payment Method</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                        <label class="relative glass p-4 rounded-2xl cursor-pointer flex items-center space-x-4 border-2 border-transparent hover:border-blue-500 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-600/10">
+                            <input type="radio" name="payment" value="credit_card" class="hidden" onchange="togglePaymentFields(this.value)">
+                            <i class="fas fa-credit-card text-blue-400 text-xl"></i>
+                            <span class="text-white font-bold">Credit / Debit Card</span>
+                        </label>
+                        <label class="relative glass p-4 rounded-2xl cursor-pointer flex items-center space-x-4 border-2 border-transparent hover:border-blue-500 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-600/10">
+                            <input type="radio" name="payment" value="eft" class="hidden" onchange="togglePaymentFields(this.value)">
+                            <i class="fas fa-university text-blue-400 text-xl"></i>
+                            <span class="text-white font-bold">EFT Transfer</span>
+                        </label>
+                    </div>
+
+                    <!-- Card Details -->
+                    <div id="card-details" class="payment-fields hidden space-y-4 mb-6 animate-in fade-in duration-300">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">Card Number</label>
+                            <input type="text" id="card-number" inputmode="numeric" autocomplete="cc-number" maxlength="23" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="XXXX XXXX XXXX XXXX">
+                            <p id="card-number-msg" class="text-xs mt-2 font-bold hidden"></p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">Expiry Date</label>
+                                <input type="text" id="card-expiry" inputmode="numeric" autocomplete="cc-exp" maxlength="5" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="MM/YY">
+                                <p id="card-expiry-msg" class="text-xs mt-2 font-bold hidden"></p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">CVV</label>
+                                <input type="password" id="card-cvv" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="***">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EFT Details -->
+                    <div id="eft-details" class="payment-fields hidden space-y-4 mb-6 animate-in fade-in duration-300">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">Bank Name</label>
+                            <input type="text" id="bank-name" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="e.g. Standard Bank">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">Account Number</label>
+                            <input type="text" id="account-number" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="XXXXXXXXXX">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-6 border-t border-white/5">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <p class="text-gray-500 text-sm font-bold uppercase tracking-wider">Total Price</p>
+                            <h3 class="text-3xl font-black text-blue-500" id="total-price-display" style="font-family: 'Inter', sans-serif;">--</h3>
+                        </div>
+                        <button type="submit" id="submit-booking-btn" class="bg-blue-600 text-white px-10 py-5 rounded-2xl font-black text-lg hover:bg-blue-700 transition shadow-2xl shadow-blue-600/30">
+                            Confirm Booking <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/js/package-images.js"></script>
+    <script>
+        function csrfToken() {
+            return document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || '';
+        }
+                const params = new URLSearchParams(window.location.search);
+        const packageId = params.get('packageId');
+        const submitBtn = document.getElementById('submit-booking-btn');
+
+        function togglePaymentFields(method) {
+            document.querySelectorAll('.payment-fields').forEach(el => el.classList.add('hidden'));
+            if (method === 'credit_card') {
+                document.getElementById('card-details').classList.remove('hidden');
+            } else if (method === 'eft') {
+                document.getElementById('eft-details').classList.remove('hidden');
+            }
+        }
+        
+        let basePrice = 0;
+        let maxTravelers = 10;
+        
+        function updateTotalPrice() {
+            const travelersInput = document.getElementById('travelers');
+            const travelers = parseInt(travelersInput.value) || 1;
+            const display = document.getElementById('total-price-display');
+            const limitMsg = document.getElementById('traveler-limit-msg');
+            
+            // Validate against available spots
+            if (maxTravelers > 0 && travelers > maxTravelers) {
+                travelersInput.value = maxTravelers;
+                limitMsg.textContent = `Only ${maxTravelers} spot${maxTravelers === 1 ? '' : 's'} available for this package.`;
+                limitMsg.classList.remove('hidden');
+            } else {
+                limitMsg.classList.add('hidden');
+            }
+            
+            if (basePrice > 0) {
+                display.textContent = 'R ' + (basePrice * (parseInt(travelersInput.value) || 1)).toLocaleString();
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            const travelDateInput = document.getElementById('travel-date');
+            travelDateInput.min = new Date().toISOString().split('T')[0];
+
+            if (!packageId || Number.isNaN(parseInt(packageId, 10))) {
+                alert('Invalid package selection. Please choose a package again.');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Invalid Package Selection';
+                submitBtn.className = 'bg-gray-800 text-gray-500 px-10 py-5 rounded-2xl font-black text-lg cursor-not-allowed';
+                return;
+            }
+
+            // Pre-fill from backend profile if logged in
+            try {
+                const res = await fetch('/api/profile');
+                const data = await res.json();
+                if (data.success && data.user) {
+                    const u = data.user;
+                    if (u.full_name) document.getElementById('full-name').value = u.full_name;
+                    if (u.email) document.getElementById('email').value = u.email;
+                    if (u.phone) document.getElementById('phone').value = u.phone;
+                    if (u.address) document.getElementById('address').value = u.address;
+                    if (u.payment_method) {
+                        const radio = document.querySelector(`input[name="payment"][value="${u.payment_method}"]`);
+                        if (radio) {
+                            radio.checked = true;
+                            togglePaymentFields(u.payment_method);
+                        }
+                    }
+                    if (u.card_number) document.getElementById('card-number').value = u.card_number;
+                    if (u.card_expiry) document.getElementById('card-expiry').value = u.card_expiry;
+                    if (u.bank_name) document.getElementById('bank-name').value = u.bank_name;
+                    if (u.account_number) document.getElementById('account-number').value = u.account_number;
+                }
+            } catch (err) {}
+
+            // Load package info for display
+            try {
+                const res = await fetch(`/api/packages/${packageId}`);
+                const data = await res.json();
+                const pkg = data.data;
+                if (pkg) {
+                    document.getElementById('pkg-name').textContent = pkg.package_name;
+                    document.getElementById('pkg-destination').textContent = pkg.destination;
+                    document.getElementById('pkg-description').textContent = pkg.description;
+                    document.getElementById('pkg-duration').textContent = pkg.duration + ' Days';
+                    
+                    document.getElementById('pkg-image').src = pkg.image_url || getPackageImage(pkg);
+                    
+                    basePrice = pkg.price;
+                    updateTotalPrice();
+                    
+                    const statusEl = document.getElementById('pkg-status');
+                    const isAvailable = pkg.availability_status === 'Available';
+                    const availableSpots = parseInt(pkg.available_spots || 0, 10);
+                    const statusText = isAvailable ? `${availableSpots} Seats Available` : '0 Seats Available';
+                    statusEl.textContent = statusText;
+                    
+                    // Set max travelers based on available spots
+                    if (isAvailable && availableSpots > 0) {
+                        maxTravelers = Math.min(10, availableSpots);
+                        const travelersInput = document.getElementById('travelers');
+                        travelersInput.max = maxTravelers;
+                        if (parseInt(travelersInput.value, 10) > maxTravelers) {
+                            travelersInput.value = maxTravelers;
+                        }
+                        updateTotalPrice();
+                    }
+                    
+                    if (isAvailable) {
+                        statusEl.className = 'absolute top-6 left-6 text-green-400 bg-green-500/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-current';
+                    } else {
+                        statusEl.className = 'absolute top-6 left-6 text-red-400 bg-red-500/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-current';
+                        
+                        // Disable booking for unavailable packages
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = 'Package Fully Booked';
+                        submitBtn.className = 'bg-slate-800 text-slate-500 px-10 py-5 rounded-2xl font-black text-lg cursor-not-allowed opacity-50';
+                        
+                        // Visual cues for view-only mode
+                        document.querySelectorAll('input, textarea').forEach(el => {
+                            el.disabled = true;
+                            el.classList.add('opacity-50', 'cursor-not-allowed');
+                        });
+                        document.getElementById('booking-details-form').classList.add('pointer-events-none');
+                        
+                        const msg = document.createElement('p');
+                        msg.className = 'text-red-400 text-sm font-bold mt-4 text-center';
+                        msg.textContent = 'This package is currently fully booked. You are viewing its details in read-only mode.';
+                        submitBtn.parentNode.insertBefore(msg, submitBtn.nextSibling);
+                    }
+                }
+            } catch (e) {
+                alert('Unable to load package details. Please return to the home page and try again.');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Package Load Failed';
+                submitBtn.className = 'bg-gray-800 text-gray-500 px-10 py-5 rounded-2xl font-black text-lg cursor-not-allowed';
+            }
+        });
+
+        function isValidCardNumber(value) {
+            const digits = String(value || '').replace(/\D/g, '');
+            if (digits.length < 12 || digits.length > 19) return false;
+            let sum = 0;
+            const parity = digits.length % 2;
+            for (let i = 0; i < digits.length; i++) {
+                let digit = Number(digits[i]);
+                if (i % 2 === parity) { digit *= 2; if (digit > 9) digit -= 9; }
+                sum += digit;
+            }
+            return sum % 10 === 0;
+        }
+
+        function cardBrand(value) {
+            const digits = String(value || '').replace(/\D/g, '');
+            if (/^4/.test(digits)) return 'Visa';
+            if (/^(5[1-5]|2[2-7])/.test(digits)) return 'Mastercard';
+            if (/^3[47]/.test(digits)) return 'American Express';
+            if (/^6(?:011|5)/.test(digits)) return 'Discover';
+            return 'Card';
+        }
+
+        function isValidExpiry(value) {
+            const m = String(value || '').match(/^(0[1-9]|1[0-2])\/(\d{2})$/);
+            if (!m) return false;
+            const now = new Date();
+            const expiry = new Date(2000 + Number(m[2]), Number(m[1]), 0, 23, 59, 59);
+            return expiry >= now;
+        }
+
+        function setFieldValidation(id, valid, message) {
+            const input = document.getElementById(id);
+            const msg = document.getElementById(id + '-msg');
+            if (!input || !msg) return valid;
+            input.classList.toggle('border-green-500', valid);
+            input.classList.toggle('border-red-500', !valid);
+            msg.textContent = message;
+            msg.classList.remove('hidden', 'text-green-400', 'text-red-400');
+            msg.classList.add(valid ? 'text-green-400' : 'text-red-400');
+            return valid;
+        }
+
+        const cardNumberInput = document.getElementById('card-number');
+        const cardExpiryInput = document.getElementById('card-expiry');
+        if (cardNumberInput) cardNumberInput.addEventListener('input', () => {
+            let digits = cardNumberInput.value.replace(/\D/g, '').slice(0, 19);
+            cardNumberInput.value = digits.replace(/(.{4})/g, '$1 ').trim();
+            if (!digits) { cardNumberInput.classList.remove('border-green-500','border-red-500'); document.getElementById('card-number-msg').classList.add('hidden'); return; }
+            setFieldValidation('card-number', isValidCardNumber(digits), isValidCardNumber(digits) ? `${cardBrand(digits)} card number is valid.` : 'Card number failed the Luhn check.');
+        });
+        if (cardExpiryInput) cardExpiryInput.addEventListener('input', () => {
+            let digits = cardExpiryInput.value.replace(/\D/g, '').slice(0, 4);
+            if (digits.length > 2) digits = digits.slice(0,2) + '/' + digits.slice(2);
+            cardExpiryInput.value = digits;
+            if (!digits) { cardExpiryInput.classList.remove('border-green-500','border-red-500'); document.getElementById('card-expiry-msg').classList.add('hidden'); return; }
+            setFieldValidation('card-expiry', isValidExpiry(digits), isValidExpiry(digits) ? 'Expiry date is valid.' : 'Enter a valid, non-expired MM/YY date.');
+        });
+
+
+        document.getElementById('booking-details-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const travelerCount = parseInt(document.getElementById('travelers').value);
+            if (maxTravelers > 0 && travelerCount > maxTravelers) {
+                alert(`Only ${maxTravelers} spot${maxTravelers === 1 ? '' : 's'} available for this package. Please adjust your traveler count.`);
+                return;
+            }
+            
+            const paymentMethod = document.querySelector('input[name="payment"]:checked')?.value || 'unknown';
+            const cardNumber = document.getElementById('card-number').value.trim();
+
+            if (paymentMethod === 'credit_card') {
+                if (!isValidCardNumber(cardNumber)) {
+                    setFieldValidation('card-number', false, 'Card number failed the Luhn check.');
+                    document.getElementById('card-number').focus();
+                    return;
+                }
+                const expiry = document.getElementById('card-expiry').value.trim();
+                if (!isValidExpiry(expiry)) {
+                    setFieldValidation('card-expiry', false, 'Enter a valid, non-expired MM/YY date.');
+                    document.getElementById('card-expiry').focus();
+                    return;
+                }
+            }
+
+            const formData = {
+                package_id: parseInt(packageId),
+                name: document.getElementById('full-name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                travel_date: document.getElementById('travel-date').value,
+                number_of_travelers: travelerCount,
+                payment_method: paymentMethod,
+                address: document.getElementById('address').value,
+                card_number: document.getElementById('card-number').value,
+                card_expiry: document.getElementById('card-expiry').value,
+                bank_name: document.getElementById('bank-name').value,
+                account_number: document.getElementById('account-number').value
+            };
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+
+            try {
+                const res = await fetch('/bookings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': decodeURIComponent(csrfToken()) },
+                    body: JSON.stringify(formData)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Update local storage user info if logged in
+                    const userStr = localStorage.getItem('user');
+                    if (userStr) {
+                        const user = JSON.parse(userStr);
+                        user.full_name = formData.name;
+                        localStorage.setItem('user', JSON.stringify(user));
+                    }
+                    
+                    // Add a small delay to ensure DB write is finalized before redirection
+                    setTimeout(() => {
+                        window.location.href = `confirmation.html?bookingId=${data.data.booking_id}`;
+                    }, 500);
+                } else {
+                    alert(data.error || 'Booking failed. Please try again.');
+                }
+            } catch (err) {
+                alert('An error occurred. Please check your connection.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Confirm Booking';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packages - TravelIntel AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: rgba(255,255,255,0.03);
+            --border-color: rgba(255,255,255,0.08);
+            --accent: #2dd4bf;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #f8fafc; min-height: 100vh; }
+        .sidebar { width: 260px; height: 100vh; position: fixed; left: 0; top: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); padding: 32px 20px; z-index: 50; }
+        .main { margin-left: 260px; padding: 40px; }
+        .nav-link { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-radius: 14px; color: #94a3b8; font-weight: 500; transition: all 0.3s; margin-bottom: 8px; }
+        .nav-link:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-link.active { background: var(--accent); color: #0f172a; font-weight: 700; box-shadow: 0 10px 15px -3px rgba(45, 212, 191, 0.2); }
+        .glass { background: var(--card-bg); border: 1px solid var(--border-color); backdrop-filter: blur(20px); border-radius: 24px; }
+        .card { background: var(--card-bg); border-radius: 24px; padding: 24px; border: 1px solid var(--border-color); backdrop-filter: blur(20px); transition: all 0.3s ease; }
+        .card:hover { transform: translateY(-4px); border-color: rgba(45, 212, 191, 0.3); }
+        .glass-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 16px; color: #fff; outline: none; transition: all 0.3s; }
+        .glass-input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.15); }
+        .status-pill { padding: 4px 12px; border-radius: 9999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+        .status-available { background: rgba(45, 212, 191, 0.1); color: #2dd4bf; }
+        .status-unavailable { background: rgba(239, 68, 68, 0.1); color: #f87171; }
+    </style>
+</head>
+<body class="selection:bg-teal-500 selection:text-white">
+    <aside class="sidebar flex flex-col">
+        <div class="flex items-center gap-3 mb-12 px-2">
+            <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20">
+                <i class="fas fa-robot text-slate-900 text-xl"></i>
+            </div>
+            <h1 class="text-xl font-bold text-white tracking-tight">TravelIntel AI</h1>
+        </div>
+        <nav class="flex-grow">
+            <a href="/dashboard" class="nav-link"><i class="fas fa-th-large w-5"></i><span>Dashboard</span></a>
+            <a href="/admin/packages.html" class="nav-link active"><i class="fas fa-box-open w-5"></i><span>Packages</span></a>
+            <a href="/admin/ai-analysis.html" class="nav-link"><i class="fas fa-brain w-5"></i><span>AI Analysis</span></a>
+            <a href="/admin/reports.html" class="nav-link"><i class="fas fa-file-alt w-5"></i><span>Reports</span></a>
+            <a href="/admin/reviews.html" class="nav-link"><i class="fas fa-star w-5"></i><span>Reviews</span></a> <a href="/admin/admins.html" class="nav-link"><i class="fas fa-user-shield w-5"></i><span>Administrators</span></a>
+        </nav>
+        <button onclick="logout()" class="w-full text-left nav-link hover:text-red-400"><i class="fas fa-sign-out-alt w-5"></i><span>Logout</span></button>
+    </aside>
+
+    <main class="main">
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h2 class="text-3xl font-black text-white mb-1">Package Inventory</h2>
+                <p class="text-slate-400 text-sm">Manage the number of available bookings for each travel package. Set a quantity or mark a package unavailable.</p>
+            </div>
+            <button onclick="loadPackages()" class="glass px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-white/5">
+                <i class="fas fa-sync-alt text-teal-400"></i> Refresh
+            </button>
+        </div>
+
+        <div class="glass p-6 md:p-8 mb-10">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 bg-teal-500/10 rounded-xl flex items-center justify-center text-teal-400"><i class="fas fa-plus"></i></div>
+                <div><h3 class="text-xl font-black text-white">Add Travel Package</h3><p class="text-xs text-slate-500">Create a package with its price and available seats.</p></div>
+            </div>
+            <form id="packageForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <input id="packageName" required class="glass-input" placeholder="Package name">
+                <input id="destination" required class="glass-input" placeholder="Destination">
+                <input id="price" required min="0.01" step="0.01" type="number" class="glass-input" placeholder="Price (R)">
+                <input id="available" required min="0" step="1" type="number" class="glass-input" placeholder="Available seats">
+                <input id="duration" min="1" step="1" type="number" value="1" class="glass-input" placeholder="Duration (days)">
+                <input id="season" class="glass-input" placeholder="Season / category">
+                <input id="imageUrl" class="glass-input md:col-span-2" placeholder="Image URL (optional)">
+                <input id="imageFile" type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="glass-input md:col-span-2" title="Optional image upload (max 5 MB)">
+                <textarea id="description" class="glass-input md:col-span-2 lg:col-span-4 min-h-[100px]" placeholder="Package description (optional)"></textarea>
+                <div class="lg:col-span-4 flex items-center gap-4">
+                    <button class="bg-teal-500 hover:bg-teal-400 text-slate-950 px-6 py-3 rounded-xl font-black" type="submit"><i class="fas fa-plus mr-2"></i>Add Package</button>
+                    <span id="packageFormMsg" class="text-sm font-bold"></span>
+                </div>
+            </form>
+        </div>
+
+        <!-- Summary cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="card">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Total Packages</p>
+                <h3 class="text-3xl font-black text-white" id="totalPackages">0</h3>
+            </div>
+            <div class="card">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Available</p>
+                <h3 class="text-3xl font-black text-teal-400" id="availableCount">0</h3>
+            </div>
+            <div class="card">
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Sold Out</p>
+                <h3 class="text-3xl font-black text-red-400" id="soldOutCount">0</h3>
+            </div>
+        </div>
+
+        <!-- Packages table -->
+        <div class="glass overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th class="text-left p-5 border-b border-white/8 text-slate-500 text-[11px] font-black uppercase tracking-widest">Package Name</th>
+                            <th class="text-left p-5 border-b border-white/8 text-slate-500 text-[11px] font-black uppercase tracking-widest">Price</th>
+                            <th class="text-left p-5 border-b border-white/8 text-slate-500 text-[11px] font-black uppercase tracking-widest">Seats Available</th>
+                            <th class="text-left p-5 border-b border-white/8 text-slate-500 text-[11px] font-black uppercase tracking-widest">Status</th>
+                            <th class="text-right p-5 border-b border-white/8 text-slate-500 text-[11px] font-black uppercase tracking-widest">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="packagesTableBody">
+                        <tr><td colspan="5" class="text-center text-slate-500 py-12">Loading packages...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[100] px-4">
+        <div class="glass p-8 rounded-[2.5rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-8">
+                <h3 class="text-2xl font-black text-white">Edit Package</h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-white transition text-xl"><i class="fas fa-times"></i></button>
+            </div>
+            <input type="hidden" id="editPackageId">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input id="editPackageName" required class="glass-input" placeholder="Package name">
+                <input id="editDestination" required class="glass-input" placeholder="Destination">
+                <input id="editPrice" required min="0" step="0.01" type="number" class="glass-input" placeholder="Price (R)">
+                <input id="editAvailable" required min="0" step="1" type="number" class="glass-input" placeholder="Available seats">
+                <input id="editDuration" required min="1" step="1" type="number" class="glass-input" placeholder="Duration (days)">
+                <input id="editSeason" class="glass-input" placeholder="Season / category">
+                <input id="editImageUrl" class="glass-input md:col-span-2" placeholder="Image URL">
+                <textarea id="editDescription" class="glass-input md:col-span-2 min-h-[120px]" placeholder="Package description"></textarea>
+            </div>
+            <div class="flex gap-4 mt-6">
+                <button onclick="savePackage()" class="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-900 py-3.5 rounded-xl font-black transition">Save changes</button>
+                <button onclick="closeEditModal()" class="flex-1 glass text-slate-300 py-3.5 rounded-xl font-bold hover:bg-white/5 transition">Cancel</button>
+            </div>
+            <div id="modalMsg" class="mt-4 text-center text-sm font-bold hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentPackages = [];
+        function normalizeDuplicateValue(value) { return String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase(); }
+        function csrfToken() {
+            return document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || '';
+        }
+        function csrfHeaders(extra = {}) {
+            const headers = {...extra};
+            const token = decodeURIComponent(csrfToken());
+            if (token) headers['X-CSRF-Token'] = token;
+            return headers;
+        }
+        function safeImageUrl(value) { const raw = String(value ?? '').trim(); return /^https?:\/\//i.test(raw) || raw.startsWith('/static/') ? raw : '/static/images/package-fallback.svg'; }
+        function escapeHtml(str) {
+            return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+        function showModalMsg(type, text) {
+            const msg = document.getElementById('modalMsg');
+            msg.textContent = text;
+            msg.className = `mt-4 text-center text-sm font-bold ${type === 'error' ? 'text-red-400' : 'text-green-400'}`;
+        }
+        async function apiJson(url, options = {}) {
+            const opts = {...options, headers: csrfHeaders(options.headers || {})};
+            const res = await fetch(url, opts);
+            let data = {};
+            try { data = await res.json(); } catch (_) {}
+            if (res.status === 401 || res.status === 403) { window.location.href = '/auth/login'; return null; }
+            if (!res.ok || !data.success) throw new Error(data.error || data.detail || 'Request failed');
+            return data;
+        }
+        async function loadPackages() {
+            const tbody = document.getElementById('packagesTableBody');
+            try {
+                const payload = await apiJson('/api/admin/packages?v=' + Date.now(), {method:'GET'});
+                if (!payload) return;
+                const packages = payload.data || [];
+                currentPackages = packages;
+                document.getElementById('totalPackages').textContent = packages.length;
+                document.getElementById('availableCount').textContent = packages.filter(p => Number(p.available_spots || 0) > 0 && Number(p.is_active ?? 1) === 1 && !p.deleted_at).length;
+                document.getElementById('soldOutCount').textContent = packages.filter(p => Number(p.available_spots || 0) <= 0 || Number(p.is_active ?? 1) === 0 || p.deleted_at).length;
+                if (!packages.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-500 py-12">No packages found.</td></tr>'; return; }
+                tbody.innerHTML = packages.map(p => {
+                    const spots = Number(p.available_spots || 0);
+                    const active = Number(p.is_active ?? 1) === 1 && !p.deleted_at;
+                    const available = active && spots > 0;
+                    const status = p.deleted_at ? 'Archived' : (active ? (spots > 0 ? 'Available' : 'Sold Out') : 'Inactive');
+                    return `<tr class="border-b border-white/5 hover:bg-white/2 transition">
+                        <td class="p-5"><div class="flex items-center gap-3"><img src="${escapeHtml(safeImageUrl(p.image_url))}" class="w-12 h-12 rounded-xl object-cover" onerror="this.style.display='none'"><div><span class="font-bold text-white">${escapeHtml(p.package_name)}</span><div class="text-xs text-slate-500">${escapeHtml(p.destination)}</div></div></div></td>
+                        <td class="p-5 text-white font-bold">R ${Number(p.price || 0).toLocaleString()}</td>
+                        <td class="p-5"><span class="text-xl font-black ${available ? 'text-teal-400' : 'text-red-400'}">${spots}</span></td>
+                        <td class="p-5"><span class="text-xs font-black uppercase tracking-wider ${available ? 'text-teal-400' : 'text-red-400'}">${escapeHtml(status)}</span></td>
+                        <td class="p-5 text-right"><div class="flex justify-end gap-2 flex-wrap">
+                            <button class="edit-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-2 rounded-xl font-bold text-xs" data-id="${p.package_id}"><i class="fas fa-edit text-teal-400"></i> Edit</button>
+                            ${p.deleted_at ? '' : `<button class="toggle-btn glass px-3 py-2 rounded-xl font-bold text-xs" data-id="${p.package_id}" data-active="${active}">${active ? 'Deactivate' : 'Activate'}</button>
+                            <button class="archive-btn bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-2 rounded-xl font-bold text-xs" data-id="${p.package_id}">Archive</button>`}
+                        </div></td>
+                    </tr>`;
+                }).join('');
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-red-400 py-12">${escapeHtml(e.message || 'Failed to load packages.')}</td></tr>`;
+            }
+        }
+        document.getElementById('packageForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('packageFormMsg');
+            const payload = {
+                package_name: document.getElementById('packageName').value,
+                destination: document.getElementById('destination').value,
+                price: Number(document.getElementById('price').value),
+                available_spots: Number(document.getElementById('available').value),
+                duration: Number(document.getElementById('duration').value || 1),
+                season_category: document.getElementById('season').value,
+                image_url: document.getElementById('imageUrl').value,
+                description: document.getElementById('description').value
+            };
+            if (!payload.package_name.trim() || !payload.destination.trim() || !Number.isFinite(payload.price) || payload.price < 0 || !Number.isInteger(payload.available_spots) || payload.available_spots < 0 || !Number.isInteger(payload.duration) || payload.duration < 1) {
+                msg.textContent='Enter valid package details.'; msg.className='text-sm font-bold text-red-400'; return;
+            }
+            const duplicate = currentPackages.find(p => !p.deleted_at &&
+                normalizeDuplicateValue(p.package_name) === normalizeDuplicateValue(payload.package_name) &&
+                normalizeDuplicateValue(p.destination) === normalizeDuplicateValue(payload.destination) &&
+                Number(p.duration) === payload.duration);
+            if (duplicate) {
+                msg.textContent='A package with the same name, destination and duration already exists.';
+                msg.className='text-sm font-bold text-red-400';
+                return;
+            }
+            try {
+                const data = await apiJson('/api/admin/packages', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+                if (!data) return;
+                const file = document.getElementById('imageFile').files[0];
+                if (file) {
+                    const form = new FormData(); form.append('image', file);
+                    await apiJson(`/api/admin/packages/${data.data.package_id}/image`, {method:'POST', body:form});
+                }
+                msg.textContent='Package added successfully.'; msg.className='text-sm font-bold text-green-400';
+                e.target.reset(); document.getElementById('duration').value='1'; loadPackages();
+            } catch (err) { msg.textContent=err.message; msg.className='text-sm font-bold text-red-400'; }
+        });
+        async function openEditModal(id) {
+            try {
+                const data = await apiJson(`/api/packages/${id}`, {method:'GET'});
+                if (!data) return;
+                const p = data.data;
+                document.getElementById('editPackageId').value = p.package_id;
+                document.getElementById('editPackageName').value = p.package_name || '';
+                document.getElementById('editDestination').value = p.destination || '';
+                document.getElementById('editPrice').value = p.price ?? 0;
+                document.getElementById('editAvailable').value = p.available_spots ?? 0;
+                document.getElementById('editDuration').value = p.duration ?? 1;
+                document.getElementById('editSeason').value = p.season_category || 'standard';
+                document.getElementById('editImageUrl').value = p.image_url || '';
+                document.getElementById('editDescription').value = p.description || '';
+                document.getElementById('modalMsg').className = 'mt-4 text-center text-sm font-bold hidden';
+                document.getElementById('editModal').classList.remove('hidden'); document.getElementById('editModal').classList.add('flex');
+            } catch(e) { alert(e.message); }
+        }
+        function closeEditModal() { document.getElementById('editModal').classList.add('hidden'); document.getElementById('editModal').classList.remove('flex'); }
+        async function savePackage() {
+            const id = Number(document.getElementById('editPackageId').value);
+            const payload = {
+                package_name: document.getElementById('editPackageName').value,
+                destination: document.getElementById('editDestination').value,
+                price: Number(document.getElementById('editPrice').value),
+                available_spots: Number(document.getElementById('editAvailable').value),
+                duration: Number(document.getElementById('editDuration').value),
+                season_category: document.getElementById('editSeason').value,
+                image_url: document.getElementById('editImageUrl').value,
+                description: document.getElementById('editDescription').value
+            };
+            try {
+                await apiJson(`/api/admin/packages/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+                showModalMsg('success','Package updated successfully.');
+                setTimeout(()=>{closeEditModal(); loadPackages();},500);
+            } catch(e) { showModalMsg('error',e.message); }
+        }
+        document.addEventListener('click', async e => {
+            const edit = e.target.closest('.edit-btn');
+            if (edit) return openEditModal(Number(edit.dataset.id));
+            const archive = e.target.closest('.archive-btn');
+            if (archive) {
+                if (!confirm('Archive this package? Historical bookings will be preserved and new bookings will be blocked.')) return;
+                try { await apiJson(`/api/admin/packages/${Number(archive.dataset.id)}`, {method:'DELETE'}); await loadPackages(); }
+                catch(err) { alert(err.message); }
+            }
+            const toggle = e.target.closest('.toggle-btn');
+            if (toggle) {
+                const id = Number(toggle.dataset.id), active = toggle.dataset.active === 'true';
+                try { await apiJson(`/api/admin/packages/${id}/${active ? 'deactivate' : 'activate'}`, {method:'POST'}); await loadPackages(); }
+                catch(err) { alert(err.message); }
+            }
+        });
+        document.addEventListener('DOMContentLoaded', loadPackages);
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+TO: ajayipeter135@gmail.com
+SUBJECT: TravelIntel Booking Confirmation #1883
+
+Booking Confirmation
+
+Reference: TI-01883
+Customer: Ajayi Peter
+Email: ajayipeter135@gmail.com
+Phone: 067 307 1228
+Package: Cape Town
+Destination: Cape Town
+Travel Date: 2026-05-20
+Travelers: 1
+Total: R 12,900.00
+Booking Date: 2026-05-01
+
+Thank you for booking with TravelIntel AI.
