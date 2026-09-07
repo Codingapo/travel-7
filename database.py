@@ -287,35 +287,27 @@ def init_db():
     c.execute("CREATE INDEX IF NOT EXISTS idx_reviews_source ON Reviews(source)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_users_admin ON Users(is_admin, account_status)")
 
-    # Multi-admin migration and bootstrap administrator.
+    # Admin migration/bootstrap is deliberately non-destructive.
+    # Existing administrator credentials and identity are NEVER replaced on startup.
+    # Legacy role=admin rows are only marked as admin; their username/email/password
+    # remain untouched. A default bootstrap account is created only when there is
+    # no administrator at all.
     c.execute("UPDATE Users SET is_admin=1, user_type='admin' WHERE role='admin'")
-    c.execute("SELECT user_id FROM Users WHERE LOWER(email)=? LIMIT 1", (ADMIN_EMAIL.lower(),))
-    admin_row = c.fetchone()
-    if not admin_row:
-        # If an older single-admin installation exists, upgrade that account
-        # in place instead of creating a second bootstrap administrator.
-        c.execute("SELECT user_id FROM Users WHERE is_admin=1 OR role='admin' ORDER BY user_id ASC LIMIT 1")
-        legacy_admin = c.fetchone()
-        if legacy_admin:
-            c.execute(
-                """UPDATE Users SET username=?, password_hash=?, role='admin', is_admin=1, user_type='admin',
-                   full_name=?, email=?, account_status='active', must_change_password=1, password_changed_at=NULL
-                   WHERE user_id=?""",
-                (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), "System Administrator", ADMIN_EMAIL, legacy_admin["user_id"])
-            )
-        else:
+    c.execute("SELECT user_id FROM Users WHERE is_admin=1 OR role='admin' ORDER BY user_id ASC LIMIT 1")
+    existing_admin = c.fetchone()
+    if not existing_admin:
+        # Only create the configured bootstrap account if its username/email are
+        # not already occupied by a non-admin account. Never modify that account
+        # just to make bootstrap credentials fit.
+        c.execute("SELECT user_id FROM Users WHERE username=? OR LOWER(email)=? LIMIT 1", (ADMIN_USERNAME, ADMIN_EMAIL.lower()))
+        conflicting_account = c.fetchone()
+        if not conflicting_account:
             c.execute(
                 """INSERT INTO Users
                    (username, password_hash, role, full_name, email, account_status, is_admin, user_type, must_change_password)
                    VALUES (?, ?, 'admin', ?, ?, 'active', 1, 'admin', 1)""",
                 (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), "System Administrator", ADMIN_EMAIL)
             )
-    else:
-        c.execute(
-            """UPDATE Users SET username=?, role='admin', is_admin=1, user_type='admin',
-               account_status=COALESCE(account_status,'active') WHERE user_id=?""",
-            (ADMIN_USERNAME, admin_row["user_id"])
-        )
 
 
     # NOTE: This used to top the Reviews table up with 130+ randomly

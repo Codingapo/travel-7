@@ -1578,7 +1578,7 @@ async def resend_registration_otp(data: VerifyRegistrationRequest):
     }
 
 @app.post("/api/auth/login")
-async def unified_login(data: CustomerLoginRequest):
+async def unified_login(data: CustomerLoginRequest, request: Request):
     email = normalize_email(data.email)
     if not is_valid_email(email):
         raise HTTPException(status_code=400, detail="Please enter a valid email address.")
@@ -2647,75 +2647,6 @@ async def get_my_bookings(request: Request):
     bookings = [dict(row) for row in c.fetchall()]
     conn.close()
     return {"success": True, "data": bookings}
-
-
-# ============================================================
-# ONE-TIME ADMIN BOOKING DATA RESTORE
-# ============================================================
-
-# ============================================================
-# ONE-TIME ADMIN BOOKING DATA RESTORE / BOOTSTRAP
-# ============================================================
-
-class SetupPackageImportRequest(BaseModel):
-    packages: list[PackageCreateRequest]
-
-@app.post("/api/setup/import-initial-packages")
-async def import_initial_packages(data: SetupPackageImportRequest, request: Request):
-    """Explicit, one-time package import. Never runs during startup/deployment."""
-    expected = os.getenv("INITIAL_PACKAGE_IMPORT_TOKEN", "").strip()
-    supplied = request.headers.get("X-Setup-Token", "")
-    if not expected or not supplied or not secrets.compare_digest(expected, supplied):
-        raise HTTPException(status_code=403, detail="Setup import is not authorised.")
-    if not data.packages:
-        raise HTTPException(status_code=422, detail="Import payload contains no packages.")
-    if len(data.packages) > 1000:
-        raise HTTPException(status_code=422, detail="Import contains too many packages.")
-
-    conn = get_db_connection()
-    imported = []
-    skipped = []
-    try:
-        conn.execute("BEGIN IMMEDIATE")
-        c = conn.cursor()
-        c.execute("SELECT 1 FROM Setup_Guards WHERE guard_key='initial_package_import_completed'")
-        if c.fetchone():
-            conn.rollback()
-            return {"success": True, "data": {"message": "Initial package import has already completed.", "imported": 0, "skipped": len(data.packages)}}
-
-        for item in data.packages:
-            name, destination, description, season, image_url = _validate_package_input(item)
-            if _find_duplicate_package(c, name, destination, item.duration):
-                skipped.append(name)
-                continue
-            status = "Available" if item.available_spots > 0 else "Unavailable"
-            c.execute("""INSERT INTO Packages
-                (package_name,destination,price,duration,description,availability_status,season_category,image_url,
-                 available_spots,total_spots,is_active,deleted_at,created_at,updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,1,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)""",
-                      (name,destination,float(item.price),int(item.duration),description,status,season,image_url,
-                       int(item.available_spots),int(item.available_spots)))
-            imported.append(c.lastrowid)
-
-        c.execute("INSERT INTO Setup_Guards(guard_key) VALUES('initial_package_import_completed')")
-        conn.commit()
-    except HTTPException:
-        conn.rollback()
-        raise
-    except Exception as exc:
-        conn.rollback()
-        logger.exception("Initial package import failed")
-        raise HTTPException(status_code=500, detail="Initial package import failed.") from exc
-    finally:
-        conn.close()
-
-    return {"success": True, "data": {"message": "Initial package import completed.", "imported": len(imported), "skipped": len(skipped), "package_ids": imported, "skipped_names": skipped}}
-
-@app.post("/api/admin/restore-demo-bookings")
-async def deprecated_restore_demo_bookings(request: Request):
-    """Legacy endpoint deliberately disabled so deployment can never seed/reset production data."""
-    require_admin(request)
-    raise HTTPException(status_code=410, detail="Demo-data restoration is disabled. Production data is never seeded or reset.")
 
 
 # ============================================================
