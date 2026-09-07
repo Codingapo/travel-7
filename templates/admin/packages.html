@@ -72,7 +72,6 @@
                 <input id="duration" min="1" step="1" type="number" value="1" class="glass-input" placeholder="Duration (days)">
                 <input id="season" class="glass-input" placeholder="Season / category">
                 <input id="imageUrl" class="glass-input md:col-span-2" placeholder="Image URL (optional)">
-                <input id="imageFile" type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="glass-input md:col-span-2" title="Optional image upload (max 5 MB)">
                 <textarea id="description" class="glass-input md:col-span-2 lg:col-span-4 min-h-[100px]" placeholder="Package description (optional)"></textarea>
                 <div class="lg:col-span-4 flex items-center gap-4">
                     <button class="bg-teal-500 hover:bg-teal-400 text-slate-950 px-6 py-3 rounded-xl font-black" type="submit"><i class="fas fa-plus mr-2"></i>Add Package</button>
@@ -106,12 +105,11 @@
                             <th class="text-left p-5 border-b border-white/8 text-slate-500 text-[11px] font-black uppercase tracking-widest">Package Name</th>
                             <th class="text-left p-5 border-b border-white/8 text-slate-500 text-[11px] font-black uppercase tracking-widest">Price</th>
                             <th class="text-left p-5 border-b border-white/8 text-slate-500 text-[11px] font-black uppercase tracking-widest">Seats Available</th>
-                            <th class="text-left p-5 border-b border-white/8 text-slate-500 text-[11px] font-black uppercase tracking-widest">Status</th>
-                            <th class="text-right p-5 border-b border-white/8 text-slate-500 text-[11px] font-black uppercase tracking-widest">Actions</th>
+                            <th class="text-right p-5 border-b border-white/8 text-slate-500 text-[11px] font-black uppercase tracking-widest">Edit</th>
                         </tr>
                     </thead>
                     <tbody id="packagesTableBody">
-                        <tr><td colspan="5" class="text-center text-slate-500 py-12">Loading packages...</td></tr>
+                        <tr><td colspan="4" class="text-center text-slate-500 py-12">Loading packages...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -120,24 +118,17 @@
 
     <!-- Edit Modal -->
     <div id="editModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[100] px-4">
-        <div class="glass p-8 rounded-[2.5rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="glass p-10 rounded-[2.5rem] max-w-md w-full">
             <div class="flex items-center justify-between mb-8">
-                <h3 class="text-2xl font-black text-white">Edit Package</h3>
+                <h3 class="text-2xl font-black text-white">Set Available Seats</h3>
                 <button onclick="closeEditModal()" class="text-slate-400 hover:text-white transition text-xl"><i class="fas fa-times"></i></button>
             </div>
-            <input type="hidden" id="editPackageId">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input id="editPackageName" required class="glass-input" placeholder="Package name">
-                <input id="editDestination" required class="glass-input" placeholder="Destination">
-                <input id="editPrice" required min="0" step="0.01" type="number" class="glass-input" placeholder="Price (R)">
-                <input id="editAvailable" required min="0" step="1" type="number" class="glass-input" placeholder="Available seats">
-                <input id="editDuration" required min="1" step="1" type="number" class="glass-input" placeholder="Duration (days)">
-                <input id="editSeason" class="glass-input" placeholder="Season / category">
-                <input id="editImageUrl" class="glass-input md:col-span-2" placeholder="Image URL">
-                <textarea id="editDescription" class="glass-input md:col-span-2 min-h-[120px]" placeholder="Package description"></textarea>
-            </div>
-            <div class="flex gap-4 mt-6">
-                <button onclick="savePackage()" class="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-900 py-3.5 rounded-xl font-black transition">Save changes</button>
+            <div id="modalPackageName" class="text-lg font-bold text-teal-400 mb-6"></div>
+            <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Seats Available</label>
+            <input type="number" id="availableSpotsInput" min="0" class="glass-input w-full mb-2" placeholder="e.g. 10">
+            <p class="text-xs text-slate-500 mb-6">Setting to 0 will mark this package as <span class="text-red-400 font-bold">Unavailable</span> until you set a new amount.</p>
+            <div class="flex gap-4">
+                <button onclick="saveSpots()" class="flex-1 bg-teal-500 hover:bg-teal-400 text-slate-900 py-3.5 rounded-xl font-black transition">Save</button>
                 <button onclick="closeEditModal()" class="flex-1 glass text-slate-300 py-3.5 rounded-xl font-bold hover:bg-white/5 transition">Cancel</button>
             </div>
             <div id="modalMsg" class="mt-4 text-center text-sm font-bold hidden"></div>
@@ -145,156 +136,97 @@
     </div>
 
     <script>
-        let currentPackages = [];
-        function normalizeDuplicateValue(value) { return String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase(); }
-        function csrfToken() {
-            return document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || '';
+        let selectedPackageId = null;
+
+        async function logout() {
+            try { await fetch('/admin/logout', { method:'POST' }); } catch (e) {}
+            window.location.href = '/auth/login';
         }
-        function csrfHeaders(extra = {}) {
-            const headers = {...extra};
-            const token = decodeURIComponent(csrfToken());
-            if (token) headers['X-CSRF-Token'] = token;
-            return headers;
-        }
-        function safeImageUrl(value) { const raw = String(value ?? '').trim(); return /^https?:\/\//i.test(raw) || raw.startsWith('/static/') ? raw : '/static/images/package-fallback.svg'; }
-        function escapeHtml(str) {
-            return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-        }
+
         function showModalMsg(type, text) {
             const msg = document.getElementById('modalMsg');
             msg.textContent = text;
             msg.className = `mt-4 text-center text-sm font-bold ${type === 'error' ? 'text-red-400' : 'text-green-400'}`;
         }
-        async function apiJson(url, options = {}) {
-            const opts = {...options, headers: csrfHeaders(options.headers || {})};
-            const res = await fetch(url, opts);
-            let data = {};
-            try { data = await res.json(); } catch (_) {}
-            if (res.status === 401 || res.status === 403) { window.location.href = '/auth/login'; return null; }
-            if (!res.ok || !data.success) throw new Error(data.error || data.detail || 'Request failed');
-            return data;
+
+        function escapeHtml(str) {
+            return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         }
+
         async function loadPackages() {
             const tbody = document.getElementById('packagesTableBody');
             try {
-                const payload = await apiJson('/api/admin/packages?v=' + Date.now(), {method:'GET'});
-                if (!payload) return;
+                const res = await fetch('/api/admin/packages?v=' + Date.now());
+                if (res.status === 401 || res.status === 403) { window.location.href = '/auth/login'; return; }
+                const payload = await res.json();
+                if (!payload.success) throw new Error(payload.error || 'Unable to load packages');
                 const packages = payload.data || [];
-                currentPackages = packages;
                 document.getElementById('totalPackages').textContent = packages.length;
-                document.getElementById('availableCount').textContent = packages.filter(p => Number(p.available_spots || 0) > 0 && Number(p.is_active ?? 1) === 1 && !p.deleted_at).length;
-                document.getElementById('soldOutCount').textContent = packages.filter(p => Number(p.available_spots || 0) <= 0 || Number(p.is_active ?? 1) === 0 || p.deleted_at).length;
-                if (!packages.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-500 py-12">No packages found.</td></tr>'; return; }
+                document.getElementById('availableCount').textContent = packages.filter(p => Number(p.available_spots || 0) > 0).length;
+                document.getElementById('soldOutCount').textContent = packages.filter(p => Number(p.available_spots || 0) <= 0).length;
+                if (!packages.length) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-slate-500 py-12">No packages found.</td></tr>'; return; }
                 tbody.innerHTML = packages.map(p => {
                     const spots = Number(p.available_spots || 0);
-                    const active = Number(p.is_active ?? 1) === 1 && !p.deleted_at;
-                    const available = active && spots > 0;
-                    const status = p.deleted_at ? 'Archived' : (active ? (spots > 0 ? 'Available' : 'Sold Out') : 'Inactive');
+                    const available = spots > 0;
                     return `<tr class="border-b border-white/5 hover:bg-white/2 transition">
-                        <td class="p-5"><div class="flex items-center gap-3"><img src="${escapeHtml(safeImageUrl(p.image_url))}" class="w-12 h-12 rounded-xl object-cover" onerror="this.style.display='none'"><div><span class="font-bold text-white">${escapeHtml(p.package_name)}</span><div class="text-xs text-slate-500">${escapeHtml(p.destination)}</div></div></div></td>
+                        <td class="p-5"><div class="flex items-center gap-3"><img src="${escapeHtml(p.image_url || '')}" class="w-12 h-12 rounded-xl object-cover" onerror="this.style.display='none'"><div><span class="font-bold text-white">${escapeHtml(p.package_name)}</span><div class="text-xs text-slate-500">${escapeHtml(p.destination)}</div></div></div></td>
                         <td class="p-5 text-white font-bold">R ${Number(p.price || 0).toLocaleString()}</td>
                         <td class="p-5"><span class="text-xl font-black ${available ? 'text-teal-400' : 'text-red-400'}">${spots}</span></td>
-                        <td class="p-5"><span class="text-xs font-black uppercase tracking-wider ${available ? 'text-teal-400' : 'text-red-400'}">${escapeHtml(status)}</span></td>
-                        <td class="p-5 text-right"><div class="flex justify-end gap-2 flex-wrap">
-                            <button class="edit-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-2 rounded-xl font-bold text-xs" data-id="${p.package_id}"><i class="fas fa-edit text-teal-400"></i> Edit</button>
-                            ${p.deleted_at ? '' : `<button class="toggle-btn glass px-3 py-2 rounded-xl font-bold text-xs" data-id="${p.package_id}" data-active="${active}">${active ? 'Deactivate' : 'Activate'}</button>
-                            <button class="archive-btn bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-2 rounded-xl font-bold text-xs" data-id="${p.package_id}">Archive</button>`}
-                        </div></td>
+                        <td class="p-5 text-right"><button class="edit-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-xl font-bold text-xs transition flex items-center gap-2 ml-auto" data-id="${p.package_id}" data-name="${escapeHtml(p.package_name)}" data-spots="${spots}"><i class="fas fa-edit text-teal-400"></i> Edit seats</button></td>
                     </tr>`;
                 }).join('');
             } catch (e) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-red-400 py-12">${escapeHtml(e.message || 'Failed to load packages.')}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-red-400 py-12">${escapeHtml(e.message || 'Failed to load packages.')}</td></tr>`;
             }
         }
+
         document.getElementById('packageForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const msg = document.getElementById('packageFormMsg');
             const payload = {
-                package_name: document.getElementById('packageName').value,
-                destination: document.getElementById('destination').value,
+                package_name: document.getElementById('packageName').value.trim(),
+                destination: document.getElementById('destination').value.trim(),
                 price: Number(document.getElementById('price').value),
                 available_spots: Number(document.getElementById('available').value),
                 duration: Number(document.getElementById('duration').value || 1),
-                season_category: document.getElementById('season').value,
-                image_url: document.getElementById('imageUrl').value,
-                description: document.getElementById('description').value
+                season_category: document.getElementById('season').value.trim() || 'standard',
+                image_url: document.getElementById('imageUrl').value.trim(),
+                description: document.getElementById('description').value.trim()
             };
-            if (!payload.package_name.trim() || !payload.destination.trim() || !Number.isFinite(payload.price) || payload.price < 0 || !Number.isInteger(payload.available_spots) || payload.available_spots < 0 || !Number.isInteger(payload.duration) || payload.duration < 1) {
-                msg.textContent='Enter valid package details.'; msg.className='text-sm font-bold text-red-400'; return;
-            }
-            const duplicate = currentPackages.find(p => !p.deleted_at &&
-                normalizeDuplicateValue(p.package_name) === normalizeDuplicateValue(payload.package_name) &&
-                normalizeDuplicateValue(p.destination) === normalizeDuplicateValue(payload.destination) &&
-                Number(p.duration) === payload.duration);
-            if (duplicate) {
-                msg.textContent='A package with the same name, destination and duration already exists.';
-                msg.className='text-sm font-bold text-red-400';
-                return;
-            }
+            if (!payload.package_name || !payload.destination || payload.price <= 0 || payload.available_spots < 0) { msg.textContent='Enter a valid package name, destination, price and seat count.'; msg.className='text-sm font-bold text-red-400'; return; }
             try {
-                const data = await apiJson('/api/admin/packages', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-                if (!data) return;
-                const file = document.getElementById('imageFile').files[0];
-                if (file) {
-                    const form = new FormData(); form.append('image', file);
-                    await apiJson(`/api/admin/packages/${data.data.package_id}/image`, {method:'POST', body:form});
-                }
+                const res = await fetch('/api/admin/packages', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Could not create package');
                 msg.textContent='Package added successfully.'; msg.className='text-sm font-bold text-green-400';
-                e.target.reset(); document.getElementById('duration').value='1'; loadPackages();
+                e.target.reset(); document.getElementById('duration').value='1';
+                loadPackages();
             } catch (err) { msg.textContent=err.message; msg.className='text-sm font-bold text-red-400'; }
         });
-        async function openEditModal(id) {
-            try {
-                const data = await apiJson(`/api/packages/${id}`, {method:'GET'});
-                if (!data) return;
-                const p = data.data;
-                document.getElementById('editPackageId').value = p.package_id;
-                document.getElementById('editPackageName').value = p.package_name || '';
-                document.getElementById('editDestination').value = p.destination || '';
-                document.getElementById('editPrice').value = p.price ?? 0;
-                document.getElementById('editAvailable').value = p.available_spots ?? 0;
-                document.getElementById('editDuration').value = p.duration ?? 1;
-                document.getElementById('editSeason').value = p.season_category || 'standard';
-                document.getElementById('editImageUrl').value = p.image_url || '';
-                document.getElementById('editDescription').value = p.description || '';
-                document.getElementById('modalMsg').className = 'mt-4 text-center text-sm font-bold hidden';
-                document.getElementById('editModal').classList.remove('hidden'); document.getElementById('editModal').classList.add('flex');
-            } catch(e) { alert(e.message); }
+
+        function openEditModal(packageId, packageName, currentSpots) {
+            selectedPackageId = packageId;
+            document.getElementById('modalPackageName').textContent = packageName;
+            document.getElementById('availableSpotsInput').value = Number(currentSpots || 0);
+            document.getElementById('modalMsg').className = 'mt-4 text-center text-sm font-bold hidden';
+            document.getElementById('editModal').classList.remove('hidden');
+            document.getElementById('editModal').classList.add('flex');
         }
         function closeEditModal() { document.getElementById('editModal').classList.add('hidden'); document.getElementById('editModal').classList.remove('flex'); }
-        async function savePackage() {
-            const id = Number(document.getElementById('editPackageId').value);
-            const payload = {
-                package_name: document.getElementById('editPackageName').value,
-                destination: document.getElementById('editDestination').value,
-                price: Number(document.getElementById('editPrice').value),
-                available_spots: Number(document.getElementById('editAvailable').value),
-                duration: Number(document.getElementById('editDuration').value),
-                season_category: document.getElementById('editSeason').value,
-                image_url: document.getElementById('editImageUrl').value,
-                description: document.getElementById('editDescription').value
-            };
+        async function saveSpots() {
+            const value = Number(document.getElementById('availableSpotsInput').value);
+            if (!Number.isInteger(value) || value < 0) { showModalMsg('error','Please enter a valid non-negative whole number.'); return; }
             try {
-                await apiJson(`/api/admin/packages/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-                showModalMsg('success','Package updated successfully.');
-                setTimeout(()=>{closeEditModal(); loadPackages();},500);
+                const res = await fetch(`/api/admin/packages/${selectedPackageId}/spots`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({available_spots:value})});
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Failed to update seats');
+                showModalMsg('success','Package availability updated.');
+                setTimeout(()=>{closeEditModal(); loadPackages();},700);
             } catch(e) { showModalMsg('error',e.message); }
         }
-        document.addEventListener('click', async e => {
-            const edit = e.target.closest('.edit-btn');
-            if (edit) return openEditModal(Number(edit.dataset.id));
-            const archive = e.target.closest('.archive-btn');
-            if (archive) {
-                if (!confirm('Archive this package? Historical bookings will be preserved and new bookings will be blocked.')) return;
-                try { await apiJson(`/api/admin/packages/${Number(archive.dataset.id)}`, {method:'DELETE'}); await loadPackages(); }
-                catch(err) { alert(err.message); }
-            }
-            const toggle = e.target.closest('.toggle-btn');
-            if (toggle) {
-                const id = Number(toggle.dataset.id), active = toggle.dataset.active === 'true';
-                try { await apiJson(`/api/admin/packages/${id}/${active ? 'deactivate' : 'activate'}`, {method:'POST'}); await loadPackages(); }
-                catch(err) { alert(err.message); }
-            }
+        document.addEventListener('click', e => {
+            const btn = e.target.closest('.edit-btn');
+            if (btn) openEditModal(Number(btn.dataset.id), btn.dataset.name, Number(btn.dataset.spots));
         });
         document.addEventListener('DOMContentLoaded', loadPackages);
     </script>

@@ -19,10 +19,6 @@ Behavior on failure (missing API key/place ID, network error, quota, etc.):
 """
 import datetime
 import os
-import json
-import hashlib
-import threading
-import time
 from typing import Dict, List, Optional
 
 try:
@@ -76,10 +72,6 @@ def _parse_review_date(review: Dict) -> str:
 # a misbehaving/huge listing can't loop forever or blow through the whole
 # monthly SerpApi quota in one sync.
 MAX_PAGES = 25
-CACHE_TTL_SECONDS = int(os.environ.get("SERPAPI_REVIEWS_CACHE_TTL", "900"))
-CACHE_LOCK_SECONDS = 45
-_cache_metrics = {"hits": 0, "misses": 0, "api_calls": 0, "api_failures": 0}
-_cache_process_lock = threading.Lock()
 
 
 def _fetch_all_review_pages(base_params: Dict) -> (List[Dict], Optional[Dict]):
@@ -129,75 +121,6 @@ def _fetch_all_review_pages(base_params: Dict) -> (List[Dict], Optional[Dict]):
     return all_raw_reviews, place_info
 
 
-def _cache_key(base_params: Dict) -> str:
-    stable = {k: base_params.get(k) for k in ("engine", "place_id", "sort_by", "hl")}
-    return hashlib.sha256(json.dumps(stable, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-
-def _read_cache(key: str, allow_stale: bool = False):
-    conn = get_db_connection()
-    try:
-        row = conn.execute(
-            "SELECT response_json, expires_at FROM SerpApi_Cache WHERE cache_key=?",
-            (key,),
-        ).fetchone()
-        if not row:
-            return None
-        now = datetime.datetime.utcnow()
-        expires = datetime.datetime.fromisoformat(str(row["expires_at"]).replace(" ", "T"))
-        if not allow_stale and expires <= now:
-            return None
-        return json.loads(row["response_json"])
-    except Exception:
-        return None
-    finally:
-        conn.close()
-
-def _acquire_cache_lock(key: str) -> bool:
-    now = datetime.datetime.utcnow()
-    lease = now + datetime.timedelta(seconds=CACHE_LOCK_SECONDS)
-    conn = get_db_connection()
-    try:
-        conn.execute(
-            """INSERT OR IGNORE INTO SerpApi_Cache(cache_key,response_json,expires_at,lock_until)
-               VALUES(?,?,?,?)""",
-            (key, "{}", "1970-01-01 00:00:00", lease.strftime("%Y-%m-%d %H:%M:%S")),
-        )
-        cur = conn.execute(
-            """UPDATE SerpApi_Cache SET lock_until=?
-               WHERE cache_key=? AND (lock_until IS NULL OR lock_until < ?)""",
-            (lease.strftime("%Y-%m-%d %H:%M:%S"), key, now.strftime("%Y-%m-%d %H:%M:%S")),
-        )
-        conn.commit()
-        return cur.rowcount == 1
-    finally:
-        conn.close()
-
-def _release_cache_lock(key: str):
-    conn = get_db_connection()
-    try:
-        conn.execute("UPDATE SerpApi_Cache SET lock_until=NULL WHERE cache_key=?", (key,))
-        conn.commit()
-    finally:
-        conn.close()
-
-def _write_cache(key: str, payload: Dict):
-    now = datetime.datetime.utcnow()
-    expires = now + datetime.timedelta(seconds=CACHE_TTL_SECONDS)
-    conn = get_db_connection()
-    try:
-        conn.execute(
-            """UPDATE SerpApi_Cache
-               SET response_json=?, expires_at=?, updated_at=CURRENT_TIMESTAMP, lock_until=NULL
-               WHERE cache_key=?""",
-            (json.dumps(payload, separators=(",", ":")), expires.strftime("%Y-%m-%d %H:%M:%S"), key),
-        )
-        conn.commit()
-    finally:
-        conn.close()
-
-def get_serpapi_cache_metrics() -> Dict:
-    return dict(_cache_metrics)
-
 def fetch_reviews() -> int:
     """Sync real reviews + rating from Google via SerpApi. Returns the number
     of written reviews stored. Never fabricates data - on any failure it just
@@ -219,49 +142,12 @@ def fetch_reviews() -> int:
         "api_key": SERPAPI_KEY,
     }
 
-    key = _cache_key(base_params)
-    cached = _read_cache(key, allow_stale=False)
-    if cached:
-        _cache_metrics["hits"] += 1
-        raw_reviews = cached.get("reviews", [])
-        place_info = cached.get("place_info") or {}
-    else:
-        _cache_metrics["misses"] += 1
-        acquired = _acquire_cache_lock(key)
-        if not acquired:
-            # Another worker is fetching this exact query. Wait briefly for its cache write.
-            for _ in range(150):
-                time.sleep(0.2)
-                cached = _read_cache(key, allow_stale=False)
-                if cached:
-                    _cache_metrics["hits"] += 1
-                    raw_reviews = cached.get("reviews", [])
-                    place_info = cached.get("place_info") or {}
-                    break
-            else:
-                acquired = _acquire_cache_lock(key)
-        if 'raw_reviews' not in locals():
-            try:
-                _cache_metrics["api_calls"] += 1
-                raw_reviews, place_info = _fetch_all_review_pages(base_params)
-                if place_info is not None:
-                    reported_total = int(place_info.get("reviews") or 0)
-                    if not reported_total or len(raw_reviews) >= reported_total:
-                        _write_cache(key, {"reviews": raw_reviews, "place_info": place_info})
-            finally:
-                _release_cache_lock(key)
+    raw_reviews, place_info = _fetch_all_review_pages(base_params)
 
-        if place_info is None:
-            stale = _read_cache(key, allow_stale=True)
-            if stale:
-                print("SerpApi failed; using stale cached reviews.")
-                raw_reviews = stale.get("reviews", [])
-                place_info = stale.get("place_info") or {}
-                _cache_metrics["api_failures"] += 1
-            else:
-                print("SerpApi sync failed before returning any data. Keeping existing reviews unchanged.")
-                _cache_metrics["api_failures"] += 1
-                return 0
+    if place_info is None:
+        # The very first request failed outright.
+        print("SerpApi sync failed before returning any data. Keeping existing reviews unchanged.")
+        return 0
 
     average_rating = place_info.get("rating")
     total_reviews = place_info.get("reviews")

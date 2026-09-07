@@ -16,18 +16,13 @@ import smtplib
 import logging
 import secrets
 import re
-import time
-import threading
 import sqlite3
-import hashlib
-import json
-from urllib.parse import urlparse
 from email.message import EmailMessage
 from contextlib import asynccontextmanager
 from typing import Optional
 from email.utils import parseaddr
 
-from fastapi import FastAPI, Request, HTTPException, Query, UploadFile, File
+from fastapi import FastAPI, Request, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -255,63 +250,6 @@ def require_admin(request: Request):
     if not admin:
         raise HTTPException(status_code=403, detail="Administrator account is inactive or no longer authorised")
     return {**session, "admin": admin}
-
-
-CSRF_COOKIE = "csrf_token"
-CSRF_HEADER = "X-CSRF-Token"
-_rate_limit_state = {}
-_rate_limit_lock = threading.Lock()
-
-def enforce_rate_limit(request: Request, bucket: str, limit: int, window_seconds: int):
-    now = time.monotonic()
-    ip = request.client.host if request.client else "unknown"
-    key = (bucket, ip)
-    with _rate_limit_lock:
-        timestamps = [t for t in _rate_limit_state.get(key, []) if now - t < window_seconds]
-        if len(timestamps) >= limit:
-            raise HTTPException(status_code=429, detail="Too many requests. Please try again shortly.")
-        timestamps.append(now)
-        _rate_limit_state[key] = timestamps
-        # Bound memory for long-running processes.
-        if len(_rate_limit_state) > 5000:
-            oldest = sorted(_rate_limit_state.items(), key=lambda item: max(item[1] or [now]))[:500]
-            for old_key, _ in oldest:
-                _rate_limit_state.pop(old_key, None)
-
-CSRF_EXEMPT_MUTATIONS = {
-    "/api/auth/register",
-    "/api/auth/verify-registration",
-    "/api/auth/register/resend",
-    "/api/auth/login",
-    "/admin/login",
-    "/admin/logout",
-    "/api/admin/forgot-password/request",
-    "/api/auth/forgot-password/request",
-    "/api/auth/forgot-password/verify",
-}
-
-def validate_csrf(request: Request):
-    """Double-submit CSRF protection for browser state-changing requests."""
-    cookie = request.cookies.get(CSRF_COOKIE)
-    header = request.headers.get(CSRF_HEADER)
-    if not cookie or not header or not secrets.compare_digest(cookie, header):
-        raise HTTPException(status_code=403, detail="CSRF validation failed")
-    return True
-
-@app.middleware("http")
-async def csrf_cookie_middleware(request: Request, call_next):
-    response = await call_next(request)
-    if request.method in {"GET", "HEAD", "OPTIONS"} and not request.cookies.get(CSRF_COOKIE):
-        response.set_cookie(
-            CSRF_COOKIE,
-            secrets.token_urlsafe(32),
-            httponly=False,
-            secure=request.url.scheme == "https",
-            samesite="lax",
-            max_age=86400,
-            path="/",
-        )
-    return response
 
 
 def normalize_email(raw: str) -> str:
@@ -1578,7 +1516,7 @@ async def resend_registration_otp(data: VerifyRegistrationRequest):
     }
 
 @app.post("/api/auth/login")
-async def unified_login(data: CustomerLoginRequest, request: Request):
+async def unified_login(data: CustomerLoginRequest):
     email = normalize_email(data.email)
     if not is_valid_email(email):
         raise HTTPException(status_code=400, detail="Please enter a valid email address.")
@@ -1621,7 +1559,7 @@ async def unified_login(data: CustomerLoginRequest, request: Request):
         },
         "redirect": "/auth/change-password" if bool(user["must_change_password"] if "must_change_password" in user.keys() else 0) else ("/dashboard" if user_type == "admin" else "/home")
     })
-    response.set_cookie(key="session_id", value=session_id, httponly=True, secure=request.url.scheme == "https", samesite="lax", path="/")
+    response.set_cookie(key="session_id", value=session_id, httponly=True, secure=False, samesite="lax", path="/")
     return response
 
 
@@ -1947,7 +1885,7 @@ async def login(data: LoginRequest, request: Request):
             "token": session_id,
             "data": {"message": "Login successful"}
         })
-        response.set_cookie(key="session_id", value=session_id, httponly=True, secure=request.url.scheme == "https", samesite="lax", path="/")
+        response.set_cookie(key="session_id", value=session_id, httponly=True, secure=False, samesite="lax", path="/")
         logger.info("Admin login success username=%s ip=%s", data.username, client_ip)
         return response
 
@@ -1997,7 +1935,6 @@ async def get_packages(sort: str = "default"):
                COUNT(CASE WHEN b.status != 'cancelled' THEN b.booking_id END) AS booking_count
         FROM Packages p
         LEFT JOIN Bookings b ON b.package_id = p.package_id
-        WHERE p.is_active=1 AND p.deleted_at IS NULL
         GROUP BY p.package_id
         ORDER BY {order_by}
     """)
@@ -2019,381 +1956,110 @@ class PackageCreateRequest(BaseModel):
 class PackageUpdateRequest(PackageCreateRequest):
     pass
 
-def _clean_package_text(value: str, field: str, minimum: int = 0, maximum: int = 150) -> str:
-    value = re.sub(r"\s+", " ", (value or "").strip())
-    if len(value) > maximum:
-        raise HTTPException(status_code=422, detail=f"{field} must be {maximum} characters or fewer")
-    if minimum and len(value) < minimum:
-        raise HTTPException(status_code=422, detail=f"{field} must be at least {minimum} characters")
-    return value
-
-def _validate_image_url(value: str) -> str:
-    value = (value or "").strip()
-    if not value:
-        return ""
-    if len(value) > 2048:
-        raise HTTPException(status_code=422, detail="Image URL is too long")
-    parsed = urlparse(value)
-    if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:
-        raise HTTPException(status_code=422, detail="Image URL must use HTTP or HTTPS")
-    return value
-
-def _validate_package_input(data: PackageCreateRequest):
-    name = _clean_package_text(data.package_name, "Package name", 2, 150)
-    destination = _clean_package_text(data.destination, "Destination", 2, 150)
-    description = _clean_package_text(data.description, "Description", 0, 5000)
-    season = _clean_package_text(data.season_category, "Category", 1, 100) or "standard"
-    if not (data.price >= 0) or data.price > 100_000_000:
-        raise HTTPException(status_code=422, detail="Price must be between 0 and 100000000")
-    if data.available_spots < 0 or data.available_spots > 1_000_000:
-        raise HTTPException(status_code=422, detail="Available seats must be between 0 and 1000000")
-    if data.duration < 1 or data.duration > 3650:
-        raise HTTPException(status_code=422, detail="Duration must be between 1 and 3650 days")
-    return name, destination, description, season, _validate_image_url(data.image_url)
-
-def _find_duplicate_package(c, name, destination, duration, exclude_id=None):
-    sql = """SELECT package_id FROM Packages
-             WHERE is_active=1 AND deleted_at IS NULL
-               AND LOWER(TRIM(package_name))=LOWER(TRIM(?))
-               AND LOWER(TRIM(destination))=LOWER(TRIM(?))
-               AND duration=?"""
-    params = [name, destination, duration]
-    if exclude_id is not None:
-        sql += " AND package_id != ?"
-        params.append(exclude_id)
-    sql += " LIMIT 1"
-    c.execute(sql, params)
-    return c.fetchone()
-
 @app.post("/api/admin/packages")
 async def create_package(data: PackageCreateRequest, request: Request):
-    session = require_admin(request)
-    validate_csrf(request)
-    enforce_rate_limit(request, "package_mutation", 30, 60)
-    name, destination, description, season, image_url = _validate_package_input(data)
+    require_admin(request)
+    name = data.package_name.strip()
+    destination = data.destination.strip()
+    if not name or not destination:
+        raise HTTPException(status_code=400, detail="Package name and destination are required.")
+    if data.price <= 0:
+        raise HTTPException(status_code=400, detail="Price must be greater than 0.")
+    if data.available_spots < 0:
+        raise HTTPException(status_code=400, detail="Available seats cannot be negative.")
+    if data.duration < 1:
+        raise HTTPException(status_code=400, detail="Duration must be at least 1 day.")
 
-    conn = get_db_connection()
+    conn = get_db_connection(); c = conn.cursor()
     try:
-        conn.execute("BEGIN IMMEDIATE")
-        c = conn.cursor()
-        if _find_duplicate_package(c, name, destination, data.duration):
-            raise HTTPException(status_code=409, detail="A package with the same name, destination and duration already exists.")
         status = "Available" if data.available_spots > 0 else "Unavailable"
         c.execute("""INSERT INTO Packages
-            (package_name,destination,price,duration,description,availability_status,season_category,image_url,
-             available_spots,total_spots,is_active,deleted_at,created_at,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,1,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)""",
-            (name, destination, float(data.price), int(data.duration), description, status, season,
-             image_url, int(data.available_spots), int(data.available_spots)))
+            (package_name,destination,price,duration,description,availability_status,season_category,image_url,available_spots,total_spots)
+            VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (name,destination,float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),data.image_url.strip(),int(data.available_spots),int(data.available_spots)))
         package_id = c.lastrowid
         conn.commit()
-    except HTTPException:
-        conn.rollback()
-        raise
     except sqlite3.IntegrityError as exc:
         conn.rollback()
-        logger.exception("Package create integrity error")
-        raise HTTPException(status_code=409, detail="Package could not be created due to a database conflict.") from exc
-    except Exception as exc:
-        conn.rollback()
-        logger.exception("Package create failed")
-        raise HTTPException(status_code=500, detail="Package could not be created.") from exc
+        raise HTTPException(status_code=409, detail="Unable to create package. A package with these details may already exist.") from exc
     finally:
         conn.close()
-    record_admin_audit(session, "PACKAGE_CREATED", "package", package_id, json.dumps({"name": name, "destination": destination}))
+    session = get_session_from_request(request) or {}
+    record_admin_audit(session, "Created package", "package", package_id, f"{name} | price={data.price} | seats={data.available_spots}")
     return {"success": True, "data": {"package_id": package_id, "message": "Package created successfully."}}
 
 @app.put("/api/admin/packages/{package_id}")
 async def update_package(package_id: int, data: PackageUpdateRequest, request: Request):
-    session = require_admin(request)
-    validate_csrf(request)
-    enforce_rate_limit(request, "package_mutation", 30, 60)
-    name, destination, description, season, image_url = _validate_package_input(data)
-    conn = get_db_connection()
-    try:
-        conn.execute("BEGIN IMMEDIATE")
-        c = conn.cursor()
-        c.execute("""SELECT package_id, is_active, deleted_at, available_spots, total_spots
-                     FROM Packages WHERE package_id=?""", (package_id,))
-        existing = c.fetchone()
-        if not existing or existing["deleted_at"] is not None:
-            raise HTTPException(status_code=404, detail="Package not found")
-        if _find_duplicate_package(c, name, destination, data.duration, package_id):
-            raise HTTPException(status_code=409, detail="A package with the same name, destination and duration already exists.")
-        available = int(data.available_spots)
-        total = max(int(existing["total_spots"] or 0), available)
-        status = "Available" if available > 0 and int(existing["is_active"] or 1) else "Unavailable"
-        c.execute("""UPDATE Packages SET package_name=?,destination=?,price=?,duration=?,description=?,
-                     availability_status=?,season_category=?,image_url=?,available_spots=?,total_spots=?,
-                     updated_at=CURRENT_TIMESTAMP WHERE package_id=?""",
-                  (name, destination, float(data.price), int(data.duration), description, status, season,
-                   image_url, available, total, package_id))
-        conn.commit()
-    except HTTPException:
-        conn.rollback()
-        raise
-    except Exception as exc:
-        conn.rollback()
-        logger.exception("Package update failed")
-        raise HTTPException(status_code=500, detail="Package could not be updated.") from exc
-    finally:
-        conn.close()
-    record_admin_audit(session, "PACKAGE_UPDATED", "package", package_id, json.dumps({"name": name}))
+    require_admin(request)
+    if data.price <= 0 or data.available_spots < 0 or data.duration < 1:
+        raise HTTPException(status_code=400, detail="Price, duration and available seats must be valid.")
+    conn = get_db_connection(); c = conn.cursor()
+    c.execute("SELECT package_id FROM Packages WHERE package_id=?", (package_id,))
+    if not c.fetchone():
+        conn.close(); raise HTTPException(status_code=404, detail="Package not found")
+    status = "Available" if data.available_spots > 0 else "Unavailable"
+    c.execute("""UPDATE Packages SET package_name=?,destination=?,price=?,duration=?,description=?,availability_status=?,season_category=?,image_url=?,available_spots=?,total_spots=? WHERE package_id=?""",
+              (data.package_name.strip(),data.destination.strip(),float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),data.image_url.strip(),int(data.available_spots),int(data.available_spots),package_id))
+    conn.commit(); conn.close()
+    record_admin_audit(require_admin(request), "Updated package", "package", package_id, f"{data.package_name} | price={data.price} | seats={data.available_spots}")
     return {"success": True, "data": {"message": "Package updated successfully."}}
 
-@app.delete("/api/admin/packages/{package_id}")
-async def archive_package(package_id: int, request: Request):
-    session = require_admin(request)
-    validate_csrf(request)
-    enforce_rate_limit(request, "package_mutation", 30, 60)
-    conn = get_db_connection()
-    try:
-        conn.execute("BEGIN IMMEDIATE")
-        c = conn.cursor()
-        c.execute("SELECT package_id, package_name, deleted_at FROM Packages WHERE package_id=?", (package_id,))
-        row = c.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Package not found")
-        if row["deleted_at"] is not None:
-            conn.commit()
-            return {"success": True, "data": {"message": "Package is already archived."}}
-        c.execute("""UPDATE Packages SET is_active=0, availability_status='Unavailable',
-                     updated_at=CURRENT_TIMESTAMP, deleted_at=CURRENT_TIMESTAMP
-                     WHERE package_id=?""", (package_id,))
-        conn.commit()
-    except HTTPException:
-        conn.rollback()
-        raise
-    except Exception as exc:
-        conn.rollback()
-        logger.exception("Package archive failed")
-        raise HTTPException(status_code=500, detail="Package could not be archived.") from exc
-    finally:
-        conn.close()
-    record_admin_audit(session, "PACKAGE_ARCHIVED", "package", package_id, row["package_name"])
-    return {"success": True, "data": {"message": "Package archived successfully."}}
-
-@app.post("/api/admin/packages/{package_id}/activate")
-async def activate_package(package_id: int, request: Request):
-    session = require_admin(request)
-    validate_csrf(request)
-    enforce_rate_limit(request, "package_mutation", 30, 60)
-    conn = get_db_connection()
-    try:
-        conn.execute("BEGIN IMMEDIATE")
-        c = conn.cursor()
-        c.execute("SELECT package_id, available_spots, total_spots, deleted_at FROM Packages WHERE package_id=?", (package_id,))
-        row = c.fetchone()
-        if not row or row["deleted_at"] is not None:
-            raise HTTPException(status_code=404, detail="Package not found")
-        if int(row["available_spots"] or 0) <= 0:
-            raise HTTPException(status_code=409, detail="Set available capacity before activating this package.")
-        c.execute("""UPDATE Packages SET is_active=1, availability_status='Available',
-                     updated_at=CURRENT_TIMESTAMP WHERE package_id=?""", (package_id,))
-        conn.commit()
-    except HTTPException:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
-    record_admin_audit(session, "PACKAGE_ACTIVATED", "package", package_id)
-    return {"success": True, "data": {"message": "Package activated successfully."}}
-
-@app.post("/api/admin/packages/{package_id}/deactivate")
-async def deactivate_package(package_id: int, request: Request):
-    session = require_admin(request)
-    validate_csrf(request)
-    enforce_rate_limit(request, "package_mutation", 30, 60)
-    conn = get_db_connection()
-    try:
-        conn.execute("BEGIN IMMEDIATE")
-        c = conn.cursor()
-        c.execute("SELECT package_id FROM Packages WHERE package_id=? AND deleted_at IS NULL", (package_id,))
-        if not c.fetchone():
-            raise HTTPException(status_code=404, detail="Package not found")
-        c.execute("""UPDATE Packages SET is_active=0, availability_status='Unavailable',
-                     updated_at=CURRENT_TIMESTAMP WHERE package_id=?""", (package_id,))
-        conn.commit()
-    except HTTPException:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
-    record_admin_audit(session, "PACKAGE_DEACTIVATED", "package", package_id)
-    return {"success": True, "data": {"message": "Package deactivated successfully."}}
-
 @app.get("/api/admin/packages")
-async def get_admin_packages(
-    request: Request,
-    q: str = "",
-    status: str = "",
-    category: str = "",
-    destination: str = "",
-    sort: str = "id_asc",
-    include_archived: bool = True,
-):
+async def get_admin_packages(request: Request):
     require_admin(request)
-    q = re.sub(r"\s+", " ", (q or "").strip())[:150]
-    status = (status or "").strip()[:50]
-    category = (category or "").strip()[:100]
-    destination = (destination or "").strip()[:150]
-    sort_map = {
-        "id_asc": "package_id ASC",
-        "id_desc": "package_id DESC",
-        "name_asc": "package_name COLLATE NOCASE ASC, package_id ASC",
-        "price_asc": "price ASC, package_id ASC",
-        "price_desc": "price DESC, package_id ASC",
-        "updated_desc": "updated_at DESC, package_id DESC",
-    }
-    order_by = sort_map.get(sort, sort_map["id_asc"])
-    where = ["1=1"]
-    params = []
-    if not include_archived:
-        where.append("deleted_at IS NULL")
-    if q:
-        where.append("(LOWER(package_name) LIKE LOWER(?) OR LOWER(destination) LIKE LOWER(?) OR LOWER(description) LIKE LOWER(?))")
-        like = f"%{q}%"
-        params.extend([like, like, like])
-    if status:
-        where.append("availability_status=?")
-        params.append(status)
-    if category:
-        where.append("LOWER(season_category)=LOWER(?)")
-        params.append(category)
-    if destination:
-        where.append("LOWER(destination)=LOWER(?)")
-        params.append(destination)
     conn = get_db_connection()
-    try:
-        c = conn.cursor()
-        c.execute(f"""SELECT package_id, package_name, destination, price, duration, description,
-                     availability_status, season_category, image_url,
-                     COALESCE(available_spots,0) AS available_spots,
-                     COALESCE(total_spots,0) AS total_spots,
-                     is_active, deleted_at, created_at, updated_at
-                     FROM Packages WHERE {' AND '.join(where)} ORDER BY {order_by}""", params)
-        packages = [dict(row) for row in c.fetchall()]
-    finally:
-        conn.close()
+    c = conn.cursor()
+    c.execute("SELECT package_id, package_name, destination, price, duration, description, availability_status, season_category, image_url, COALESCE(available_spots,0) as available_spots, COALESCE(total_spots,0) as total_spots FROM Packages ORDER BY package_id ASC")
+    packages = [dict(row) for row in c.fetchall()]
+    conn.close()
     return {"success": True, "data": packages}
+
 
 class PackageSpotsRequest(BaseModel):
     available_spots: int
     total_spots: int = 0
 
+
 @app.put("/api/admin/packages/{package_id}/spots")
 async def set_package_spots(package_id: int, data: PackageSpotsRequest, request: Request):
-    session = require_admin(request)
-    validate_csrf(request)
-    enforce_rate_limit(request, "package_mutation", 30, 60)
-    if data.available_spots < 0 or data.available_spots > 1_000_000:
-        raise HTTPException(status_code=422, detail="Available spots must be between 0 and 1000000")
-    total = int(data.total_spots or 0)
+    require_admin(request)
+
+    if data.available_spots < 0:
+        raise HTTPException(status_code=400, detail="Available spots cannot be negative")
+
+    total = data.total_spots if data.total_spots and data.total_spots > 0 else data.available_spots
+    if data.available_spots > total:
+        total = data.available_spots
+
     conn = get_db_connection()
-    try:
-        conn.execute("BEGIN IMMEDIATE")
-        c = conn.cursor()
-        c.execute("SELECT available_spots,total_spots,is_active,deleted_at FROM Packages WHERE package_id=?", (package_id,))
-        row = c.fetchone()
-        if not row or row["deleted_at"] is not None:
-            raise HTTPException(status_code=404, detail="Package not found")
-        if total <= 0:
-            total = max(int(row["total_spots"] or 0), int(data.available_spots))
-        if data.available_spots > total:
-            raise HTTPException(status_code=422, detail="Available spots cannot exceed total capacity")
-        status = "Available" if data.available_spots > 0 and int(row["is_active"] or 0) else "Unavailable"
-        c.execute("""UPDATE Packages SET available_spots=?, total_spots=?, availability_status=?,
-                     updated_at=CURRENT_TIMESTAMP WHERE package_id=?""",
-                  (int(data.available_spots), total, status, package_id))
-        conn.commit()
-    except HTTPException:
-        conn.rollback()
-        raise
-    finally:
+    c = conn.cursor()
+
+    c.execute("SELECT package_id FROM Packages WHERE package_id=?", (package_id,))
+    if not c.fetchone():
         conn.close()
-    record_admin_audit(session, "PACKAGE_CAPACITY_UPDATED", "package", package_id,
-                       json.dumps({"available_spots": data.available_spots, "total_spots": total}))
+        raise HTTPException(status_code=404, detail="Package not found")
+
+    # Update spots and derive availability status
+    if data.available_spots > 0:
+        status = "Available"
+    else:
+        status = "Unavailable"
+
+    c.execute(
+        "UPDATE Packages SET available_spots=?, total_spots=?, availability_status=? WHERE package_id=?",
+        (data.available_spots, total, status, package_id)
+    )
+    conn.commit()
+    conn.close()
+
     return {"success": True, "data": {"message": "Package availability updated", "available_spots": data.available_spots, "total_spots": total, "availability_status": status}}
 
-@app.post("/api/admin/packages/{package_id}/image")
-async def upload_package_image(package_id: int, request: Request, image: UploadFile = File(...)):
-    session = require_admin(request)
-    validate_csrf(request)
-    enforce_rate_limit(request, "package_mutation", 30, 60)
-    max_bytes = 5 * 1024 * 1024
-    data = await image.read(max_bytes + 1)
-    if len(data) > max_bytes:
-        raise HTTPException(status_code=422, detail="Image exceeds the 5 MB limit.")
-
-    signatures = {
-        b"\xff\xd8\xff": ("jpg", "image/jpeg"),
-        b"\x89PNG\r\n\x1a\n": ("png", "image/png"),
-        b"GIF87a": ("gif", "image/gif"),
-        b"GIF89a": ("gif", "image/gif"),
-        b"RIFF": ("webp", "image/webp"),
-    }
-    detected = None
-    for signature, value in signatures.items():
-        if data.startswith(signature):
-            if value[0] == "webp" and data[8:12] != b"WEBP":
-                continue
-            detected = value
-            break
-    if not detected:
-        raise HTTPException(status_code=422, detail="Unsupported or invalid image file.")
-    ext, _mime = detected
-
-    conn = get_db_connection()
-    try:
-        conn.execute("BEGIN IMMEDIATE")
-        c = conn.cursor()
-        c.execute("SELECT package_id, image_url FROM Packages WHERE package_id=? AND deleted_at IS NULL", (package_id,))
-        row = c.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Package not found")
-
-        upload_dir = os.path.join(BASE_DIR, "static", "uploads", "packages")
-        os.makedirs(upload_dir, exist_ok=True)
-        filename = f"{secrets.token_hex(20)}.{ext}"
-        destination = os.path.join(upload_dir, filename)
-        with open(destination, "wb") as fh:
-            fh.write(data)
-
-        public_url = f"/static/uploads/packages/{filename}"
-        c.execute("UPDATE Packages SET image_url=?, updated_at=CURRENT_TIMESTAMP WHERE package_id=?",
-                  (public_url, package_id))
-        conn.commit()
-    except HTTPException:
-        conn.rollback()
-        raise
-    except Exception as exc:
-        conn.rollback()
-        logger.exception("Package image upload failed")
-        try:
-            if 'destination' in locals() and os.path.exists(destination):
-                os.remove(destination)
-        except Exception:
-            logger.exception("Failed to clean up package image after rollback")
-        raise HTTPException(status_code=500, detail="Package image could not be saved.") from exc
-    finally:
-        conn.close()
-
-    old_url = row["image_url"] if row else ""
-    if isinstance(old_url, str) and old_url.startswith("/static/uploads/packages/"):
-        old_file = os.path.join(BASE_DIR, old_url[len("/static/"):])
-        try:
-            if os.path.abspath(old_file).startswith(os.path.abspath(os.path.join(BASE_DIR, "static", "uploads", "packages")) + os.sep) and os.path.exists(old_file):
-                os.remove(old_file)
-        except Exception:
-            logger.warning("Package image replaced but old image cleanup failed for package_id=%s", package_id)
-    record_admin_audit(session, "PACKAGE_IMAGE_UPDATED", "package", package_id, public_url)
-    return {"success": True, "data": {"image_url": public_url}}
 
 @app.get("/api/packages/{package_id}")
 async def get_package_by_id(package_id: int):
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT * FROM Packages WHERE package_id=? AND is_active=1 AND deleted_at IS NULL", (package_id,))
+    c.execute("SELECT * FROM Packages WHERE package_id=?", (package_id,))
     package = c.fetchone()
     conn.close()
     if not package:
@@ -2542,83 +2208,6 @@ async def create_booking(data: BookingRequest, request: Request):
 
     return {"success": True, "data": {"message": "Booking successful!", "booking_id": booking_id, "booking": booking_summary, "email_sent": email_sent}}
 
-class BookingCancellationRequest(BaseModel):
-    reason: str = ""
-
-@app.post("/api/bookings/{booking_id}/cancel")
-async def cancel_booking(booking_id: int, request: Request, data: BookingCancellationRequest = BookingCancellationRequest()):
-    session = get_session_from_request(request)
-    if not session:
-        raise HTTPException(status_code=401, detail="Please login first")
-    validate_csrf(request)
-    enforce_rate_limit(request, "booking_cancel", 20, 60)
-    enforce_rate_limit(request, "booking_create", 10, 60)
-    reason = re.sub(r"\s+", " ", (data.reason or "").strip())
-    if len(reason) > 500:
-        raise HTTPException(status_code=422, detail="Cancellation reason must be 500 characters or fewer")
-
-    conn = get_db_connection()
-    try:
-        conn.execute("BEGIN IMMEDIATE")
-        c = conn.cursor()
-        if session.get("role") == "admin":
-            c.execute("""SELECT b.booking_id,b.customer_id,b.package_id,b.status,b.number_of_travelers,
-                                p.package_name
-                         FROM Bookings b JOIN Packages p ON p.package_id=b.package_id
-                         WHERE b.booking_id=?""", (booking_id,))
-        else:
-            c.execute("""SELECT b.booking_id,b.customer_id,b.package_id,b.status,b.number_of_travelers,
-                                p.package_name
-                         FROM Bookings b JOIN Packages p ON p.package_id=b.package_id
-                         JOIN Customers cu ON cu.customer_id=b.customer_id
-                         WHERE b.booking_id=? AND (cu.user_id=? OR LOWER(TRIM(cu.email)) =
-                           LOWER(TRIM((SELECT email FROM Users WHERE user_id=?))))""",
-                      (booking_id, session["user_id"], session["user_id"]))
-        booking = c.fetchone()
-        if not booking:
-            raise HTTPException(status_code=404, detail="Booking not found")
-        if (booking["status"] or "").lower() == "cancelled":
-            conn.commit()
-            return {"success": True, "data": {"message": "Booking is already cancelled.", "already_cancelled": True}}
-
-        travelers = max(0, int(booking["number_of_travelers"] or 0))
-        c.execute("""UPDATE Bookings
-                     SET status='cancelled', cancelled_at=CURRENT_TIMESTAMP,
-                         cancelled_by=?, cancellation_reason=?
-                     WHERE booking_id=? AND status != 'cancelled'""",
-                  (session["user_id"], reason, booking_id))
-        if c.rowcount != 1:
-            conn.rollback()
-            return {"success": True, "data": {"message": "Booking is already cancelled.", "already_cancelled": True}}
-
-        # Restore capacity exactly once. Never exceed recorded total capacity.
-        c.execute("""UPDATE Packages
-                     SET available_spots=MIN(COALESCE(total_spots, available_spots + ?),
-                                             COALESCE(available_spots,0) + ?),
-                         availability_status=CASE
-                           WHEN is_active=1 AND deleted_at IS NULL
-                                AND MIN(COALESCE(total_spots, available_spots + ?),
-                                        COALESCE(available_spots,0) + ?) > 0
-                           THEN 'Available' ELSE 'Unavailable' END,
-                         updated_at=CURRENT_TIMESTAMP
-                     WHERE package_id=?""",
-                  (travelers, travelers, travelers, travelers, booking["package_id"]))
-        conn.commit()
-    except HTTPException:
-        conn.rollback()
-        raise
-    except Exception as exc:
-        conn.rollback()
-        logger.exception("Booking cancellation failed")
-        raise HTTPException(status_code=500, detail="Booking could not be cancelled.") from exc
-    finally:
-        conn.close()
-
-    if session.get("role") == "admin":
-        record_admin_audit(session, "BOOKING_CANCELLED", "booking", booking_id,
-                           json.dumps({"package_id": booking["package_id"], "travelers": travelers, "reason": reason}))
-    return {"success": True, "data": {"message": "Booking cancelled successfully.", "already_cancelled": False}}
-
 
 @app.get("/api/my-bookings")
 async def get_my_bookings(request: Request):
@@ -2648,6 +2237,759 @@ async def get_my_bookings(request: Request):
     conn.close()
     return {"success": True, "data": bookings}
 
+
+# ============================================================
+# ONE-TIME ADMIN BOOKING DATA RESTORE
+# ============================================================
+
+# ============================================================
+# ONE-TIME ADMIN BOOKING DATA RESTORE / BOOTSTRAP
+# ============================================================
+
+@app.post("/api/admin/restore-demo-bookings")
+async def restore_demo_bookings(request: Request):
+    """
+    Protected administrator utility for bootstrapping the deployed
+    TravelIntel database with demo customers, packages and bookings.
+
+    Behaviour:
+      - Requires an authenticated administrator.
+      - Does NOT delete existing customers or packages.
+      - Creates demo customers only when the Customers table is empty.
+      - Creates demo packages only when the Packages table is empty.
+      - Creates exactly 72 bookings only when there are currently 0 bookings.
+      - Generates exactly 173 travellers.
+      - Targets R3,816,500.00 total booking revenue.
+      - Safe to run again after successful restoration.
+    """
+
+    session = require_admin(request)
+
+    TARGET_BOOKINGS = 72
+    TARGET_TRAVELLERS = 173
+    TARGET_REVENUE = 3_816_500.00
+
+    rng = random.Random(20260815)
+
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    try:
+        # ====================================================
+        # 1. Check current bookings
+        # ====================================================
+
+        c.execute(
+            "SELECT COUNT(*) AS total FROM Bookings"
+        )
+
+        existing_bookings = int(
+            c.fetchone()["total"] or 0
+        )
+
+        if existing_bookings > 0:
+            return {
+                "success": True,
+                "created": 0,
+                "skipped": True,
+                "message": (
+                    f"Booking data already exists "
+                    f"({existing_bookings} bookings). "
+                    "No duplicate bookings were created."
+                ),
+                "data": {
+                    "bookings": existing_bookings,
+                },
+            }
+
+        # ====================================================
+        # 2. Bootstrap customers if none exist
+        # ====================================================
+
+        c.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM Customers
+            """
+        )
+
+        customer_count = int(
+            c.fetchone()["total"] or 0
+        )
+
+        created_customers = 0
+
+        if customer_count == 0:
+
+            demo_customers = [
+                (
+                    "Anele Mokoena",
+                    "anele.mokoena@example.com",
+                    "0710001001",
+                    "Polokwane, Limpopo",
+                ),
+                (
+                    "Bokang Nkosi",
+                    "bokang.nkosi@example.com",
+                    "0710001002",
+                    "Johannesburg, Gauteng",
+                ),
+                (
+                    "Dineo Molefe",
+                    "dineo.molefe@example.com",
+                    "0710001003",
+                    "Pretoria, Gauteng",
+                ),
+                (
+                    "Palesa Khumalo",
+                    "palesa.khumalo@example.com",
+                    "0710001004",
+                    "Mbombela, Mpumalanga",
+                ),
+                (
+                    "Thando Ndlovu",
+                    "thando.ndlovu@example.com",
+                    "0710001005",
+                    "Durban, KwaZulu-Natal",
+                ),
+                (
+                    "Naledi Mokoena",
+                    "naledi.mokoena@example.com",
+                    "0710001006",
+                    "Bloemfontein, Free State",
+                ),
+                (
+                    "Mpho Dlamini",
+                    "mpho.dlamini@example.com",
+                    "0710001007",
+                    "Cape Town, Western Cape",
+                ),
+                (
+                    "Lwandle Zulu",
+                    "lwandle.zulu@example.com",
+                    "0710001008",
+                    "Gqeberha, Eastern Cape",
+                ),
+                (
+                    "Rethabile Molefe",
+                    "rethabile.molefe@example.com",
+                    "0710001009",
+                    "Polokwane, Limpopo",
+                ),
+                (
+                    "Sinethemba Naidoo",
+                    "sinethemba.naidoo@example.com",
+                    "0710001010",
+                    "Durban, KwaZulu-Natal",
+                ),
+            ]
+
+            for name, email, phone, address in demo_customers:
+
+                c.execute(
+                    """
+                    INSERT INTO Customers (
+                        name,
+                        email,
+                        phone,
+                        address,
+                        payment_method
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        name,
+                        email,
+                        phone,
+                        address,
+                        "card",
+                    ),
+                )
+
+                created_customers += 1
+
+        # ====================================================
+        # 3. Read customers
+        # ====================================================
+
+        c.execute(
+            """
+            SELECT
+                customer_id,
+                name,
+                email
+            FROM Customers
+            ORDER BY customer_id
+            """
+        )
+
+        customers = c.fetchall()
+
+        if not customers:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "The Customers table is still empty after "
+                    "the bootstrap attempt."
+                ),
+            )
+
+        # ====================================================
+        # 4. Bootstrap packages if none exist
+        # ====================================================
+
+        c.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM Packages
+            """
+        )
+
+        package_count = int(
+            c.fetchone()["total"] or 0
+        )
+
+        created_packages = 0
+
+        if package_count == 0:
+
+            demo_packages = [
+                (
+                    "Cape Town Explorer",
+                    "Cape Town",
+                    12900,
+                    4,
+                    "Explore Table Mountain, the V&A Waterfront and the Cape Peninsula.",
+                    "Available",
+                    "Africa",
+                ),
+                (
+                    "Zanzibar Jambiani Escape",
+                    "Zanzibar",
+                    17500,
+                    4,
+                    "Relax on the beaches of Jambiani and experience Zanzibar culture.",
+                    "Available",
+                    "Africa",
+                ),
+                (
+                    "Zanzibar Nungwi Paradise",
+                    "Zanzibar",
+                    22500,
+                    4,
+                    "A premium beach holiday on the northern coast of Zanzibar.",
+                    "Available",
+                    "Africa",
+                ),
+                (
+                    "Namibia Swakopmund Adventure",
+                    "Namibia",
+                    17900,
+                    4,
+                    "Experience the desert meeting the Atlantic Ocean.",
+                    "Available",
+                    "Africa",
+                ),
+                (
+                    "Victoria Falls Livingstone",
+                    "Zambia",
+                    26900,
+                    4,
+                    "Discover Victoria Falls and the Zambezi region.",
+                    "Available",
+                    "Africa",
+                ),
+                (
+                    "Dubai 4 Star",
+                    "Dubai",
+                    24900,
+                    5,
+                    "Experience Dubai's modern architecture, culture and desert.",
+                    "Available",
+                    "Middle East",
+                ),
+                (
+                    "Dubai 5 Star",
+                    "Dubai",
+                    29900,
+                    5,
+                    "Premium Dubai accommodation and luxury experiences.",
+                    "Available",
+                    "Middle East",
+                ),
+                (
+                    "Bali Seminyak",
+                    "Bali",
+                    28900,
+                    7,
+                    "Enjoy beaches, culture, restaurants and sunsets in Seminyak.",
+                    "Available",
+                    "Asia",
+                ),
+                (
+                    "Bali Seminyak and Ubud",
+                    "Bali",
+                    30900,
+                    7,
+                    "Combine the beaches of Seminyak with peaceful Ubud.",
+                    "Available",
+                    "Asia",
+                ),
+                (
+                    "Singapore and Bali",
+                    "Singapore/Bali",
+                    35900,
+                    7,
+                    "A combined Singapore city and Bali island experience.",
+                    "Available",
+                    "Asia",
+                ),
+                (
+                    "Thailand Phuket",
+                    "Thailand",
+                    26900,
+                    7,
+                    "Explore Phuket beaches, food, culture and attractions.",
+                    "Available",
+                    "Asia",
+                ),
+                (
+                    "Thailand Phuket and Bangkok",
+                    "Thailand",
+                    30900,
+                    7,
+                    "Experience both Bangkok and Phuket.",
+                    "Available",
+                    "Asia",
+                ),
+                (
+                    "Mauritius Island Escape",
+                    "Mauritius",
+                    25900,
+                    5,
+                    "Enjoy beaches, resorts and island experiences in Mauritius.",
+                    "Available",
+                    "Africa",
+                ),
+                (
+                    "Cape Town Premium",
+                    "Cape Town",
+                    19900,
+                    5,
+                    "A premium Cape Town travel experience.",
+                    "Available",
+                    "Africa",
+                ),
+            ]
+
+            for (
+                package_name,
+                destination,
+                price,
+                duration,
+                description,
+                availability_status,
+                season_category,
+            ) in demo_packages:
+
+                c.execute(
+                    """
+                    INSERT INTO Packages (
+                        package_name,
+                        destination,
+                        price,
+                        duration,
+                        description,
+                        availability_status,
+                        season_category
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        package_name,
+                        destination,
+                        price,
+                        duration,
+                        description,
+                        availability_status,
+                        season_category,
+                    ),
+                )
+
+                created_packages += 1
+
+        # ====================================================
+        # 5. Read packages
+        # ====================================================
+
+        c.execute(
+            """
+            SELECT
+                package_id,
+                package_name,
+                destination,
+                price
+            FROM Packages
+            ORDER BY package_id
+            """
+        )
+
+        packages = c.fetchall()
+
+        if not packages:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "The Packages table is still empty after "
+                    "the bootstrap attempt."
+                ),
+            )
+
+        # ====================================================
+        # 6. Generate exactly 173 travellers across 72 bookings
+        # ====================================================
+
+        traveller_counts = [1] * TARGET_BOOKINGS
+
+        remaining_travellers = (
+            TARGET_TRAVELLERS - TARGET_BOOKINGS
+        )
+
+        while remaining_travellers > 0:
+
+            eligible = [
+                index
+                for index, value in enumerate(traveller_counts)
+                if value < 5
+            ]
+
+            if not eligible:
+                raise HTTPException(
+                    status_code=500,
+                    detail=(
+                        "Unable to distribute the required "
+                        "number of travellers."
+                    ),
+                )
+
+            index = rng.choice(eligible)
+
+            traveller_counts[index] += 1
+            remaining_travellers -= 1
+
+        # ====================================================
+        # 7. Generate booking records
+        # ====================================================
+
+        today = datetime.date.today()
+
+        booking_start = (
+            today - datetime.timedelta(days=180)
+        )
+
+        generated = []
+
+        for index in range(TARGET_BOOKINGS):
+
+            customer = customers[
+                rng.randrange(len(customers))
+            ]
+
+            package = packages[
+                rng.randrange(len(packages))
+            ]
+
+            booking_date = (
+                booking_start
+                + datetime.timedelta(
+                    days=rng.randint(0, 180)
+                )
+            )
+
+            travel_date = (
+                booking_date
+                + datetime.timedelta(
+                    days=rng.randint(7, 90)
+                )
+            )
+
+            travelers = traveller_counts[index]
+
+            package_price = float(
+                package["price"] or 0
+            )
+
+            if package_price <= 0:
+                package_price = 15000.00
+
+            raw_amount = (
+                package_price * travelers
+            )
+
+            generated.append(
+                {
+                    "customer_id": customer["customer_id"],
+                    "package_id": package["package_id"],
+                    "booking_date": booking_date.isoformat(),
+                    "travel_date": travel_date.isoformat(),
+                    "number_of_travelers": travelers,
+                    "raw_amount": raw_amount,
+                }
+            )
+
+        # ====================================================
+        # 8. Scale revenue to R3,816,500
+        # ====================================================
+
+        raw_total = sum(
+            row["raw_amount"]
+            for row in generated
+        )
+
+        if raw_total <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Unable to calculate booking revenue."
+            )
+
+        scale = (
+            TARGET_REVENUE / raw_total
+        )
+
+        for row in generated:
+            row["total_amount"] = round(
+                row["raw_amount"] * scale,
+                2,
+            )
+
+        # Fix rounding difference
+        current_total = round(
+            sum(
+                row["total_amount"]
+                for row in generated
+            ),
+            2,
+        )
+
+        difference = round(
+            TARGET_REVENUE - current_total,
+            2,
+        )
+
+        generated[-1]["total_amount"] = round(
+            generated[-1]["total_amount"]
+            + difference,
+            2,
+        )
+
+        # ====================================================
+        # 9. Detect optional revenue column
+        # ====================================================
+
+        c.execute(
+            "PRAGMA table_info(Bookings)"
+        )
+
+        booking_columns = {
+            row["name"]
+            for row in c.fetchall()
+        }
+
+        has_revenue = (
+            "revenue" in booking_columns
+        )
+
+        # ====================================================
+        # 10. Insert bookings
+        # ====================================================
+
+        payment_methods = [
+            "card",
+            "card",
+            "card",
+            "bank_transfer",
+        ]
+
+        for row in generated:
+
+            payment_method = rng.choice(
+                payment_methods
+            )
+
+            if has_revenue:
+
+                c.execute(
+                    """
+                    INSERT INTO Bookings (
+                        customer_id,
+                        package_id,
+                        booking_date,
+                        travel_date,
+                        number_of_travelers,
+                        total_amount,
+                        status,
+                        payment_method,
+                        revenue
+                    )
+                    VALUES (
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    )
+                    """,
+                    (
+                        row["customer_id"],
+                        row["package_id"],
+                        row["booking_date"],
+                        row["travel_date"],
+                        row["number_of_travelers"],
+                        row["total_amount"],
+                        "confirmed",
+                        payment_method,
+                        row["total_amount"],
+                    ),
+                )
+
+            else:
+
+                c.execute(
+                    """
+                    INSERT INTO Bookings (
+                        customer_id,
+                        package_id,
+                        booking_date,
+                        travel_date,
+                        number_of_travelers,
+                        total_amount,
+                        status,
+                        payment_method
+                    )
+                    VALUES (
+                        ?, ?, ?, ?, ?, ?, ?, ?
+                    )
+                    """,
+                    (
+                        row["customer_id"],
+                        row["package_id"],
+                        row["booking_date"],
+                        row["travel_date"],
+                        row["number_of_travelers"],
+                        row["total_amount"],
+                        "confirmed",
+                        payment_method,
+                    ),
+                )
+
+        # ====================================================
+        # 11. Verify before commit
+        # ====================================================
+
+        c.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM Bookings
+            """
+        )
+
+        final_booking_count = int(
+            c.fetchone()["total"] or 0
+        )
+
+        c.execute(
+            """
+            SELECT
+                COALESCE(
+                    SUM(number_of_travelers), 0
+                ) AS total
+            FROM Bookings
+            WHERE status != 'cancelled'
+            """
+        )
+
+        final_traveller_count = int(
+            c.fetchone()["total"] or 0
+        )
+
+        c.execute(
+            """
+            SELECT
+                COALESCE(
+                    SUM(total_amount), 0
+                ) AS total
+            FROM Bookings
+            WHERE status != 'cancelled'
+            """
+        )
+
+        final_revenue = float(
+            c.fetchone()["total"] or 0
+        )
+
+        # ====================================================
+        # 12. Commit
+        # ====================================================
+
+        conn.commit()
+
+        # ====================================================
+        # 13. Audit administrator action
+        # ====================================================
+
+        record_admin_audit(
+            session,
+            "Restored demo booking dataset",
+            "bookings",
+            None,
+            (
+                f"Created {TARGET_BOOKINGS} bookings, "
+                f"{TARGET_TRAVELLERS} travellers. "
+                f"Created {created_customers} demo customers "
+                f"and {created_packages} demo packages. "
+                f"Target revenue R{TARGET_REVENUE:,.2f}. "
+                f"Final revenue "
+                f"R{final_revenue:,.2f}."
+            ),
+        )
+
+        return {
+            "success": True,
+            "created": TARGET_BOOKINGS,
+            "skipped": False,
+            "message": (
+                "Booking dataset restored successfully."
+            ),
+            "data": {
+                "bookings": final_booking_count,
+                "travellers": final_traveller_count,
+                "revenue": round(
+                    final_revenue,
+                    2,
+                ),
+                "customers_created": created_customers,
+                "packages_created": created_packages,
+            },
+        }
+
+    except HTTPException:
+        conn.rollback()
+        raise
+
+    except Exception as exc:
+
+        conn.rollback()
+
+        logger.exception(
+            "Booking dataset restore failed"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Booking restore failed: "
+                f"{exc}"
+            ),
+        )
+
+    finally:
+        conn.close()
 
 # ============================================================
 # ADMIN DASHBOARD API (FIXED — require_admin now reads cookies)

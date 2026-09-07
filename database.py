@@ -1,5 +1,6 @@
 import datetime
 import os
+import random
 import shutil
 import sqlite3
 
@@ -11,6 +12,28 @@ from config import DB_PATH, BACKUPS_DIR
 ADMIN_EMAIL = os.environ.get("DEFAULT_ADMIN_EMAIL", "skalahante@gmail.com")
 ADMIN_USERNAME = os.environ.get("DEFAULT_ADMIN_USERNAME", "skalahante")
 ADMIN_PASSWORD = os.environ.get("DEFAULT_ADMIN_PASSWORD", "TravelIntel#ChangeMe2026")
+
+
+DALANI_PACKAGES = [
+    ("Cape Town", "Cape Town", 12900, 4, "Embarking on a journey to Cape Town ignites a sense of adventure, promising home bound travellers an unforgettable experience filled with diverse landscapes, vibrant culture, and endless opportunities for exploration. From the iconic Table Mountain views to the pristine Atlantic coastline, this package offers a perfect blend of urban sophistication and natural wonder.", "Available", "Africa", "https://images.unsplash.com/photo-1580619305218-8423a7ef79b4?q=80&w=1400&auto=format&fit=crop"),
+    ("Zanzibar, Jambiani", "Zanzibar", 17500, 4, "Embark on a South African adventure to Jambiani, a hidden gem on the southeastern coast of Zanzibar. Known for its serene beaches, cultural charm, and laid-back atmosphere, Jambiani invites you to experience a slice of paradise. Enjoy turquoise waters, traditional dhow sailing, and the authentic spice-island hospitality that makes Zanzibar unique.", "Available", "Africa", "https://images.unsplash.com/photo-1586861635167-e5223aadc9fe?q=80&w=1400&auto=format&fit=crop"),
+    ("Zanzibar, Nungwi", "Zanzibar", 22500, 4, "Embark on an unforgettable journey from South Africa to the tropical haven of Nungwi in Zanzibar. Nestled on the northern tip of the island, Nungwi is a breathtaking destination, pristine beaches, crystal-clear waters, & a vibrant local culture that promises an enriching escape. This package features premium beachfront accommodation and access to the best diving spots.", "Available", "Africa", "https://images.unsplash.com/photo-1519046904884-53103b34b206?q=80&w=1400&auto=format&fit=crop"),
+    ("Zanzibar, Paje", "Zanzibar", 23000, 4, "Embark on an extraordinary journey from South Africa to Paje, Zanzibar, a coastal haven on the southeast coast of Zanzibar. Known for its pristine beaches, water sports allure, and vibrant atmosphere, Paje promises an unforgettable escape. Perfect for kite-surfers and sun-seekers alike, with world-class resorts and a lively night scene.", "Unavailable", "Africa", "https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=1400&auto=format&fit=crop"),
+    ("Namibia, Swakopmund", "Namibia", 17900, 4, "Our Namibia Swakopmund Travel Package invites you to discover the hidden gems of this coastal jewel. Dive into the heart of Swakopmund, where German colonial charm intertwines with African vibrancy. Experience the thrill of the desert meeting the ocean, with activities ranging from sandboarding to scenic coastal flights.", "Available", "Africa", "https://images.unsplash.com/photo-1547127796-06bb04e4b315?q=80&w=1400&auto=format&fit=crop"),
+    ("Zambia, Livingston", "Zambia", 26900, 4, "Zambia, is a destination renowned for its natural beauty, rich history, and adventurous spirit. Named after the famous explorer David Livingstone, who first set eyes on the awe-inspiring Victoria Falls, Livingstone is a gateway to one of the most spectacular natural wonders of the world. Witness the smoke that thunders and explore the rich wildlife of the Zambezi.", "Available", "Africa", "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?q=80&w=1400&auto=format&fit=crop"),
+    ("Dubai (4 Star)", "Dubai", 24900, 5, "Embark on a journey from South Africa to Dubai, a dazzling metropolis known for its opulence, modern marvels, and cultural richness. Indulge in the grandeur of Dubai, where luxury meets adventure in the heart of the Arabian desert. Visit the Burj Khalifa, explore the gold souks, and experience the futuristic architecture of this global hub.", "Available", "Middle East", "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=1400&auto=format&fit=crop"),
+    ("Dubai (5 Star)", "Dubai", 29900, 5, "Embark on a journey to Dubai, where extravagance and adventure await. Dubai invites you to a world of unparalleled opulence. Book your trip now and immerse yourself in the grandeur of this dynamic city. This premium package includes stays in the world's most luxurious hotels and exclusive access to desert safaris.", "Available", "Middle East", "https://images.unsplash.com/photo-1518684079-3c830dcef090?q=80&w=1400&auto=format&fit=crop"),
+    ("Bali, Seminyak", "Bali", 28900, 7, "Embark on an enchanting journey from South Africa to Seminyak, a vibrant paradise nestled on the shores of Bali. Known for its exotic charm, stunning beaches, and lively atmosphere, Seminyak beckons you to experience the best of Indonesian hospitality. Discover high-end boutiques, world-class dining, and breathtaking sunset views from coastal clubs.", "Available", "Asia", "https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=1400&auto=format&fit=crop"),
+    ("Bali, Seminyak & Ubud", "Bali", 30900, 7, "Embark on a Luxurious Bali Escape – 4 Nights of Coastal Bliss in Seminyak, Followed by 3 Nights of Tranquility in a Balinese Villa in Ubud – Your Exotic Getaway from South Africa! This dual-experience package lets you enjoy the energetic beach life of Seminyak and the spiritual, lush green heart of Ubud's rice terraces.", "Available", "Asia", "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?q=80&w=1400&auto=format&fit=crop"),
+    ("Singapore & Bali", "Singapore/Bali", 35900, 7, "Embark on an unforgettable journey to Bali and Singapore, where ancient traditions blend seamlessly with modern marvels. This dynamic duo offers a diverse array of experiences, from tranquil beach retreats to bustling urban adventures. Explore Singapore's Gardens by the Bay before heading to the spiritual temples and beaches of Bali.", "Unavailable", "Asia", "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?q=80&w=1400&auto=format&fit=crop"),
+    ("Thailand; Phuket", "Thailand", 26900, 7, "Welcome to the enchanting paradise of Phuket, Thailand, where a kaleidoscope of wonders awaits at every turn. This captivating destination beckons holidaymakers with its magnetic blend of culture, cuisine, adventure, and excitement. From the crystal waters of Patong Beach to the Big Buddha views, Phuket is an island dream come true.", "Available", "Asia", "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=1400&auto=format&fit=crop"),
+    ("Thailand; Phuket & Bangkok", "Thailand", 30900, 7, "Get ready to embark on an unforgettable journey to the captivating destinations of Phuket and Bangkok, Thailand. As you prepare to explore these vibrant cities, allow us to share why we love them and why we’re certain you’ll fall in love too. Experience the bustling street life of Bangkok and the serene tropical beauty of Phuket's coastline.", "Available", "Asia", "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?q=80&w=1400&auto=format&fit=crop"),
+    ("Mauritius", "Mauritius", 25900, 5, "Mauritius, a captivating destination that transcends the ordinary, weaves a tapestry of enchantment, blending pristine beaches and a harmonious blend of cultures. Its warmth and genuine friendliness make visitors feel like cherished members of a vibrant community. Enjoy world-class resorts, coral reefs, and the unique flora of the Black River Gorges.", "Available", "Africa", "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?q=80&w=1400&auto=format&fit=crop"),
+]
+
+
+FIRST_NAMES = ["Anele", "Bokang", "Chipo", "Dineo", "Esethu", "Fikile", "Gugu", "Hlompho", "Imani", "Jabu", "Khumo", "Lwandle", "Mpho", "Naledi", "Olwethu", "Palesa", "Que", "Rethabile", "Sinethemba", "Thando"]
+LAST_NAMES = ["Mokoena", "Nkosi", "Pillay", "Ndlovu", "Molefe", "Khumalo", "Dlamini", "Zulu", "Mabena", "Sibanda", "Naidoo", "van Wyk", "Botha", "Adams", "Meyer"]
 
 
 def get_db_connection():
@@ -54,6 +77,54 @@ def _ensure_column(c, table_name, column_name, sql_type_with_default):
     existing = {row["name"] for row in c.fetchall()}
     if column_name not in existing:
         c.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {sql_type_with_default}")
+
+
+def _seed_packages(c):
+    # First, force update all images based on the hardcoded list
+    for pkg in DALANI_PACKAGES:
+        c.execute(
+            """UPDATE Packages
+               SET image_url=?
+               WHERE package_name=?""",
+            (pkg[7], pkg[0]),
+        )
+
+    canonical_names = []
+    for pkg in DALANI_PACKAGES:
+        canonical_names.append(pkg[0])
+        c.execute("SELECT package_id FROM Packages WHERE package_name=?", (pkg[0],))
+        row = c.fetchone()
+        if row:
+            c.execute(
+                """UPDATE Packages
+                   SET destination=?, price=?, duration=?, description=?, availability_status=?, season_category=?, image_url=?
+                   WHERE package_id=?""",
+                (pkg[1], pkg[2], pkg[3], pkg[4], pkg[5], pkg[6], pkg[7], row["package_id"]),
+            )
+        else:
+            c.execute(
+                """INSERT INTO Packages
+                   (package_name, destination, price, duration, description, availability_status, season_category, image_url)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                pkg,
+            )
+
+    # Seed available spots for packages that don't have them yet (or were defaulted)
+    c.execute("SELECT package_id, package_name, availability_status, available_spots, total_spots FROM Packages")
+    for row in c.fetchall():
+        pid = row["package_id"]
+        if row["availability_status"] == "Available":
+            total = row["total_spots"] if row["total_spots"] and row["total_spots"] > 0 else 10
+            # Only set if not already explicitly configured (total_spots empty means unset)
+            if not row["total_spots"] or row["total_spots"] <= 0:
+                total = 10
+                c.execute("UPDATE Packages SET total_spots=?, available_spots=? WHERE package_id=?", (10, 10, pid))
+        else:
+            # Unavailable packages are fully booked
+            c.execute("UPDATE Packages SET total_spots=?, available_spots=? WHERE package_id=?", (0, 0, pid))
+
+    # Custom packages created by administrators are intentionally preserved.
+    # Only the canonical demo packages above are seeded/updated.
 
 
 def _seed_scaled_demo_data(conn, c):
@@ -211,17 +282,7 @@ def init_db():
     _ensure_column(c, "Packages", "type", "TEXT DEFAULT 'standard'")
     _ensure_column(c, "Packages", "available_spots", "INTEGER DEFAULT 10")
     _ensure_column(c, "Packages", "total_spots", "INTEGER DEFAULT 10")
-    _ensure_column(c, "Packages", "is_active", "INTEGER DEFAULT 1")
-    _ensure_column(c, "Packages", "deleted_at", "TIMESTAMP")
-    _ensure_column(c, "Packages", "created_at", "TIMESTAMP")
-    _ensure_column(c, "Packages", "updated_at", "TIMESTAMP")
-    c.execute("UPDATE Packages SET is_active=1 WHERE is_active IS NULL")
-    c.execute("UPDATE Packages SET created_at=CURRENT_TIMESTAMP WHERE created_at IS NULL")
-    c.execute("UPDATE Packages SET updated_at=COALESCE(updated_at, created_at, CURRENT_TIMESTAMP) WHERE updated_at IS NULL")
     _ensure_column(c, "Bookings", "payment_method", "TEXT DEFAULT 'unknown'")
-    _ensure_column(c, "Bookings", "cancelled_at", "TIMESTAMP")
-    _ensure_column(c, "Bookings", "cancelled_by", "INTEGER")
-    _ensure_column(c, "Bookings", "cancellation_reason", "TEXT")
     _ensure_column(c, "Bookings", "revenue", "REAL")
     _ensure_column(c, "Reviews", "reviewer_name", "TEXT DEFAULT 'Google Reviewer'")
     _ensure_column(c, "Users", "contact_number", "TEXT")
@@ -253,18 +314,6 @@ def init_db():
     _ensure_column(c, "Users", "must_change_password", "INTEGER DEFAULT 0")
     _ensure_column(c, "Users", "password_changed_at", "TIMESTAMP")
 
-    c.execute("""CREATE TABLE IF NOT EXISTS Setup_Guards (
-        guard_key TEXT PRIMARY KEY,
-        completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )""")
-    c.execute("""CREATE TABLE IF NOT EXISTS SerpApi_Cache (
-        cache_key TEXT PRIMARY KEY,
-        response_json TEXT NOT NULL,
-        expires_at TIMESTAMP NOT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        lock_until TIMESTAMP
-    )""")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_serp_cache_expires ON SerpApi_Cache(expires_at)")
     c.execute("""CREATE TABLE IF NOT EXISTS Admin_Audit_Log (
         audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
         actor_user_id INTEGER,
@@ -287,28 +336,38 @@ def init_db():
     c.execute("CREATE INDEX IF NOT EXISTS idx_reviews_source ON Reviews(source)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_users_admin ON Users(is_admin, account_status)")
 
-    # Admin migration/bootstrap is deliberately non-destructive.
-    # Existing administrator credentials and identity are NEVER replaced on startup.
-    # Legacy role=admin rows are only marked as admin; their username/email/password
-    # remain untouched. A default bootstrap account is created only when there is
-    # no administrator at all.
+    # Multi-admin migration and bootstrap administrator.
     c.execute("UPDATE Users SET is_admin=1, user_type='admin' WHERE role='admin'")
-    c.execute("SELECT user_id FROM Users WHERE is_admin=1 OR role='admin' ORDER BY user_id ASC LIMIT 1")
-    existing_admin = c.fetchone()
-    if not existing_admin:
-        # Only create the configured bootstrap account if its username/email are
-        # not already occupied by a non-admin account. Never modify that account
-        # just to make bootstrap credentials fit.
-        c.execute("SELECT user_id FROM Users WHERE username=? OR LOWER(email)=? LIMIT 1", (ADMIN_USERNAME, ADMIN_EMAIL.lower()))
-        conflicting_account = c.fetchone()
-        if not conflicting_account:
+    c.execute("SELECT user_id FROM Users WHERE LOWER(email)=? LIMIT 1", (ADMIN_EMAIL.lower(),))
+    admin_row = c.fetchone()
+    if not admin_row:
+        # If an older single-admin installation exists, upgrade that account
+        # in place instead of creating a second bootstrap administrator.
+        c.execute("SELECT user_id FROM Users WHERE is_admin=1 OR role='admin' ORDER BY user_id ASC LIMIT 1")
+        legacy_admin = c.fetchone()
+        if legacy_admin:
+            c.execute(
+                """UPDATE Users SET username=?, password_hash=?, role='admin', is_admin=1, user_type='admin',
+                   full_name=?, email=?, account_status='active', must_change_password=1, password_changed_at=NULL
+                   WHERE user_id=?""",
+                (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), "System Administrator", ADMIN_EMAIL, legacy_admin["user_id"])
+            )
+        else:
             c.execute(
                 """INSERT INTO Users
                    (username, password_hash, role, full_name, email, account_status, is_admin, user_type, must_change_password)
                    VALUES (?, ?, 'admin', ?, ?, 'active', 1, 'admin', 1)""",
                 (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), "System Administrator", ADMIN_EMAIL)
             )
+    else:
+        c.execute(
+            """UPDATE Users SET username=?, role='admin', is_admin=1, user_type='admin',
+               account_status=COALESCE(account_status,'active') WHERE user_id=?""",
+            (ADMIN_USERNAME, admin_row["user_id"])
+        )
 
+    _seed_packages(c)
+    _seed_scaled_demo_data(conn, c)
 
     # NOTE: This used to top the Reviews table up with 130+ randomly
     # generated fake reviews on every single app startup whenever the real

@@ -149,10 +149,10 @@
                     <div>
                         <h4 class="text-lg font-black text-white">Booking Data Tools</h4>
                         <p class="text-xs text-slate-500 mt-1">
-                            Production data is never seeded, reset, or restored automatically. The legacy demo restore tool is disabled.
+                            Protected administrator utility for restoring the original demo booking dataset on the deployed database.
                         </p>
                         <p id="restoreBookingStatus" class="text-xs text-slate-400 mt-2">
-                            Existing packages and bookings are preserved across every restart and deployment.
+                            This action creates 72 bookings only when the database has no bookings.
                         </p>
                     </div>
                 </div>
@@ -469,7 +469,59 @@
         }
 
         async function restoreDemoBookings() {
-            alert('Demo-data restoration is disabled in production. Existing packages and bookings are never reset or overwritten.');
+            const button = document.getElementById('restoreBookingsBtn');
+            const status = document.getElementById('restoreBookingStatus');
+
+            if (!confirm(
+                'Restore the 72-booking demo dataset now?\n\n' +
+                'This is a one-time administrator action. If bookings already exist, ' +
+                'the system will not create duplicates.'
+            )) {
+                return;
+            }
+
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Restoring...';
+            status.textContent = 'Restoring booking data...';
+
+            try {
+                const response = await fetch('/api/admin/restore-demo-bookings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (response.status === 401 || response.status === 403) {
+                    window.location.href = '/auth/login';
+                    return;
+                }
+
+                if (!data.success) {
+                    throw new Error(data.detail || data.error || 'Unable to restore booking data.');
+                }
+
+                const d = data.data || {};
+
+                if (data.skipped) {
+                    status.textContent = data.message || 'Bookings already exist; nothing was changed.';
+                } else {
+                    status.textContent =
+                        `Restored ${d.bookings || 0} bookings, ${d.travellers || 0} travellers, ` +
+                        `R ${(d.revenue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})} revenue.`;
+                }
+
+                await fetchDashboardData();
+                await fetchAuditLog();
+
+                alert(data.message || 'Booking data restored successfully.');
+            } catch (error) {
+                status.textContent = error.message || 'Booking restore failed.';
+                alert(error.message || 'Booking restore failed.');
+            } finally {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-database mr-2"></i>Restore 72 Bookings';
+            }
         }
 
         async function syncDashboardReviews() {

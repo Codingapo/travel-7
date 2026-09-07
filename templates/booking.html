@@ -171,10 +171,7 @@
 
     <script src="/static/js/package-images.js"></script>
     <script>
-        function csrfToken() {
-            return document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || '';
-        }
-                const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(window.location.search);
         const packageId = params.get('packageId');
         const submitBtn = document.getElementById('submit-booking-btn');
 
@@ -416,7 +413,7 @@
             try {
                 const res = await fetch('/bookings', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': decodeURIComponent(csrfToken()) },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData)
                 });
                 const data = await res.json();

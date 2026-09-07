@@ -8,17 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function escapeHtml(value) {
-    return String(value ?? '').replace(/[&<>"']/g, char => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[char]));
-}
-
-function safeImageUrl(value) {
-    const raw = String(value ?? '').trim();
-    return /^https?:\/\//i.test(raw) || raw.startsWith('/static/') ? raw : '/static/images/package-fallback.svg';
-}
-
 function checkAuthStatus() {
     const token = localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user'));
@@ -64,12 +53,12 @@ async function loadPackages(sort = 'default') {
                 
                 const statusColor = isAvailable ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
                 
-                const imageUrl = safeImageUrl(pkg.image_url || getPackageImage(pkg));
+                const imageUrl = pkg.image_url || getPackageImage(pkg);
                 
                 const card = `
                     <div class="glass rounded-[2.5rem] overflow-hidden card-hover group ${!isAvailable ? 'opacity-75 grayscale-[0.2]' : ''}">
                         <div class="h-64 relative overflow-hidden">
-                            <img src="${imageUrl}" alt="${escapeHtml(pkg.package_name)}" class="w-full h-full object-cover group-hover:scale-110 transition duration-700">
+                            <img src="${imageUrl}" alt="${pkg.package_name}" class="w-full h-full object-cover group-hover:scale-110 transition duration-700">
                             <div class="absolute inset-0 bg-gradient-to-t from-[#0a0f1d] to-transparent opacity-60"></div>
                             ${!isAvailable ? `
                                 <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center">
@@ -86,11 +75,11 @@ async function loadPackages(sort = 'default') {
                         <div class="p-8">
                             <div class="flex justify-between items-start mb-4">
                                 <div>
-                                    <h3 class="text-2xl font-black text-white group-hover:text-blue-400 transition">${escapeHtml(pkg.package_name)}</h3>
-                                    <p class="text-blue-500 text-sm font-bold uppercase tracking-wider mt-1">${escapeHtml(pkg.destination)}</p>
+                                    <h3 class="text-2xl font-black text-white group-hover:text-blue-400 transition">${pkg.package_name}</h3>
+                                    <p class="text-blue-500 text-sm font-bold uppercase tracking-wider mt-1">${pkg.destination}</p>
                                 </div>
                             </div>
-                            <p class="text-gray-400 mb-8 line-clamp-3 text-sm leading-relaxed">${escapeHtml(pkg.description)}</p>
+                            <p class="text-gray-400 mb-8 line-clamp-3 text-sm leading-relaxed">${pkg.description}</p>
                             <div class="flex items-center justify-between pt-6 border-t border-white/5">
                                 <div class="flex flex-col">
                                     <span class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">From</span>

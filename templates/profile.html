@@ -210,28 +210,6 @@
             }
         });
 
-        function escapeHtml(value) {
-            return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-        }
-        function csrfToken() {
-            return document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || '';
-        }
-        async function cancelMyBooking(bookingId) {
-            if (!confirm('Cancel this booking? Your booking history will be preserved.')) return;
-            const reason = prompt('Optional cancellation reason:') || '';
-            try {
-                const response = await fetch(`/api/bookings/${bookingId}/cancel`, {
-                    method: 'POST',
-                    headers: {'Content-Type':'application/json', 'X-CSRF-Token': decodeURIComponent(csrfToken())},
-                    body: JSON.stringify({reason})
-                });
-                const data = await response.json();
-                if (!response.ok || !data.success) throw new Error(data.error || data.detail || 'Unable to cancel booking.');
-                alert(data.data?.message || 'Booking cancelled.');
-                loadBookings();
-            } catch (error) { alert(error.message); }
-        }
-
         async function loadBookings() {
             const list = document.getElementById('bookings-list');
             const countDisplay = document.getElementById('booking-count');
@@ -262,14 +240,14 @@
                                         <i class="fas fa-map-marked-alt text-2xl"></i>
                                     </div>
                                     <div>
-                                        <h4 class="text-lg font-black text-white">${escapeHtml(b.package_name)}</h4>
-                                        <p class="text-blue-500 text-xs font-bold uppercase tracking-widest">${escapeHtml(b.destination)}</p>
+                                        <h4 class="text-lg font-black text-white">${b.package_name}</h4>
+                                        <p class="text-blue-500 text-xs font-bold uppercase tracking-widest">${b.destination}</p>
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-2 md:grid-cols-3 gap-8 flex-grow md:ml-10">
                                     <div>
                                         <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Travel Date</p>
-                                        <p class="text-sm font-bold text-white">${escapeHtml(b.travel_date)}</p>
+                                        <p class="text-sm font-bold text-white">${b.travel_date}</p>
                                     </div>
                                     <div>
                                         <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Total Paid</p>
@@ -278,9 +256,8 @@
                                     <div class="col-span-2 md:col-span-1">
                                         <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Status</p>
                                         <span class="px-3 py-1 bg-green-500/10 text-green-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-500/20">
-                                            ${escapeHtml(b.status)}
+                                            ${b.status}
                                         </span>
-                                        ${String(b.status || '').toLowerCase() !== 'cancelled' ? `<button type="button" onclick="cancelMyBooking(${Number(b.booking_id)})" class="mt-3 text-xs font-bold text-red-400 hover:text-red-300">Cancel booking</button>` : ''}
                                     </div>
                                 </div>
                             </div>
