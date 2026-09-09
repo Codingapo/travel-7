@@ -43,11 +43,19 @@ Synced 20 real Google reviews (rating=4.6, total_reviews=139).
 
 ## Ongoing updates
 
-- Runs automatically every 4 hours via the existing `apscheduler` job in `app.py`.
-- Click **Refresh** on the admin Reviews page to sync immediately at any time.
-- Each sync pulls up to 20 of the most recent reviews (`num=20`,
-  `sort_by=newestFirst`), so newly posted Google reviews will appear on the
-  next scheduled sync (within 4 hours) or immediately via Refresh.
+- Reviews are cached permanently in the database (`instance/travelintel.db`,
+  `Reviews` table). When the admin opens the Reviews page, the cached reviews
+  are returned instantly and a background SerpApi sync is triggered to merge
+  any new Google reviews into the cache. If the API call fails for any reason
+  (no key, network error, quota), the cached reviews are preserved - nothing
+  is ever deleted and nothing fake is generated.
+- The background sync is throttled to at most once per hour so frequent page
+  polling does not burn through the SerpApi free-tier quota.
+- Click **Refresh** on the admin Reviews page to force an immediate sync at
+  any time.
+- Each sync follows `serpapi_pagination -> next_page_token` until Google has
+  no more pages, so newly posted Google reviews appear on the next sync
+  (within an hour, or immediately via Refresh).
 
 ## Free tier limits
 

@@ -1,24 +1,28 @@
 """
-Real Google Reviews sync via SerpApi's Google Maps Reviews API.
-
-This replaces the old approach of scraping Google Search's HTML directly,
-which never worked reliably and, whenever it came up empty, silently
-GENERATED FAKE REVIEWS instead of real ones. That's why the admin panel
-never matched the business's actual Google reviews.
-
-This module uses SerpApi (https://serpapi.com) instead of Google's own
-Places API, specifically because SerpApi has a free tier (no credit card
-required) that comfortably covers syncing every few hours, whereas Google's
-Places API requires a billing account to be linked even to stay within the
-free usage tier. See COMPLETE_FREE_SETUP_GUIDE.md in the project root for
-the exact, no-cost setup steps.
+Real Google Reviews sync via SerpApi's Google Maps Reviews API with caching.
 
 Behavior on failure (missing API key/place ID, network error, quota, etc.):
   The existing reviews already stored in the database are left untouched.
   Nothing fake is ever generated or inserted.
+
+Caching strategy:
+  Reviews are stored permanently in the database as the local cache.
+  On each sync:
+    1. Return cached reviews immediately (already in DB, available to frontend).
+    2. Fetch current reviews from Google via SerpApi.
+    3. For each fetched review, compute a unique signature
+       (reviewer_name + review_date + content hash) and INSERT OR IGNORE
+       so only genuinely new reviews are added; existing cached reviews
+       are never deleted or overwritten.
+  This means:
+    - The reviews page always shows cached reviews instantly.
+    - If the API call fails for any reason, cached reviews are preserved.
+    - Any new reviews discovered by the API are merged in without data loss.
 """
 import datetime
+import hashlib
 import os
+import sqlite3
 from typing import Dict, List, Optional
 
 try:
@@ -29,10 +33,8 @@ except ImportError:
 
 import requests
 
+from config import SERPAPI_KEY, GOOGLE_PLACE_ID
 from database import get_db_connection, upsert_review_summary
-
-SERPAPI_KEY = os.environ.get("SERPAPI_KEY", "")
-GOOGLE_PLACE_ID = os.environ.get("GOOGLE_PLACE_ID", "")
 
 SERPAPI_URL = "https://serpapi.com/search"
 
@@ -65,19 +67,21 @@ def _parse_review_date(review: Dict) -> str:
     return datetime.date.today().isoformat()
 
 
+def _review_signature(reviewer_name: str, review_date: str, review_text: str) -> str:
+    """Compute a stable signature used to detect duplicate reviews across syncs.
 
-# SerpApi's google_maps_reviews engine only returns ~8-10 reviews per page.
-# Getting the full set (e.g. all 138) requires following serpapi_pagination
-# -> next_page_token across multiple requests. MAX_PAGES is a safety cap so
-# a misbehaving/huge listing can't loop forever or blow through the whole
-# monthly SerpApi quota in one sync.
+    The signature is insensitive to minor whitespace variations so the same
+    real review is never duplicated even if SerpApi re-encodes it.
+    """
+    normalised_text = " ".join((review_text or "").split())
+    payload = f"{(reviewer_name or '').strip().lower()}|{review_date}|{normalised_text}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 MAX_PAGES = 25
 
 
 def _fetch_all_review_pages(base_params: Dict) -> (List[Dict], Optional[Dict]):
-    """Follow next_page_token until Google/SerpApi has no more pages, the
-    safety cap is hit, or we've collected as many reviews as place_info
-    reports exist. Returns (raw_reviews, place_info_from_first_page)."""
     all_raw_reviews: List[Dict] = []
     place_info: Optional[Dict] = None
     total_reviews: Optional[int] = None
@@ -102,7 +106,6 @@ def _fetch_all_review_pages(base_params: Dict) -> (List[Dict], Optional[Dict]):
             print(f"SerpApi returned status={status} on page {page_num}: {error}. Using what was fetched so far.")
             break
 
-        # Only the first page includes place_info (rating/total review count).
         if page_num == 1:
             place_info = data.get("place_info") or {}
             total_reviews = place_info.get("reviews")
@@ -122,16 +125,19 @@ def _fetch_all_review_pages(base_params: Dict) -> (List[Dict], Optional[Dict]):
 
 
 def fetch_reviews() -> int:
-    """Sync real reviews + rating from Google via SerpApi. Returns the number
-    of written reviews stored. Never fabricates data - on any failure it just
-    leaves the database as-is and returns 0."""
-    print("Starting SerpApi Google Reviews sync...")
+    """Incrementally sync real reviews + rating from Google via SerpApi.
+
+    Returns the number of NEW reviews merged into the local cache on this run.
+    Never fabricates data - on any failure it just leaves the existing cache
+    untouched and returns 0.
+    """
+    print("Starting SerpApi Google Reviews sync (incremental cache mode)...")
 
     if not SERPAPI_KEY:
-        print("SERPAPI_KEY is not set - skipping sync. See COMPLETE_FREE_SETUP_GUIDE.md.")
+        print("SERPAPI_KEY is not set - skipping sync. Existing cached reviews are preserved.")
         return 0
     if not GOOGLE_PLACE_ID:
-        print("GOOGLE_PLACE_ID is not set - skipping sync. See COMPLETE_FREE_SETUP_GUIDE.md.")
+        print("GOOGLE_PLACE_ID is not set - skipping sync. Existing cached reviews are preserved.")
         return 0
 
     base_params = {
@@ -145,8 +151,7 @@ def fetch_reviews() -> int:
     raw_reviews, place_info = _fetch_all_review_pages(base_params)
 
     if place_info is None:
-        # The very first request failed outright.
-        print("SerpApi sync failed before returning any data. Keeping existing reviews unchanged.")
+        print("SerpApi sync failed before returning any data. Keeping existing cached reviews unchanged.")
         return 0
 
     average_rating = place_info.get("rating")
@@ -160,36 +165,76 @@ def fetch_reviews() -> int:
         text = (r.get("snippet") or "").strip()
         if not text:
             continue
+        review_date = _parse_review_date(r)
+        reviewer_name = (r.get("user") or {}).get("name", "Google Reviewer")
         fetched_reviews.append({
             "rating": int(r.get("rating") or 5),
-            "reviewer_name": (r.get("user") or {}).get("name", "Google Reviewer"),
+            "reviewer_name": reviewer_name,
             "review_text": text[:1000],
-            "review_date": _parse_review_date(r),
+            "review_date": review_date,
+            "signature": _review_signature(reviewer_name, review_date, text),
         })
 
     if not fetched_reviews:
-        print("SerpApi returned no written reviews. Keeping existing reviews unchanged.")
+        print("SerpApi returned no written reviews. Keeping existing cached reviews unchanged.")
         return 0
 
     conn = get_db_connection()
     c = conn.cursor()
-    # Full sync: replace previously-stored Google reviews with the current
-    # live set from Google (fetched via SerpApi).
-    c.execute("DELETE FROM Reviews WHERE source='google'")
-    inserted = 0
+
+    c.execute("PRAGMA table_info(Reviews)")
+    existing_columns = {row["name"] for row in c.fetchall()}
+    if "signature" not in existing_columns:
+        c.execute("ALTER TABLE Reviews ADD COLUMN signature TEXT")
+        c.execute("SELECT review_id, reviewer_name, review_date, review_text FROM Reviews")
+        for row in c.fetchall():
+            sig = _review_signature(row["reviewer_name"], row["review_date"], row["review_text"])
+            c.execute("UPDATE Reviews SET signature=? WHERE review_id=?", (sig, row["review_id"]))
+        conn.commit()
+    c.execute("PRAGMA index_list(Reviews)")
+    existing_indexes = {row["name"] for row in c.fetchall()}
+    if "ix_reviews_signature" not in existing_indexes:
+        try:
+            c.execute("CREATE UNIQUE INDEX ix_reviews_signature ON Reviews(signature)")
+            conn.commit()
+        except sqlite3.IntegrityError:
+            c.execute("""DELETE FROM Reviews WHERE review_id NOT IN (
+                SELECT MIN(review_id) FROM Reviews GROUP BY signature
+            )""")
+            conn.commit()
+            c.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_reviews_signature ON Reviews(signature)")
+            conn.commit()
+
+    merged = 0
     for row in fetched_reviews:
         sentiment = calculate_sentiment(row["review_text"])
-        c.execute(
-            """INSERT INTO Reviews (source, reviewer_name, review_text, rating, sentiment_score, review_date)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            ("google", row["reviewer_name"], row["review_text"], row["rating"], sentiment, row["review_date"]),
-        )
-        inserted += 1
+        try:
+            c.execute(
+                """INSERT OR IGNORE INTO Reviews
+                   (source, reviewer_name, review_text, rating, sentiment_score, review_date, signature)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    "google",
+                    row["reviewer_name"],
+                    row["review_text"],
+                    row["rating"],
+                    sentiment,
+                    row["review_date"],
+                    row["signature"],
+                ),
+            )
+            if c.rowcount and c.rowcount > 0:
+                merged += 1
+        except sqlite3.IntegrityError:
+            continue
     conn.commit()
     conn.close()
 
-    print(f"Synced {inserted} real Google reviews (rating={average_rating}, total_reviews={total_reviews}).")
-    return inserted
+    print(
+        f"Review sync complete. rating={average_rating}, google_total={total_reviews}. "
+        f"New reviews merged into cache: {merged}."
+    )
+    return merged
 
 
 if __name__ == "__main__":

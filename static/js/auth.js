@@ -1,5 +1,6 @@
 let isLogin = !window.location.pathname.endsWith("/register");
 let otpCountdownTimer = null;
+let otpVerified = false;
 const OTP_RESEND_WAIT = 90;
 
 function startOtpCountdown() {
@@ -33,7 +34,10 @@ function toggleAuth() {
     isLogin = !isLogin;
     const loginForm = document.getElementById('login-form');
     const signupForm = document.getElementById('signup-form');
+    const otpForm = document.getElementById('otp-form');
     const authTitle = document.getElementById('auth-title');
+
+    if (otpForm) otpForm.classList.add('hidden');
 
     if (isLogin) {
         loginForm.classList.remove('hidden');
@@ -41,10 +45,18 @@ function toggleAuth() {
         authTitle.textContent = 'Welcome back! Please login.';
         history.replaceState({}, '', '/auth/login');
     } else {
-        loginForm.classList.add('hidden');
-        signupForm.classList.remove('hidden');
-        authTitle.textContent = 'Create your account to start booking.';
-        history.replaceState({}, '', '/auth/register');
+        if (otpVerified) {
+            isLogin = true;
+            loginForm.classList.remove('hidden');
+            signupForm.classList.add('hidden');
+            authTitle.textContent = 'Welcome back! Please login.';
+            history.replaceState({}, '', '/auth/login');
+        } else {
+            loginForm.classList.add('hidden');
+            signupForm.classList.remove('hidden');
+            authTitle.textContent = 'Create your account to start booking.';
+            history.replaceState({}, '', '/auth/register');
+        }
     }
     clearMessages();
 }
@@ -52,12 +64,15 @@ function toggleAuth() {
 function applyAuthRoute() {
     const register = window.location.pathname.endsWith('/register');
     isLogin = !register;
+    if (otpVerified) isLogin = true;
     const loginForm = document.getElementById('login-form');
     const signupForm = document.getElementById('signup-form');
+    const otpForm = document.getElementById('otp-form');
     const authTitle = document.getElementById('auth-title');
     if (!loginForm || !signupForm) return;
     loginForm.classList.toggle('hidden', !isLogin);
     signupForm.classList.toggle('hidden', isLogin);
+    if (otpForm) otpForm.classList.add('hidden');
     authTitle.textContent = isLogin ? 'Welcome back! Please login.' : 'Create your account to start booking.';
 }
 
@@ -105,8 +120,15 @@ async function forgotPasswordFlow() {
         const otpFromServer = payload?.data?.otp || '';
         const otp = prompt(`Enter OTP sent to your account${otpFromServer ? ` (Dev OTP: ${otpFromServer})` : ''}:`);
         if (!otp) return;
-        const newPassword = prompt('Enter your new password (min 6 chars):');
+        const newPassword = prompt('Enter your new password (min 12 chars, must include uppercase, lowercase, number, and special character):');
         if (!newPassword) return;
+        const validation = typeof validatePasswordStrength === 'function'
+            ? validatePasswordStrength(newPassword)
+            : { valid: newPassword.length >= 12 };
+        if (!validation.valid) {
+            showMessage('error', validation.errors?.[0] || 'New password does not meet security requirements.');
+            return;
+        }
         const verify = await fetch('/api/auth/forgot-password/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -116,7 +138,7 @@ async function forgotPasswordFlow() {
         if (verifyPayload.success) {
             showMessage('success', 'Password reset successful. You can login now.');
         } else {
-            showMessage('error', verifyPayload.error || 'OTP verification failed');
+            showMessage('error', verifyPayload.error || verifyPayload.detail || 'OTP verification failed');
         }
     } catch (error) {
         showMessage('error', 'Password reset failed. Please try again.');
@@ -134,8 +156,8 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         return;
     }
 
-    if (password.length < 6) {
-        showMessage('error', 'Password must be at least 6 characters.');
+    if (!password) {
+        showMessage('error', 'Please enter your password.');
         return;
     }
 
@@ -163,10 +185,6 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 });
 
 // Signup Handler
-let pendingEmail = "";
-
-
-// Signup Handler
 document.getElementById('signup-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -180,9 +198,10 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
         return;
     }
 
-
-    if (password.length < 6) {
-        showMessage('error', 'Password must be at least 6 characters.');
+    const emailLocal = email.includes('@') ? email.split('@')[0] : email;
+    const validation = validatePasswordStrength(password, [email, emailLocal]);
+    if (!validation.valid) {
+        showMessage('error', validation.errors[0] || 'Please choose a stronger password.');
         return;
     }
 
@@ -308,17 +327,32 @@ const otp = document.getElementById('otp-code').value.trim();
 
         if(data.success){
 
+            otpVerified = true;
             showMessage(
                 'success',
                 'Account verified. You can now login.'
             );
 
+            pendingEmail = "";
+            if (otpCountdownTimer) {
+                clearInterval(otpCountdownTimer);
+                otpCountdownTimer = null;
+            }
 
-            setTimeout(()=>{
+            const otpForm = document.getElementById('otp-form');
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            const authTitle = document.getElementById('auth-title');
+            const otpCodeInput = document.getElementById('otp-code');
 
-                toggleAuth();
+            if (otpForm) otpForm.classList.add('hidden');
+            if (signupForm) signupForm.classList.add('hidden');
+            if (otpCodeInput) otpCodeInput.value = '';
+            if (loginForm) loginForm.classList.remove('hidden');
+            if (authTitle) authTitle.textContent = 'Welcome back! Please login.';
 
-            },1500);
+            isLogin = true;
+            history.replaceState({}, '', '/auth/login');
 
 
         }else{

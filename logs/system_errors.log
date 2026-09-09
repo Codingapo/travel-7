@@ -1042,3 +1042,141 @@ Traceback (most recent call last):
     ...<5 lines>...
     )
 resend.exceptions.ResendError: API key is invalid
+2026-09-07 16:13:14,169 WARNING RESEND_API_KEY is not configured; bootstrap admin email was not sent to skalahante@gmail.com
+2026-09-07 16:24:58,891 WARNING RESEND_API_KEY is not configured; verification email was not sent to nenelindokuhle810@gmail.com
+2026-09-07 16:24:58,891 ERROR Failed to send registration verification email to nenelindokuhle810@gmail.com
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1371, in customer_register
+    send_verification_email(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        email,
+        ^^^^^^
+        otp
+        ^^^
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 335, in send_verification_email
+    raise RuntimeError("Email service is not configured. Please contact support.")
+RuntimeError: Email service is not configured. Please contact support.
+2026-09-08 18:19:33,558 WARNING RESEND_API_KEY is not configured; bootstrap admin email was not sent to ajayipeter858@gmail.com
+2026-09-08 18:58:28,089 ERROR Manual reviews refresh failed: Cannot add a UNIQUE column
+2026-09-08 18:58:49,295 ERROR Manual reviews refresh failed: Cannot add a UNIQUE column
+2026-09-08 19:41:53,170 WARNING Admin login failure username=skalahante ip=127.0.0.1
+2026-09-08 19:47:33,510 INFO Background review sync merged 0 new review(s).
+2026-09-08 20:40:31,047 INFO Background review sync merged 0 new review(s).
+2026-09-09 00:32:12,573 INFO Background review sync merged 0 new review(s).
+2026-09-09 00:46:13,151 INFO Customer password reset OTP sent to ajayiabel858@gmail.com
+2026-09-09 10:42:01,149 ERROR Failed to send verification email to testuser1788943308277@example.com
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 343, in send_verification_email
+    resend.Emails.send({
+    ~~~~~~~~~~~~~~~~~~^^
+        "from": "TravelIntel AI <verify@notify.moviewatchtv.fun>",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<24 lines>...
+        """
+        ^^^
+    })
+    ^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\resend\emails\_emails.py", line 286, in send
+    ).perform_with_content()
+      ~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\resend\request.py", line 70, in perform_with_content
+    resp = self.perform()
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\resend\request.py", line 50, in perform
+    raise_for_code_and_type(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        code=error_code or 500,
+        ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+        headers=self._response_headers,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\resend\exceptions.py", line 266, in raise_for_code_and_type
+    raise error_from_list(
+    ...<4 lines>...
+    )
+resend.exceptions.ValidationError: Invalid `to` field. Please use our testing email address instead of domains like `example.com`. See our documentation for more information.
+2026-09-09 10:42:01,159 ERROR Failed to send registration verification email to testuser1788943308277@example.com
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1377, in customer_register
+    send_verification_email(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        email,
+        ^^^^^^
+        otp
+        ^^^
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 343, in send_verification_email
+    resend.Emails.send({
+    ~~~~~~~~~~~~~~~~~~^^
+        "from": "TravelIntel AI <verify@notify.moviewatchtv.fun>",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<24 lines>...
+        """
+        ^^^
+    })
+    ^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\resend\emails\_emails.py", line 286, in send
+    ).perform_with_content()
+      ~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\resend\request.py", line 70, in perform_with_content
+    resp = self.perform()
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\resend\request.py", line 50, in perform
+    raise_for_code_and_type(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        code=error_code or 500,
+        ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+        headers=self._response_headers,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\resend\exceptions.py", line 266, in raise_for_code_and_type
+    raise error_from_list(
+    ...<4 lines>...
+    )
+resend.exceptions.ValidationError: Invalid `to` field. Please use our testing email address instead of domains like `example.com`. See our documentation for more information.
+2026-09-09 10:51:26,601 INFO Customer password reset OTP sent to ajayiabel858@gmail.com
+2026-09-09 11:08:05,101 INFO Background review sync merged 0 new review(s).
+2026-09-09 11:48:47,226 INFO Background review sync merged 0 new review(s).
+2026-09-09 11:56:54,623 ERROR Failed to send password reset email to ajayipeter135@gmail.com
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1815, in request_customer_password_reset
+    logger.info("Password reset OTP sent to %s (is_admin=%s)", account_email, int(user.get("is_admin") or 0) == 1)
+                                                                                  ^^^^^^^^
+AttributeError: 'sqlite3.Row' object has no attribute 'get'
+2026-09-09 11:59:59,942 INFO Background review sync merged 0 new review(s).
+2026-09-09 12:00:45,305 ERROR Failed to send password reset email to ajayiabel858@gmail.com
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1815, in request_customer_password_reset
+    logger.info("Password reset OTP sent to %s (is_admin=%s)", account_email, int(user.get("is_admin") or 0) == 1)
+                                                                                  ^^^^^^^^
+AttributeError: 'sqlite3.Row' object has no attribute 'get'
+2026-09-09 12:00:48,407 ERROR Failed to send password reset email to ajayiabel858@gmail.com
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1815, in request_customer_password_reset
+    logger.info("Password reset OTP sent to %s (is_admin=%s)", account_email, int(user.get("is_admin") or 0) == 1)
+                                                                                  ^^^^^^^^
+AttributeError: 'sqlite3.Row' object has no attribute 'get'
+2026-09-09 12:00:50,567 ERROR Failed to send password reset email to ajayiabel858@gmail.com
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1815, in request_customer_password_reset
+    logger.info("Password reset OTP sent to %s (is_admin=%s)", account_email, int(user.get("is_admin") or 0) == 1)
+                                                                                  ^^^^^^^^
+AttributeError: 'sqlite3.Row' object has no attribute 'get'
+2026-09-09 12:02:24,277 ERROR Failed to send password reset email to ajayipeter858@gmail.com
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1815, in request_customer_password_reset
+    logger.info("Password reset OTP sent to %s (is_admin=%s)", account_email, int(user.get("is_admin") or 0) == 1)
+                                                                                  ^^^^^^^^
+AttributeError: 'sqlite3.Row' object has no attribute 'get'
+2026-09-09 12:08:18,666 INFO Password reset OTP sent to ajayipeter135@gmail.com (is_admin=True)
+2026-09-09 12:13:47,073 INFO Password reset OTP sent to ajayiabel858@gmail.com (is_admin=False)
+2026-09-09 12:14:17,320 INFO Password reset OTP sent to ajayipeter858@gmail.com (is_admin=True)
+2026-09-09 12:16:12,120 INFO Background review sync merged 0 new review(s).
+2026-09-09 12:34:29,865 INFO Password reset OTP sent to ajayipeter135@gmail.com (is_admin=True)
+2026-09-09 12:55:26,345 INFO Background review sync merged 0 new review(s).
+2026-09-09 13:04:25,140 INFO Booking confirmation email sent successfully. booking_id=73 email=ajayiabel858@gmail.com resend_response={'id': '56d9e5e0-fc76-4018-8a68-07324e163fc9', 'http_headers': {'Date': 'Wed, 09 Sep 2026 11:04:28 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'ratelimit-limit': '10', 'ratelimit-policy': '10;w=1', 'ratelimit-remaining': '9', 'ratelimit-reset': '1', 'x-resend-daily-quota': '13', 'x-resend-monthly-quota': '31', 'cf-cache-status': 'DYNAMIC', 'Server': 'cloudflare', 'CF-RAY': 'a385b657a843f4f0-JNB'}}

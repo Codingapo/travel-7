@@ -6,12 +6,11 @@ import sqlite3
 
 from werkzeug.security import generate_password_hash
 
-from config import DB_PATH, BACKUPS_DIR
+from config import DB_PATH, BACKUPS_DIR, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD
 
-# Admin account email used for password reset OTP delivery
-ADMIN_EMAIL = os.environ.get("DEFAULT_ADMIN_EMAIL", "skalahante@gmail.com")
-ADMIN_USERNAME = os.environ.get("DEFAULT_ADMIN_USERNAME", "skalahante")
-ADMIN_PASSWORD = os.environ.get("DEFAULT_ADMIN_PASSWORD", "TravelIntel#ChangeMe2026")
+ADMIN_EMAIL = DEFAULT_ADMIN_EMAIL
+ADMIN_USERNAME = DEFAULT_ADMIN_USERNAME
+ADMIN_PASSWORD = DEFAULT_ADMIN_PASSWORD
 
 
 DALANI_PACKAGES = [
@@ -80,28 +79,18 @@ def _ensure_column(c, table_name, column_name, sql_type_with_default):
 
 
 def _seed_packages(c):
-    # First, force update all images based on the hardcoded list
-    for pkg in DALANI_PACKAGES:
-        c.execute(
-            """UPDATE Packages
-               SET image_url=?
-               WHERE package_name=?""",
-            (pkg[7], pkg[0]),
-        )
-
+    # INSERT-ONLY seeding for the 14 canonical travel packages.
+    # If a package already exists by package_name, we SKIP it entirely.
+    # This preserves administrator edits (price, description, image, etc.)
+    # across app restarts and ensures admin-deleted canonical packages are
+    # never re-inserted. Custom admin-created packages are also preserved.
     canonical_names = []
     for pkg in DALANI_PACKAGES:
-        canonical_names.append(pkg[0])
-        c.execute("SELECT package_id FROM Packages WHERE package_name=?", (pkg[0],))
+        name = pkg[0]
+        canonical_names.append(name)
+        c.execute("SELECT package_id FROM Packages WHERE package_name=?", (name,))
         row = c.fetchone()
-        if row:
-            c.execute(
-                """UPDATE Packages
-                   SET destination=?, price=?, duration=?, description=?, availability_status=?, season_category=?, image_url=?
-                   WHERE package_id=?""",
-                (pkg[1], pkg[2], pkg[3], pkg[4], pkg[5], pkg[6], pkg[7], row["package_id"]),
-            )
-        else:
+        if not row:
             c.execute(
                 """INSERT INTO Packages
                    (package_name, destination, price, duration, description, availability_status, season_category, image_url)
@@ -109,31 +98,158 @@ def _seed_packages(c):
                 pkg,
             )
 
-    # Seed available spots for packages that don't have them yet (or were defaulted)
+    # One-time default-spots bootstrap for packages whose total_spots has
+    # never been explicitly configured (NULL or <= 0). This never touches
+    # packages that were explicitly configured by an admin.
     c.execute("SELECT package_id, package_name, availability_status, available_spots, total_spots FROM Packages")
     for row in c.fetchall():
         pid = row["package_id"]
         if row["availability_status"] == "Available":
             total = row["total_spots"] if row["total_spots"] and row["total_spots"] > 0 else 10
-            # Only set if not already explicitly configured (total_spots empty means unset)
             if not row["total_spots"] or row["total_spots"] <= 0:
-                total = 10
                 c.execute("UPDATE Packages SET total_spots=?, available_spots=? WHERE package_id=?", (10, 10, pid))
         else:
-            # Unavailable packages are fully booked
-            c.execute("UPDATE Packages SET total_spots=?, available_spots=? WHERE package_id=?", (0, 0, pid))
+            if not row["total_spots"] or row["total_spots"] <= 0:
+                c.execute("UPDATE Packages SET total_spots=?, available_spots=? WHERE package_id=?", (0, 0, pid))
 
-    # Custom packages created by administrators are intentionally preserved.
-    # Only the canonical demo packages above are seeded/updated.
+    # Note: any admin edits to canonical packages and any custom admin-created
+    # or admin-deleted packages are fully preserved going forward.
 
 
-def _seed_scaled_demo_data(conn, c):
-    # Clear existing data as requested - Commented out to prevent data loss on every restart
-    # c.execute("DELETE FROM Bookings")
-    # c.execute("DELETE FROM Customers")
-    # c.execute("DELETE FROM Users WHERE role='customer'")
-    # conn.commit()
-    return
+def _seed_demo_bookings(conn, c):
+    """Automatically populate a fresh database with the demo booking dataset.
+
+    Runs during ``init_db()`` so that every launch of the system presents the
+    full 72-booking / 173-traveller / R3,816,500 dataset without an admin ever
+    needing to click a "restore" button.
+
+    The seeding is fully idempotent:
+      - Demo customers are created only when the Customers table is empty.
+      - The 72 bookings are created only when the Bookings table is empty.
+      - A fixed ``random.Random(20260815)`` seed makes the generated dataset
+        deterministic, so a fresh install always produces the same data.
+
+    Existing real bookings, customers and packages are never touched, deleted
+    or overwritten.
+    """
+    import random
+
+    # 1. Only seed bookings when there are none yet.
+    c.execute("SELECT COUNT(*) AS total FROM Bookings")
+    if int(c.fetchone()["total"] or 0) > 0:
+        return
+
+    TARGET_BOOKINGS = 72
+    TARGET_TRAVELLERS = 173
+    TARGET_REVENUE = 3_816_500.00
+    rng = random.Random(20260815)
+
+    # 2. Bootstrap demo customers only when the Customers table is empty.
+    c.execute("SELECT COUNT(*) AS total FROM Customers")
+    if int(c.fetchone()["total"] or 0) == 0:
+        demo_customers = [
+            ("Anele Mokoena", "anele.mokoena@example.com", "0710001001", "Polokwane, Limpopo"),
+            ("Bokang Nkosi", "bokang.nkosi@example.com", "0710001002", "Johannesburg, Gauteng"),
+            ("Dineo Molefe", "dineo.molefe@example.com", "0710001003", "Pretoria, Gauteng"),
+            ("Palesa Khumalo", "palesa.khumalo@example.com", "0710001004", "Mbombela, Mpumalanga"),
+            ("Thando Ndlovu", "thando.ndlovu@example.com", "0710001005", "Durban, KwaZulu-Natal"),
+            ("Naledi Mokoena", "naledi.mokoena@example.com", "0710001006", "Bloemfontein, Free State"),
+            ("Mpho Dlamini", "mpho.dlamini@example.com", "0710001007", "Cape Town, Western Cape"),
+            ("Lwandle Zulu", "lwandle.zulu@example.com", "0710001008", "Gqeberha, Eastern Cape"),
+            ("Rethabile Molefe", "rethabile.molefe@example.com", "0710001009", "Polokwane, Limpopo"),
+            ("Sinethemba Naidoo", "sinethemba.naidoo@example.com", "0710001010", "Durban, KwaZulu-Natal"),
+        ]
+        for name, email, phone, address in demo_customers:
+            c.execute(
+                """INSERT INTO Customers (name, email, phone, address, payment_method)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (name, email, phone, address, "card"),
+            )
+
+    # 3. Read customers (id order so the deterministic seed maps to stable IDs).
+    c.execute("SELECT customer_id, name, email FROM Customers ORDER BY customer_id")
+    customers = c.fetchall()
+    if not customers:
+        return
+
+    # 4. Read packages (the canonical DALANI_PACKAGES set is already seeded by
+    #    _seed_packages() above; bookings reference those real package IDs).
+    c.execute("SELECT package_id, package_name, destination, price FROM Packages ORDER BY package_id")
+    packages = c.fetchall()
+    if not packages:
+        return
+
+    # 5. Distribute exactly 173 travellers across 72 bookings (1-5 per booking).
+    traveller_counts = [1] * TARGET_BOOKINGS
+    remaining_travellers = TARGET_TRAVELLERS - TARGET_BOOKINGS
+    while remaining_travellers > 0:
+        eligible = [i for i, v in enumerate(traveller_counts) if v < 5]
+        if not eligible:
+            break
+        index = rng.choice(eligible)
+        traveller_counts[index] += 1
+        remaining_travellers -= 1
+
+    # 6. Generate the 72 booking records.
+    today = datetime.date.today()
+    booking_start = today - datetime.timedelta(days=180)
+
+    generated = []
+    for index in range(TARGET_BOOKINGS):
+        customer = customers[rng.randrange(len(customers))]
+        package = packages[rng.randrange(len(packages))]
+        booking_date = booking_start + datetime.timedelta(days=rng.randint(0, 180))
+        travel_date = booking_date + datetime.timedelta(days=rng.randint(7, 90))
+        travelers = traveller_counts[index]
+        package_price = float(package["price"] or 0) or 15000.00
+        generated.append({
+            "customer_id": customer["customer_id"],
+            "package_id": package["package_id"],
+            "booking_date": booking_date.isoformat(),
+            "travel_date": travel_date.isoformat(),
+            "number_of_travelers": travelers,
+            "raw_amount": package_price * travelers,
+        })
+
+    # 7. Scale revenue to the R3,816,500 target and fix rounding drift.
+    raw_total = sum(row["raw_amount"] for row in generated)
+    if raw_total <= 0:
+        return
+    scale = TARGET_REVENUE / raw_total
+    for row in generated:
+        row["total_amount"] = round(row["raw_amount"] * scale, 2)
+    current_total = round(sum(row["total_amount"] for row in generated), 2)
+    difference = round(TARGET_REVENUE - current_total, 2)
+    generated[-1]["total_amount"] = round(generated[-1]["total_amount"] + difference, 2)
+
+    # 8. Detect optional revenue column and insert the bookings.
+    c.execute("PRAGMA table_info(Bookings)")
+    booking_columns = {row["name"] for row in c.fetchall()}
+    has_revenue = "revenue" in booking_columns
+    payment_methods = ["card", "card", "card", "bank_transfer"]
+
+    for row in generated:
+        payment_method = rng.choice(payment_methods)
+        if has_revenue:
+            c.execute(
+                """INSERT INTO Bookings (customer_id, package_id, booking_date, travel_date,
+                       number_of_travelers, total_amount, status, payment_method, revenue)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (row["customer_id"], row["package_id"], row["booking_date"],
+                 row["travel_date"], row["number_of_travelers"], row["total_amount"],
+                 "confirmed", payment_method, row["total_amount"]),
+            )
+        else:
+            c.execute(
+                """INSERT INTO Bookings (customer_id, package_id, booking_date, travel_date,
+                       number_of_travelers, total_amount, status, payment_method)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (row["customer_id"], row["package_id"], row["booking_date"],
+                 row["travel_date"], row["number_of_travelers"], row["total_amount"],
+                 "confirmed", payment_method),
+            )
+
+    conn.commit()
 
 
 def init_db():
@@ -367,7 +483,7 @@ def init_db():
         )
 
     _seed_packages(c)
-    _seed_scaled_demo_data(conn, c)
+    _seed_demo_bookings(conn, c)
 
     # NOTE: This used to top the Reviews table up with 130+ randomly
     # generated fake reviews on every single app startup whenever the real

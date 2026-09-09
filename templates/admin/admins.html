@@ -11,6 +11,16 @@
         .glass { background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08); backdrop-filter:blur(16px); }
         .input { width:100%; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); color:white; border-radius:14px; padding:13px 15px; outline:none; }
         .input:focus { border-color:#14b8a6; box-shadow:0 0 0 3px rgba(20,184,166,.12); }
+        .input.invalid { border-color:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.12); }
+        .field-error { margin-top:8px; font-size:12px; font-weight:800; color:#f87171; }
+        .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(4px); z-index:50; display:flex; align-items:center; justify-content:center; padding:20px; }
+        .modal-card { width:100%; max-width:460px; background:#0f172a; border:1px solid rgba(255,255,255,.1); border-radius:24px; padding:28px; }
+        .btn-primary { background:#14b8a6; color:#042f2e; font-weight:800; padding:12px 20px; border-radius:12px; transition:all .2s ease; }
+        .btn-primary:hover { background:#0ea59b; transform:translateY(-1px); }
+        .btn-secondary { background:rgba(255,255,255,.06); color:#f8fafc; font-weight:700; padding:12px 20px; border-radius:12px; border:1px solid rgba(255,255,255,.1); transition:all .2s ease; }
+        .btn-secondary:hover { background:rgba(255,255,255,.1); }
+        .btn-danger { background:#dc2626; color:white; font-weight:800; padding:12px 20px; border-radius:12px; transition:all .2s ease; }
+        .btn-danger:hover { background:#ef4444; transform:translateY(-1px); }
     </style>
 </head>
 <body class="min-h-screen">
@@ -19,7 +29,7 @@
             <div>
                 <p class="text-teal-400 text-xs font-black uppercase tracking-[.25em]">System Access</p>
                 <h1 class="text-3xl font-black mt-2">Administrator Accounts</h1>
-                <p class="text-slate-500 mt-2">Multiple admins are supported. Disabled admins immediately lose dashboard access.</p>
+                <p class="text-slate-500 mt-2">Multiple admins are supported. Disabled admins immediately lose dashboard access. All sensitive actions require the current admin password.</p>
             </div>
             <div class="flex gap-3">
                 <a href="/dashboard" class="glass px-5 py-3 rounded-xl font-bold hover:bg-white/5">Dashboard</a>
@@ -30,12 +40,18 @@
         <div class="grid lg:grid-cols-[380px_1fr] gap-6">
             <section class="glass rounded-3xl p-6">
                 <h2 class="text-xl font-black mb-5">Add Administrator</h2>
-                <form id="createAdminForm" class="space-y-4">
-                    <input id="username" class="input" placeholder="Username" minlength="3" required>
-                    <input id="email" class="input" type="email" placeholder="Admin email" required>
-                    <input id="fullName" class="input" placeholder="Full name">
-                    <p class="text-xs text-slate-500">A secure temporary password is generated automatically and emailed to the new administrator. They must change it on first login.</p>
-                    <button class="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 py-3.5 rounded-xl font-black">Create Admin</button>
+                <form id="createAdminForm" class="space-y-4" novalidate>
+                    <div>
+                        <input id="username" class="input" placeholder="Username" minlength="3" autocomplete="off" required>
+                        <div id="usernameError" class="field-error hidden" aria-live="polite"></div>
+                    </div>
+                    <div>
+                        <input id="email" class="input" type="email" placeholder="Admin email" autocomplete="off" required>
+                        <div id="emailError" class="field-error hidden" aria-live="polite"></div>
+                    </div>
+                    <input id="fullName" class="input" placeholder="Full name (optional)">
+                    <p class="text-xs text-slate-500">The new administrator automatically receives the current universal admin password shared by all admins. All password changes propagate to every administrator account.</p>
+                    <button id="createAdminSubmit" type="submit" class="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 py-3.5 rounded-xl font-black" disabled>Create Admin</button>
                 </form>
                 <div id="msg" class="hidden mt-4 text-sm font-bold"></div>
             </section>
@@ -48,7 +64,7 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
                         <thead><tr class="text-xs uppercase tracking-widest text-slate-500 border-b border-white/10">
-                            <th class="py-4 pr-4">Admin</th><th class="py-4 pr-4">Email</th><th class="py-4 pr-4">Status</th><th class="py-4 text-right">Action</th>
+                            <th class="py-4 pr-4">Admin</th><th class="py-4 pr-4">Email</th><th class="py-4 pr-4">Status</th><th class="py-4 text-right">Actions</th>
                         </tr></thead>
                         <tbody id="adminsBody"></tbody>
                     </table>
@@ -67,19 +83,267 @@
         </section>
     </div>
 
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="flex items-start gap-4 mb-5">
+                <div id="confirmIcon" class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"></div>
+                <div class="flex-1">
+                    <h3 id="confirmTitle" class="text-xl font-black mb-1"></h3>
+                    <p id="confirmMessage" class="text-slate-300 text-base leading-relaxed"></p>
+                </div>
+            </div>
+            <div class="mb-5">
+                <label class="block text-xs uppercase tracking-widest text-slate-500 font-black mb-2">Confirm with current admin password</label>
+                <input type="password" id="confirmPassword" class="input" placeholder="Enter current admin password" autocomplete="current-password">
+                <p id="confirmPasswordError" class="hidden mt-2 text-xs font-bold text-red-400"></p>
+            </div>
+            <div class="flex gap-3 justify-end">
+                <button id="confirmCancelBtn" class="btn-secondary" type="button">Cancel</button>
+                <button id="confirmYesBtn" class="btn-primary" type="button">Yes</button>
+            </div>
+        </div>
+    </div>
+
+<script src="/static/js/main.js"></script>
 <script>
+// ------------------------------------------------------------
+// Global state for sensitive-action confirmation modal
+// ------------------------------------------------------------
+let pendingAction = null;
+const confirmModal = document.getElementById('confirmModal');
+const confirmTitle = document.getElementById('confirmTitle');
+const confirmMessage = document.getElementById('confirmMessage');
+const confirmIcon = document.getElementById('confirmIcon');
+const confirmPasswordInput = document.getElementById('confirmPassword');
+const confirmPasswordError = document.getElementById('confirmPasswordError');
+const confirmYesBtn = document.getElementById('confirmYesBtn');
+const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+
+function openConfirmModal({ action, verb, targetDescription, danger }) {
+    pendingAction = action;
+    confirmTitle.textContent = `Confirm ${verb}`;
+    // Exact wording per requirements: "Are you sure you want to [create/disable/delete] this user?"
+    const safeVerb = escapeHtml(verb.toLowerCase());
+    const verbClass = danger ? 'text-red-400 font-black' : 'text-white font-black';
+    let detailLine = '';
+    if (targetDescription) {
+        detailLine = `<br><span class="text-slate-500 text-sm">${escapeHtml(targetDescription)}</span>`;
+    }
+    confirmMessage.innerHTML = `Are you sure you want to <strong class="${verbClass}">${safeVerb}</strong> this user?${detailLine}`;
+    if (danger) {
+        confirmIcon.className = 'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-red-500/10 text-red-400';
+        confirmIcon.innerHTML = '<i class="fas fa-trash-can text-xl"></i>';
+        confirmYesBtn.className = 'btn-danger';
+        confirmYesBtn.textContent = 'Yes';
+    } else if (verb === 'Disable') {
+        confirmIcon.className = 'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/10 text-amber-400';
+        confirmIcon.innerHTML = '<i class="fas fa-user-slash text-xl"></i>';
+        confirmYesBtn.className = 'btn-primary';
+        confirmYesBtn.textContent = 'Yes';
+    } else if (verb === 'Reactivate') {
+        confirmIcon.className = 'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-teal-500/10 text-teal-400';
+        confirmIcon.innerHTML = '<i class="fas fa-user-check text-xl"></i>';
+        confirmYesBtn.className = 'btn-primary';
+        confirmYesBtn.textContent = 'Yes';
+    } else {
+        confirmIcon.className = 'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-400';
+        confirmIcon.innerHTML = '<i class="fas fa-user-plus text-xl"></i>';
+        confirmYesBtn.className = 'btn-primary';
+        confirmYesBtn.textContent = 'Yes';
+    }
+    confirmPasswordInput.value = '';
+    confirmPasswordError.classList.add('hidden');
+    confirmPasswordError.textContent = '';
+    confirmModal.classList.remove('hidden');
+    setTimeout(() => confirmPasswordInput.focus(), 50);
+}
+
+function closeConfirmModal() {
+    pendingAction = null;
+    confirmModal.classList.add('hidden');
+}
+
+confirmCancelBtn.addEventListener('click', closeConfirmModal);
+confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) closeConfirmModal(); });
+
+confirmYesBtn.addEventListener('click', async () => {
+    const pw = confirmPasswordInput.value;
+    if (!pw) {
+        confirmPasswordError.textContent = 'Please enter the current admin password to proceed.';
+        confirmPasswordError.classList.remove('hidden');
+        return;
+    }
+    confirmPasswordError.classList.add('hidden');
+    const action = pendingAction;
+    if (!action) { closeConfirmModal(); return; }
+    try {
+        const result = await action(pw);
+        closeConfirmModal();
+        if (result && typeof result === 'function') result();
+    } catch (err) {
+        confirmPasswordError.textContent = err.message || 'Action failed. Please try again.';
+        confirmPasswordError.classList.remove('hidden');
+    }
+});
+
+confirmPasswordInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); confirmYesBtn.click(); }
+    if (e.key === 'Escape') { closeConfirmModal(); }
+});
+
+// ------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------
 async function logout() {
     try { await fetch('/admin/logout', {method:'POST'}); } catch(e) {}
     window.location.href='/auth/login';
 }
+
 function escapeHtml(value) {
     return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
 function showMsg(text, ok=false) {
     const el=document.getElementById('msg');
     el.textContent=text;
     el.className='mt-4 text-sm font-bold '+(ok?'text-teal-400':'text-red-400');
+    if (!text) el.classList.add('hidden'); else el.classList.remove('hidden');
 }
+
+// ------------------------------------------------------------
+// Real-time inline username/email validation while typing
+// ------------------------------------------------------------
+const usernameInput = document.getElementById('username');
+const emailInput = document.getElementById('email');
+const usernameError = document.getElementById('usernameError');
+const emailError = document.getElementById('emailError');
+const createAdminSubmit = document.getElementById('createAdminSubmit');
+
+const VALID = { ok: true, message: '' };
+function INVALID(message) { return { ok: false, message }; }
+
+function isValidEmailFormat(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || ''));
+}
+
+let validationState = {
+    username: VALID,
+    email: VALID
+};
+function refreshSubmitState() {
+    const formValid = validationState.username.ok && validationState.email.ok &&
+        usernameInput.value.trim().length >= 3 && isValidEmailFormat(emailInput.value.trim());
+    createAdminSubmit.disabled = !formValid;
+}
+
+function applyFieldError(inputEl, errorEl, result) {
+    if (result.ok) {
+        inputEl.classList.remove('invalid');
+        errorEl.classList.add('hidden');
+        errorEl.textContent = '';
+    } else {
+        inputEl.classList.add('invalid');
+        errorEl.classList.remove('hidden');
+        errorEl.textContent = result.message;
+    }
+}
+
+let debounceTimers = { username: null, email: null };
+
+async function runRemoteCheck(field, value) {
+    try {
+        const query = field === 'username' ? `username=${encodeURIComponent(value)}` : `email=${encodeURIComponent(value)}`;
+        const r = await fetch(`/api/admin/admins/check?${query}`);
+        if (r.status === 401 || r.status === 403) { window.location.href = '/auth/login'; return null; }
+        const p = await r.json();
+        if (!p.success) return null;
+        return p.data[field];
+    } catch(e) { return null; }
+}
+
+function validateUsernameLocal(value) {
+    const v = value.trim();
+    if (!v) return VALID;
+    if (v.length < 3) return INVALID('Username must be at least 3 characters.');
+    return VALID;
+}
+
+function validateEmailLocal(value) {
+    const v = value.trim();
+    if (!v) return VALID;
+    if (!isValidEmailFormat(v)) return INVALID('Enter a valid email address.');
+    return VALID;
+}
+
+usernameInput.addEventListener('input', async () => {
+    const value = usernameInput.value;
+    const local = validateUsernameLocal(value);
+    if (!local.ok) {
+        validationState.username = local;
+        applyFieldError(usernameInput, usernameError, local);
+        refreshSubmitState();
+        return;
+    }
+    // If input still too short (e.g. empty), clear and skip remote
+    if (value.trim().length < 3) {
+        validationState.username = VALID;
+        applyFieldError(usernameInput, usernameError, VALID);
+        refreshSubmitState();
+        return;
+    }
+    if (debounceTimers.username) clearTimeout(debounceTimers.username);
+    debounceTimers.username = setTimeout(async () => {
+        const remote = await runRemoteCheck('username', value);
+        if (remote === null) return;
+        if (!remote.available) {
+            const res = INVALID(remote.message || 'This username has already been taken');
+            validationState.username = res;
+            applyFieldError(usernameInput, usernameError, res);
+        } else {
+            validationState.username = VALID;
+            applyFieldError(usernameInput, usernameError, VALID);
+        }
+        refreshSubmitState();
+    }, 250);
+    refreshSubmitState();
+});
+
+emailInput.addEventListener('input', async () => {
+    const value = emailInput.value;
+    const local = validateEmailLocal(value);
+    if (!local.ok) {
+        validationState.email = local;
+        applyFieldError(emailInput, emailError, local);
+        refreshSubmitState();
+        return;
+    }
+    if (!value.trim()) {
+        validationState.email = VALID;
+        applyFieldError(emailInput, emailError, VALID);
+        refreshSubmitState();
+        return;
+    }
+    if (debounceTimers.email) clearTimeout(debounceTimers.email);
+    debounceTimers.email = setTimeout(async () => {
+        const remote = await runRemoteCheck('email', value);
+        if (remote === null) return;
+        if (!remote.available) {
+            const res = INVALID(remote.message || 'An admin account with this email already exists');
+            validationState.email = res;
+            applyFieldError(emailInput, emailError, res);
+        } else {
+            validationState.email = VALID;
+            applyFieldError(emailInput, emailError, VALID);
+        }
+        refreshSubmitState();
+    }, 300);
+    refreshSubmitState();
+});
+
+// ------------------------------------------------------------
+// Admin list and audit log rendering
+// ------------------------------------------------------------
 async function loadAudit() {
     const body=document.getElementById('auditBody');
     try {
@@ -98,46 +362,103 @@ async function loadAdmins() {
         if (!p.success) throw new Error(p.error||'Unable to load admins');
         body.innerHTML=(p.data||[]).map(a => {
             const active=a.account_status==='active';
+            const toggleLabel = active?'Disable':'Reactivate';
+            const label = escapeHtml((a.full_name||a.username) + ' (' + a.email + ')');
             return `<tr class="border-b border-white/5">
                 <td class="py-4 pr-4"><div class="font-bold">${escapeHtml(a.full_name||a.username)}</div><div class="text-xs text-slate-500">@${escapeHtml(a.username)}</div></td>
                 <td class="py-4 pr-4 text-slate-300">${escapeHtml(a.email)}</td>
                 <td class="py-4 pr-4"><span class="px-3 py-1 rounded-full text-xs font-black ${active?'bg-teal-500/10 text-teal-400':'bg-red-500/10 text-red-400'}">${active?'Active':'Disabled'}</span></td>
-                <td class="py-4 text-right"><button onclick="toggleAdmin(${a.user_id}, '${active?'disabled':'active'}')" class="text-xs font-black ${active?'text-red-400':'text-teal-400'}">${active?'Disable':'Reactivate'}</button></td>
+                <td class="py-4 text-right"><div class="flex items-center justify-end gap-3">
+                    <button onclick='toggleAdmin(${a.user_id}, "${active?'disabled':'active'}", ${JSON.stringify(label)})' class="text-xs font-black ${active?'text-amber-400 hover:text-amber-300':'text-teal-400 hover:text-teal-300'}">${toggleLabel}</button>
+                    <button onclick='deleteAdmin(${a.user_id}, ${JSON.stringify(label + " — this action is permanent and cannot be undone.")})' class="text-xs font-black text-red-400 hover:text-red-300">Delete</button>
+                </div></td>
             </tr>`;
         }).join('') || '<tr><td colspan="4" class="py-10 text-center text-slate-500">No administrators found.</td></tr>';
     } catch(e) {
         body.innerHTML='<tr><td colspan="4" class="py-10 text-center text-red-400">Unable to load administrators.</td></tr>';
     }
 }
-async function toggleAdmin(id,status) {
-    if (!confirm(status==='disabled'?'Disable this administrator?':'Reactivate this administrator?')) return;
-    const r=await fetch('/api/admin/admins/'+id+'/status',{
-        method:'PATCH', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({account_status:status})
+
+// ------------------------------------------------------------
+// Admin action handlers (create / disable / delete)
+// ------------------------------------------------------------
+function toggleAdmin(id, status, targetLabel) {
+    const verb = status === 'disabled' ? 'Disable' : 'Reactivate';
+    openConfirmModal({
+        action: async (confirmPassword) => {
+            const r=await fetch('/api/admin/admins/'+id+'/status',{
+                method:'PATCH', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({account_status:status, confirm_password:confirmPassword})
+            });
+            const p=await r.json();
+            if (r.status === 403) throw new Error(p.error || 'Invalid admin password. Action rejected.');
+            if (!p.success) throw new Error(p.error||'Unable to update administrator.');
+            loadAdmins();
+            loadAudit();
+        },
+        verb,
+        targetDescription: targetLabel,
+        danger: false
     });
-    const p=await r.json();
-    if (!p.success) { alert(p.error||'Unable to update administrator.'); return; }
-    loadAdmins();
 }
+
+function deleteAdmin(id, targetLabel) {
+    openConfirmModal({
+        action: async (confirmPassword) => {
+            const r=await fetch('/api/admin/admins/'+id,{
+                method:'DELETE', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({confirm_password: confirmPassword})
+            });
+            const p=await r.json();
+            if (r.status === 403) throw new Error(p.error || 'Invalid admin password. Action rejected.');
+            if (!p.success) throw new Error(p.error||'Unable to delete administrator.');
+            loadAdmins();
+            loadAudit();
+        },
+        verb: 'Delete',
+        targetDescription: targetLabel,
+        danger: true
+    });
+}
+
 document.getElementById('createAdminForm').addEventListener('submit', async e => {
     e.preventDefault();
-    const r=await fetch('/api/admin/admins',{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-            username:document.getElementById('username').value,
-            email:document.getElementById('email').value,
-            full_name:document.getElementById('fullName').value
-        })
+    const username = usernameInput.value.trim();
+    const email = emailInput.value.trim();
+    const fullName = document.getElementById('fullName').value.trim();
+    if (!username || !email) { showMsg('Username and email are required.'); return; }
+    // Final local + remote state guard
+    if (!validationState.username.ok) { showMsg(validationState.username.message); return; }
+    if (!validationState.email.ok) { showMsg(validationState.email.message); return; }
+
+    openConfirmModal({
+        action: async (confirmPassword) => {
+            const r=await fetch('/api/admin/admins',{
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({ username, email, full_name: fullName, confirm_password: confirmPassword })
+            });
+            const p=await r.json();
+            if (r.status === 403) throw new Error(p.error || 'Invalid admin password. Action rejected.');
+            if (r.status === 409) throw new Error(p.error || 'Username or email already in use.');
+            if (!p.success) throw new Error(p.error||'Unable to create administrator.');
+            showMsg('Administrator created successfully.',true);
+            e.target.reset();
+            validationState = { username: VALID, email: VALID };
+            applyFieldError(usernameInput, usernameError, VALID);
+            applyFieldError(emailInput, emailError, VALID);
+            refreshSubmitState();
+            loadAdmins();
+            loadAudit();
+        },
+        verb: 'Create',
+        targetDescription: `New admin: ${username} (${email})`,
+        danger: false
     });
-    const p=await r.json();
-    if (!p.success) { showMsg(p.error||'Unable to create administrator.'); return; }
-    showMsg('Administrator created successfully.',true);
-    e.target.reset();
-    loadAdmins();
-    loadAudit();
 });
+
 loadAdmins();
 loadAudit();
+refreshSubmitState();
 </script>
 </body>
 </html>

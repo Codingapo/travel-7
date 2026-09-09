@@ -17,12 +17,13 @@ import logging
 import secrets
 import re
 import sqlite3
+import uuid
 from email.message import EmailMessage
 from contextlib import asynccontextmanager
 from typing import Optional
 from email.utils import parseaddr
 
-from fastapi import FastAPI, Request, HTTPException, Query
+from fastapi import FastAPI, Request, HTTPException, Query, UploadFile, File
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -31,10 +32,77 @@ from pydantic import BaseModel
 from werkzeug.security import generate_password_hash, check_password_hash
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from config import SESSION_TIMEOUT_MINUTES, MAX_LOGIN_ATTEMPTS, LOGIN_LOCKOUT_MINUTES
+from config import (
+    SESSION_TIMEOUT_MINUTES, MAX_LOGIN_ATTEMPTS, LOGIN_LOCKOUT_MINUTES,
+    RESEND_API_KEY, DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_EMAIL,
+    DEFAULT_ADMIN_USERNAME,
+)
 from database import get_db_connection, init_db, backup_database, get_review_summary, upsert_review_summary
 from ai_engine import train_demand_forecasting, perform_customer_segmentation, run_anomaly_detection, get_forecast_model_metadata
 from google_reviews_sync import fetch_reviews, calculate_sentiment
+
+
+# ============================================================
+# PASSWORD STRENGTH VALIDATION
+# ============================================================
+
+PASSWORD_MIN_LENGTH = 12
+PASSWORD_REQUIREMENTS_DESC = (
+    f"Password must be at least {PASSWORD_MIN_LENGTH} characters and include "
+    "an uppercase letter, a lowercase letter, a number, and a special character."
+)
+
+_SPECIAL_CHARS = set(r"!@#$%^&*()_+-=[]{}|;:,.<>?/~`")
+
+
+def validate_password_strength(password: str, forbidden_substrings: Optional[list] = None) -> None:
+    """Validate a password against standard security requirements.
+
+    Raises HTTPException(400) with a specific message if validation fails.
+
+    Requirements:
+      - Minimum PASSWORD_MIN_LENGTH characters
+      - At least one uppercase letter (A-Z)
+      - At least one lowercase letter (a-z)
+      - At least one digit (0-9)
+      - At least one special character (from a defined set)
+      - Must not contain any of the forbidden substrings (e.g. username, email
+        local-part) – case-insensitive check.
+    """
+    if not password:
+        raise HTTPException(status_code=400, detail="Password is required.")
+
+    errors = []
+
+    if len(password) < PASSWORD_MIN_LENGTH:
+        errors.append(f"be at least {PASSWORD_MIN_LENGTH} characters long")
+    if not re.search(r"[A-Z]", password):
+        errors.append("include at least one uppercase letter (A-Z)")
+    if not re.search(r"[a-z]", password):
+        errors.append("include at least one lowercase letter (a-z)")
+    if not re.search(r"[0-9]", password):
+        errors.append("include at least one number (0-9)")
+    if not any(ch in _SPECIAL_CHARS for ch in password):
+        errors.append(
+            "include at least one special character (e.g. !@#$%^&*)"
+        )
+
+    if forbidden_substrings:
+        pwd_lower = password.lower()
+        for token in forbidden_substrings:
+            if token and isinstance(token, str):
+                token_lower = token.strip().lower()
+                if token_lower and len(token_lower) >= 3 and token_lower in pwd_lower:
+                    errors.append("not contain your username or email address")
+                    break
+
+    if errors:
+        if len(errors) == 1:
+            detail = f"Password must {errors[0]}."
+        else:
+            detail = "Password must " + ", ".join(errors[:-1]) + f", and {errors[-1]}."
+        raise HTTPException(status_code=400, detail=detail)
+
 
 # --- Pydantic Models ---
 class LoginRequest(BaseModel):
@@ -74,9 +142,11 @@ class AdminCreateRequest(BaseModel):
     username: str
     email: str
     full_name: str = ""
+    confirm_password: str = ""
 
 class AdminStatusRequest(BaseModel):
     account_status: str
+    confirm_password: str = ""
 
 class ReviewRequest(BaseModel):
     reviewer_name: str
@@ -109,14 +179,14 @@ async def lifespan(app: FastAPI):
     # in the source code; it comes from DEFAULT_ADMIN_PASSWORD.
     try:
         conn = get_db_connection(); c = conn.cursor()
-        c.execute("SELECT user_id, username, email, must_change_password FROM Users WHERE is_admin=1 AND LOWER(email)=? LIMIT 1", (os.getenv("DEFAULT_ADMIN_EMAIL", "skalahante@gmail.com").lower(),))
+        c.execute("SELECT user_id, username, email, must_change_password FROM Users WHERE is_admin=1 AND LOWER(email)=? LIMIT 1", (DEFAULT_ADMIN_EMAIL.lower(),))
         bootstrap = c.fetchone()
         c.execute("CREATE TABLE IF NOT EXISTS System_Settings (setting_key TEXT PRIMARY KEY, setting_value TEXT)")
         c.execute("SELECT setting_value FROM System_Settings WHERE setting_key='bootstrap_admin_email_sent'")
         already_sent = c.fetchone()
         if bootstrap and bootstrap["must_change_password"] and not already_sent:
             try:
-                sent = send_bootstrap_admin_email(bootstrap["email"], bootstrap["username"], os.getenv("DEFAULT_ADMIN_PASSWORD", "TravelIntel#ChangeMe2026"))
+                sent = send_bootstrap_admin_email(bootstrap["email"], bootstrap["username"], DEFAULT_ADMIN_PASSWORD)
                 if sent:
                     c.execute("INSERT OR REPLACE INTO System_Settings(setting_key,setting_value) VALUES('bootstrap_admin_email_sent','1')")
                     conn.commit()
@@ -157,12 +227,23 @@ async def lifespan(app: FastAPI):
 
 # --- App Init ---
 app = FastAPI(title="TravelIntel AI", lifespan=lifespan)
-resend.api_key = os.getenv("RESEND_API_KEY", "")
+resend.api_key = RESEND_API_KEY or os.getenv("RESEND_API_KEY", "")
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOADS_DIR = os.path.join(BASE_DIR, "static", "uploads", "packages")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+
+MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+_ALLOWED_IMAGE_MIME_TO_EXT = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+}
 
 # --- Logging ---
 LOGS_DIR = os.path.join(BASE_DIR, "logs")
@@ -179,6 +260,8 @@ if not logger.handlers:
 login_attempts = {}
 password_reset_otps = {}
 registration_otps = {}
+# Throttle for the background SerpApi review sync triggered on page load.
+_last_review_sync_at = None
 
 def create_session(user_id: int, role: str):
     session_id = os.urandom(24).hex()
@@ -324,6 +407,27 @@ def send_bootstrap_admin_email(email: str, username: str, temporary_password: st
         <p>Your administrator account has been created.</p>
         <p><b>Email:</b> {email}<br><b>Username:</b> {username}<br><b>Temporary password:</b> {temporary_password}</p>
         <p>Sign in at <b>/auth/login</b>. You will be required to change this temporary password immediately.</p>
+        <p>If you did not expect this account, contact the system owner immediately.</p>"""
+    })
+    return True
+
+
+def send_new_admin_shared_password_email(email: str, username: str) -> bool:
+    """Notify a newly-added administrator that they share the universal admin password."""
+    if not resend.api_key:
+        logger.warning("RESEND_API_KEY is not configured; new-admin email was not sent to %s", email)
+        return False
+    resend.Emails.send({
+        "from": "TravelIntel AI <reset@notify.moviewatchtv.fun>",
+        "to": [email],
+        "subject": "Your TravelIntel AI administrator account is ready",
+        "reply_to": "support@travelintel.ai",
+        "html": f"""<h2>TravelIntel AI Administrator Access</h2>
+        <p>Your administrator account has been created and is linked to the shared platform password.</p>
+        <p><b>Email:</b> {email}<br><b>Username:</b> {username}</p>
+        <p>Use the current universal TravelIntel administrator password to sign in at <b>/auth/login</b>.
+        If you do not already know it, contact any active administrator or the system owner.</p>
+        <p>All administrators share one password. When any administrator changes the password, every account is updated automatically.</p>
         <p>If you did not expect this account, contact the system owner immediately.</p>"""
     })
     return True
@@ -1331,12 +1435,8 @@ async def customer_register(data: CustomerRegisterRequest):
             detail="Invalid email"
         )
 
-    if len(data.password) < 6:
-        raise HTTPException(
-            status_code=400,
-            detail="Password too short"
-        )
-
+    email_local = email.split("@")[0] if "@" in email else email
+    validate_password_strength(data.password, forbidden_substrings=[email, email_local])
 
     conn = get_db_connection()
     c = conn.cursor()
@@ -1563,6 +1663,49 @@ async def unified_login(data: CustomerLoginRequest):
     return response
 
 
+@app.get("/api/auth/me")
+async def get_current_user(request: Request):
+    session = get_session_from_request(request)
+    if not session:
+        return JSONResponse(content={"success": False, "error": "Not authenticated"}, status_code=401)
+
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT user_id, email, username, full_name, user_type, role, is_admin, must_change_password, account_status FROM Users WHERE user_id = ? LIMIT 1", (session["user_id"],))
+    user = c.fetchone()
+    conn.close()
+
+    if not user:
+        return JSONResponse(content={"success": False, "error": "User not found"}, status_code=401)
+
+    user_type = user["user_type"] if user["user_type"] in {"admin", "client"} else ("admin" if int(user["is_admin"] or 0) == 1 or user["role"] == "admin" else "client")
+    display_name = user["full_name"] or user["username"] or (user["email"].split("@")[0] if user["email"] else "User")
+
+    if user_type == "client":
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT name FROM Customers WHERE user_id = ? LIMIT 1", (user["user_id"],))
+        cust = c.fetchone()
+        conn.close()
+        if cust and cust["name"]:
+            display_name = cust["name"]
+
+    return JSONResponse(content={
+        "success": True,
+        "user": {
+            "user_id": user["user_id"],
+            "email": user["email"],
+            "username": user["username"],
+            "full_name": display_name,
+            "user_type": user_type,
+            "role": "admin" if user_type == "admin" else "customer",
+            "is_admin": user_type == "admin",
+            "must_change_password": bool(user["must_change_password"] if "must_change_password" in user.keys() else 0),
+            "account_status": user["account_status"]
+        }
+    })
+
+
 @app.post("/api/admin/forgot-password/request")
 async def request_admin_password_reset(data: AdminForgotPasswordRequest):
     """Send a reset OTP to the email belonging to an active admin account."""
@@ -1602,9 +1745,70 @@ async def request_admin_password_reset(data: AdminForgotPasswordRequest):
 
 
 
+class AdminDeleteRequest(BaseModel):
+    confirm_password: str
+
+class AdminActionConfirmRequest(BaseModel):
+    confirm_password: str
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+
+def get_shared_admin_password_hash() -> Optional[str]:
+    """Fetch the password hash from any active admin to use as the shared credential."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute(
+        "SELECT password_hash FROM Users "
+        "WHERE is_admin=1 AND account_status='active' "
+        "ORDER BY user_id ASC LIMIT 1"
+    )
+    row = c.fetchone()
+    conn.close()
+    if row and row["password_hash"]:
+        return row["password_hash"]
+    return None
+
+
+def sync_admin_password_to_all(new_password_hash: str, exclude_user_id: Optional[int] = None) -> int:
+    """Overwrite every admin account's password hash with the given one.
+
+    Returns the number of updated rows.
+    """
+    conn = get_db_connection()
+    c = conn.cursor()
+    if exclude_user_id is not None:
+        c.execute(
+            "UPDATE Users SET password_hash=?, password_changed_at=CURRENT_TIMESTAMP "
+            "WHERE is_admin=1 AND user_id != ?",
+            (new_password_hash, exclude_user_id),
+        )
+    else:
+        c.execute(
+            "UPDATE Users SET password_hash=?, password_changed_at=CURRENT_TIMESTAMP "
+            "WHERE is_admin=1",
+            (new_password_hash,),
+        )
+    count = c.rowcount
+    conn.commit()
+    conn.close()
+    return count
+
+
+def verify_admin_password(user_id: int, password: str) -> bool:
+    """Verify the current admin password for sensitive action confirmation."""
+    if not password:
+        return False
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT password_hash FROM Users WHERE user_id=? AND is_admin=1 LIMIT 1", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    if not row or not row["password_hash"]:
+        return False
+    return check_password_hash(row["password_hash"], password)
 
 
 @app.post("/api/auth/change-password")
@@ -1612,17 +1816,37 @@ async def change_password(data: ChangePasswordRequest, request: Request):
     session = get_session_from_request(request)
     if not session:
         raise HTTPException(status_code=401, detail="Please login first")
-    if len(data.new_password) < 8:
-        raise HTTPException(status_code=400, detail="New password must be at least 8 characters.")
     conn = get_db_connection(); c = conn.cursor()
     c.execute("SELECT * FROM Users WHERE user_id=?", (session["user_id"],))
-    user = c.fetchone()
+    user_row = c.fetchone()
+    user = dict(user_row) if user_row else None
     if not user or not check_password_hash(user["password_hash"], data.current_password):
         conn.close(); raise HTTPException(status_code=400, detail="Current password is incorrect.")
-    c.execute("UPDATE Users SET password_hash=?, must_change_password=0, password_changed_at=CURRENT_TIMESTAMP WHERE user_id=?", (generate_password_hash(data.new_password), session["user_id"]))
-    conn.commit(); conn.close()
-    if session.get("role") == "admin":
-        record_admin_audit(session, "Changed own password", "admin", session.get("user_id"), "First-login or voluntary password change")
+    username_val = user.get("username") or ""
+    email_val = user.get("email") or ""
+    email_local_val = email_val.split("@")[0] if "@" in email_val else email_val
+    validate_password_strength(
+        data.new_password,
+        forbidden_substrings=[username_val, email_val, email_local_val]
+    )
+    new_hash = generate_password_hash(data.new_password)
+    is_admin = int(user.get("is_admin") or 0) == 1 or user.get("role") == "admin" or user.get("user_type") == "admin"
+    if is_admin:
+        c.execute("UPDATE Users SET password_hash=?, must_change_password=0, password_changed_at=CURRENT_TIMESTAMP WHERE user_id=?", (new_hash, session["user_id"]))
+        conn.commit()
+        conn.close()
+        admins_updated_count = sync_admin_password_to_all(new_hash, exclude_user_id=session["user_id"])
+        total_admins_affected = admins_updated_count + 1
+        record_admin_audit(
+            session,
+            "Changed universal admin password",
+            "admin",
+            None,
+            f"Admin {user.get('username')} updated the shared platform password; applied to {total_admins_affected} administrator account(s)."
+        )
+    else:
+        c.execute("UPDATE Users SET password_hash=?, must_change_password=0, password_changed_at=CURRENT_TIMESTAMP WHERE user_id=?", (new_hash, session["user_id"]))
+        conn.commit(); conn.close()
     return {"success": True, "data": {"message": "Password changed successfully.", "redirect": "/dashboard" if session.get("role") == "admin" else "/home"}}
 
 
@@ -1638,7 +1862,13 @@ class PasswordResetVerifyRequest(BaseModel):
 
 @app.post("/api/auth/forgot-password/request")
 async def request_customer_password_reset(data: PasswordResetRequest):
-    """Send a reset OTP to the email belonging to an active customer account."""
+    """Send a reset OTP to the email belonging to an active customer OR admin account.
+
+    Both customers and administrators use the same shared forgot-password page
+    (/forgot-password.html) linked from the unified sign-in page. This endpoint
+    looks up the email across all active Users regardless of role — admin resets
+    then universally sync the new password to every admin via the verify endpoint.
+    """
     email = normalize_email(data.email)
     if not is_valid_email(email):
         raise HTTPException(status_code=400, detail="Enter a valid email address.")
@@ -1646,15 +1876,16 @@ async def request_customer_password_reset(data: PasswordResetRequest):
     conn = get_db_connection()
     c = conn.cursor()
     c.execute(
-        "SELECT user_id, email, username FROM Users "
-        "WHERE LOWER(email)=? AND COALESCE(is_admin,0)=0 AND account_status='active' LIMIT 1",
+        "SELECT user_id, email, username, is_admin, role, user_type FROM Users "
+        "WHERE LOWER(email)=? AND account_status='active' LIMIT 1",
         (email,),
     )
-    user = c.fetchone()
+    user_row = c.fetchone()
     conn.close()
 
-    if not user:
-        raise HTTPException(status_code=404, detail="No active customer is registered with that email.")
+    if not user_row:
+        raise HTTPException(status_code=404, detail="No active account is registered with that email.")
+    user = dict(user_row)
 
     account_email = normalize_email(user["email"])
     otp = f"{secrets.randbelow(1000000):06d}"
@@ -1666,11 +1897,12 @@ async def request_customer_password_reset(data: PasswordResetRequest):
 
     try:
         send_password_reset_email(account_email, otp)
-        logger.info("Customer password reset OTP sent to %s", account_email)
+        is_admin_flag = int(user.get("is_admin") or 0) == 1 or user.get("role") == "admin" or user.get("user_type") == "admin"
+        logger.info("Password reset OTP sent to %s (is_admin=%s)", account_email, is_admin_flag)
         return {"success": True, "data": {"message": "Password reset code sent to your email.", "email": account_email}}
     except Exception:
         password_reset_otps.pop(account_email, None)
-        logger.exception("Failed to send customer password reset email to %s", account_email)
+        logger.exception("Failed to send password reset email to %s", account_email)
         raise HTTPException(status_code=500, detail="Unable to send password reset email. Please try again.")
 
 
@@ -1692,11 +1924,8 @@ async def verify_password_reset(data: PasswordResetVerifyRequest):
             detail="Please enter the 6-digit verification code"
         )
 
-    if len(data.password) < 6:
-        raise HTTPException(
-            status_code=400,
-            detail="Password must be at least 6 characters"
-        )
+    email_local = email.split("@")[0] if "@" in email else email
+    validate_password_strength(data.password, forbidden_substrings=[email, email_local])
 
     record = password_reset_otps.get(email)
 
@@ -1741,26 +1970,63 @@ async def verify_password_reset(data: PasswordResetVerifyRequest):
     c = conn.cursor()
 
     try:
-
-        c.execute(
-            """
-            UPDATE Users
-            SET password_hash=?
-            WHERE email=?
-            """,
-            (
-                generate_password_hash(data.password),
-                email
+        # Determine if this is an admin reset so we can sync universally
+        c.execute("SELECT is_admin, role, user_type FROM Users WHERE email=? LIMIT 1", (email,))
+        target_row = c.fetchone()
+        target_user = dict(target_row) if target_row else None
+        is_admin_reset = (
+            target_user is not None and (
+                int(target_user.get("is_admin") or 0) == 1
+                or target_user.get("role") == "admin"
+                or target_user.get("user_type") == "admin"
             )
         )
 
-        if c.rowcount == 0:
+        new_hash = generate_password_hash(data.password)
+        if is_admin_reset:
+            c.execute(
+                "UPDATE Users SET password_hash=?, must_change_password=0, password_changed_at=CURRENT_TIMESTAMP WHERE is_admin=1",
+                (new_hash,),
+            )
+            rows_updated = c.rowcount
+        else:
+            c.execute(
+                """
+                UPDATE Users
+                SET password_hash=?, must_change_password=0, password_changed_at=CURRENT_TIMESTAMP
+                WHERE email=?
+                """,
+                (new_hash, email)
+            )
+            rows_updated = c.rowcount
+
+        if rows_updated == 0:
             raise HTTPException(
                 status_code=404,
                 detail="Account not found"
             )
 
         conn.commit()
+
+        # When an admin triggers a universal password reset via OTP (Forgot Password flow)
+        # we also record the action under Admin Activity for full audit transparency.
+        if is_admin_reset:
+            c.execute("SELECT user_id, username FROM Users WHERE is_admin=1 AND LOWER(email)=? LIMIT 1", (email,))
+            initiator_row = c.fetchone()
+            initiator = dict(initiator_row) if initiator_row else None
+            if initiator and initiator.get("user_id"):
+                pseudo_session = {"user_id": initiator["user_id"]}
+                audit_details = (
+                    f"Password reset via OTP for email {email}; "
+                    f"new password universally synced to {rows_updated} administrator account(s)."
+                )
+                record_admin_audit(
+                    pseudo_session,
+                    "Changed universal admin password",
+                    "admin",
+                    None,
+                    audit_details,
+                )
 
     except Exception:
         conn.rollback()
@@ -1952,13 +2218,28 @@ class PackageCreateRequest(BaseModel):
     description: str = ""
     season_category: str = "standard"
     image_url: str = ""
+    image_file_ref: str = ""
+    confirm_password: str = ""
 
 class PackageUpdateRequest(PackageCreateRequest):
     pass
 
+
+def _resolve_package_image(image_url: str, image_file_ref: str) -> str:
+    """Choose the final image_url value. Explicit image_url (non-empty) wins over file_ref."""
+    chosen = (image_url or "").strip()
+    if not chosen:
+        chosen = (image_file_ref or "").strip()
+    return chosen
+
+
 @app.post("/api/admin/packages")
 async def create_package(data: PackageCreateRequest, request: Request):
-    require_admin(request)
+    session = require_admin(request)
+    session = get_session_from_request(request) or {}
+    if not verify_admin_password(session["user_id"], (data.confirm_password or "").strip()):
+        raise HTTPException(status_code=403, detail="Current admin password is incorrect.")
+
     name = data.package_name.strip()
     destination = data.destination.strip()
     if not name or not destination:
@@ -1970,13 +2251,15 @@ async def create_package(data: PackageCreateRequest, request: Request):
     if data.duration < 1:
         raise HTTPException(status_code=400, detail="Duration must be at least 1 day.")
 
+    final_image = _resolve_package_image(data.image_url, data.image_file_ref)
+
     conn = get_db_connection(); c = conn.cursor()
     try:
         status = "Available" if data.available_spots > 0 else "Unavailable"
         c.execute("""INSERT INTO Packages
             (package_name,destination,price,duration,description,availability_status,season_category,image_url,available_spots,total_spots)
             VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (name,destination,float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),data.image_url.strip(),int(data.available_spots),int(data.available_spots)))
+            (name,destination,float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),final_image,int(data.available_spots),int(data.available_spots)))
         package_id = c.lastrowid
         conn.commit()
     except sqlite3.IntegrityError as exc:
@@ -1984,25 +2267,76 @@ async def create_package(data: PackageCreateRequest, request: Request):
         raise HTTPException(status_code=409, detail="Unable to create package. A package with these details may already exist.") from exc
     finally:
         conn.close()
-    session = get_session_from_request(request) or {}
     record_admin_audit(session, "Created package", "package", package_id, f"{name} | price={data.price} | seats={data.available_spots}")
     return {"success": True, "data": {"package_id": package_id, "message": "Package created successfully."}}
 
+
 @app.put("/api/admin/packages/{package_id}")
 async def update_package(package_id: int, data: PackageUpdateRequest, request: Request):
-    require_admin(request)
+    session = require_admin(request)
+    session = get_session_from_request(request) or {}
+    if not verify_admin_password(session["user_id"], (data.confirm_password or "").strip()):
+        raise HTTPException(status_code=403, detail="Current admin password is incorrect.")
+
     if data.price <= 0 or data.available_spots < 0 or data.duration < 1:
         raise HTTPException(status_code=400, detail="Price, duration and available seats must be valid.")
     conn = get_db_connection(); c = conn.cursor()
-    c.execute("SELECT package_id FROM Packages WHERE package_id=?", (package_id,))
-    if not c.fetchone():
+    c.execute("SELECT * FROM Packages WHERE package_id=?", (package_id,))
+    before_row = c.fetchone()
+    if not before_row:
         conn.close(); raise HTTPException(status_code=404, detail="Package not found")
+    before = dict(before_row)
+    final_image = _resolve_package_image(data.image_url, data.image_file_ref)
     status = "Available" if data.available_spots > 0 else "Unavailable"
     c.execute("""UPDATE Packages SET package_name=?,destination=?,price=?,duration=?,description=?,availability_status=?,season_category=?,image_url=?,available_spots=?,total_spots=? WHERE package_id=?""",
-              (data.package_name.strip(),data.destination.strip(),float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),data.image_url.strip(),int(data.available_spots),int(data.available_spots),package_id))
+              (data.package_name.strip(),data.destination.strip(),float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),final_image,int(data.available_spots),int(data.available_spots),package_id))
     conn.commit(); conn.close()
-    record_admin_audit(require_admin(request), "Updated package", "package", package_id, f"{data.package_name} | price={data.price} | seats={data.available_spots}")
+    before_snippet = f"{before.get('package_name','')} | price={before.get('price','')} | seats={before.get('available_spots','')}"
+    after_snippet = f"{data.package_name} | price={data.price} | seats={data.available_spots}"
+    record_admin_audit(
+        session, "Updated package", "package", package_id,
+        f"BEFORE: ({before_snippet})  AFTER: ({after_snippet})"
+    )
     return {"success": True, "data": {"message": "Package updated successfully."}}
+
+
+@app.delete("/api/admin/packages/{package_id}")
+async def delete_package(package_id: int, request: Request):
+    class _DeleteBody(BaseModel):
+        confirm_password: str = ""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    confirm_password = str(body.get("confirm_password", "") or "").strip()
+    session = require_admin(request)
+    session = get_session_from_request(request) or {}
+    if not verify_admin_password(session["user_id"], confirm_password):
+        raise HTTPException(status_code=403, detail="Current admin password is incorrect.")
+
+    conn = get_db_connection(); c = conn.cursor()
+    c.execute("SELECT package_id, package_name, destination, price FROM Packages WHERE package_id=?", (package_id,))
+    pkg_row = c.fetchone()
+    if not pkg_row:
+        conn.close(); raise HTTPException(status_code=404, detail="Package not found")
+    pkg = dict(pkg_row)
+
+    c.execute("SELECT COUNT(booking_id) AS cnt FROM Bookings WHERE package_id=?", (package_id,))
+    total_bookings = int((c.fetchone() or {})["cnt"] or 0)
+    if total_bookings > 0:
+        conn.close()
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot delete package: it has {total_bookings} associated booking(s) (historical integrity). Mark it unavailable instead."
+        )
+
+    c.execute("DELETE FROM Packages WHERE package_id=?", (package_id,))
+    conn.commit(); conn.close()
+    record_admin_audit(
+        session, "Deleted package", "package", package_id,
+        f"Deleted package: {pkg['package_name']} | {pkg['destination']} | price={pkg['price']} (no associated bookings)"
+    )
+    return {"success": True, "data": {"message": "Package deleted successfully."}}
 
 @app.get("/api/admin/packages")
 async def get_admin_packages(request: Request):
@@ -2015,14 +2349,83 @@ async def get_admin_packages(request: Request):
     return {"success": True, "data": packages}
 
 
+@app.post("/api/admin/packages/upload-image")
+async def upload_package_image(request: Request, image: UploadFile = File(...)):
+    session = get_session_from_request(request) or {}
+    if not session or session.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin authentication required")
+
+    content_type = (image.content_type or "").lower()
+    if content_type == "image/svg+xml" or content_type.startswith("image/svg"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only PNG, JPEG, GIF, and WEBP images are allowed (SVG is disabled)."
+        )
+    if content_type not in _ALLOWED_IMAGE_MIME_TO_EXT:
+        raise HTTPException(
+            status_code=400,
+            detail="Only PNG, JPEG, GIF, and WEBP images are allowed (SVG is disabled)."
+        )
+
+    ext = _ALLOWED_IMAGE_MIME_TO_EXT[content_type]
+    raw_bytes = await image.read(MAX_IMAGE_UPLOAD_BYTES + 1)
+    if len(raw_bytes) > MAX_IMAGE_UPLOAD_BYTES:
+        try:
+            await image.close()
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=413,
+            detail="Image exceeds the 5 MB size limit."
+        )
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="Empty image upload.")
+
+    try:
+        await image.close()
+    except Exception:
+        pass
+
+    unique_name = uuid.uuid4().hex + ext
+    save_path = os.path.join(UPLOADS_DIR, unique_name)
+    with open(save_path, "wb") as fh:
+        fh.write(raw_bytes)
+
+    session = get_session_from_request(request) or {}
+    actor = session.get("username") or (session.get("email") or "").split("@")[0] or "admin"
+    try:
+        record_admin_audit(
+            session,
+            "Uploaded package image",
+            "image",
+            None,
+            f"uploaded as /static/uploads/packages/{unique_name} ({len(raw_bytes)} bytes, {content_type})"
+        )
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "data": {
+            "url": f"/static/uploads/packages/{unique_name}",
+            "content_type": content_type,
+            "bytes": len(raw_bytes)
+        }
+    }
+
+
 class PackageSpotsRequest(BaseModel):
     available_spots: int
     total_spots: int = 0
+    confirm_password: str = ""
 
 
 @app.put("/api/admin/packages/{package_id}/spots")
 async def set_package_spots(package_id: int, data: PackageSpotsRequest, request: Request):
-    require_admin(request)
+    session = require_admin(request)
+    session = get_session_from_request(request) or {}
+    if not verify_admin_password(session["user_id"], (data.confirm_password or "").strip()):
+        raise HTTPException(status_code=403, detail="Current admin password is incorrect.")
 
     if data.available_spots < 0:
         raise HTTPException(status_code=400, detail="Available spots cannot be negative")
@@ -2237,764 +2640,6 @@ async def get_my_bookings(request: Request):
     conn.close()
     return {"success": True, "data": bookings}
 
-
-# ============================================================
-# ONE-TIME ADMIN BOOKING DATA RESTORE
-# ============================================================
-
-# ============================================================
-# ONE-TIME ADMIN BOOKING DATA RESTORE / BOOTSTRAP
-# ============================================================
-
-@app.post("/api/admin/restore-demo-bookings")
-async def restore_demo_bookings(request: Request):
-    """
-    Protected administrator utility for bootstrapping the deployed
-    TravelIntel database with demo customers, packages and bookings.
-
-    Behaviour:
-      - Requires an authenticated administrator.
-      - Does NOT delete existing customers or packages.
-      - Creates demo customers only when the Customers table is empty.
-      - Creates demo packages only when the Packages table is empty.
-      - Creates exactly 72 bookings only when there are currently 0 bookings.
-      - Generates exactly 173 travellers.
-      - Targets R3,816,500.00 total booking revenue.
-      - Safe to run again after successful restoration.
-    """
-
-    session = require_admin(request)
-
-    TARGET_BOOKINGS = 72
-    TARGET_TRAVELLERS = 173
-    TARGET_REVENUE = 3_816_500.00
-
-    rng = random.Random(20260815)
-
-    conn = get_db_connection()
-    c = conn.cursor()
-
-    try:
-        # ====================================================
-        # 1. Check current bookings
-        # ====================================================
-
-        c.execute(
-            "SELECT COUNT(*) AS total FROM Bookings"
-        )
-
-        existing_bookings = int(
-            c.fetchone()["total"] or 0
-        )
-
-        if existing_bookings > 0:
-            return {
-                "success": True,
-                "created": 0,
-                "skipped": True,
-                "message": (
-                    f"Booking data already exists "
-                    f"({existing_bookings} bookings). "
-                    "No duplicate bookings were created."
-                ),
-                "data": {
-                    "bookings": existing_bookings,
-                },
-            }
-
-        # ====================================================
-        # 2. Bootstrap customers if none exist
-        # ====================================================
-
-        c.execute(
-            """
-            SELECT COUNT(*) AS total
-            FROM Customers
-            """
-        )
-
-        customer_count = int(
-            c.fetchone()["total"] or 0
-        )
-
-        created_customers = 0
-
-        if customer_count == 0:
-
-            demo_customers = [
-                (
-                    "Anele Mokoena",
-                    "anele.mokoena@example.com",
-                    "0710001001",
-                    "Polokwane, Limpopo",
-                ),
-                (
-                    "Bokang Nkosi",
-                    "bokang.nkosi@example.com",
-                    "0710001002",
-                    "Johannesburg, Gauteng",
-                ),
-                (
-                    "Dineo Molefe",
-                    "dineo.molefe@example.com",
-                    "0710001003",
-                    "Pretoria, Gauteng",
-                ),
-                (
-                    "Palesa Khumalo",
-                    "palesa.khumalo@example.com",
-                    "0710001004",
-                    "Mbombela, Mpumalanga",
-                ),
-                (
-                    "Thando Ndlovu",
-                    "thando.ndlovu@example.com",
-                    "0710001005",
-                    "Durban, KwaZulu-Natal",
-                ),
-                (
-                    "Naledi Mokoena",
-                    "naledi.mokoena@example.com",
-                    "0710001006",
-                    "Bloemfontein, Free State",
-                ),
-                (
-                    "Mpho Dlamini",
-                    "mpho.dlamini@example.com",
-                    "0710001007",
-                    "Cape Town, Western Cape",
-                ),
-                (
-                    "Lwandle Zulu",
-                    "lwandle.zulu@example.com",
-                    "0710001008",
-                    "Gqeberha, Eastern Cape",
-                ),
-                (
-                    "Rethabile Molefe",
-                    "rethabile.molefe@example.com",
-                    "0710001009",
-                    "Polokwane, Limpopo",
-                ),
-                (
-                    "Sinethemba Naidoo",
-                    "sinethemba.naidoo@example.com",
-                    "0710001010",
-                    "Durban, KwaZulu-Natal",
-                ),
-            ]
-
-            for name, email, phone, address in demo_customers:
-
-                c.execute(
-                    """
-                    INSERT INTO Customers (
-                        name,
-                        email,
-                        phone,
-                        address,
-                        payment_method
-                    )
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
-                    (
-                        name,
-                        email,
-                        phone,
-                        address,
-                        "card",
-                    ),
-                )
-
-                created_customers += 1
-
-        # ====================================================
-        # 3. Read customers
-        # ====================================================
-
-        c.execute(
-            """
-            SELECT
-                customer_id,
-                name,
-                email
-            FROM Customers
-            ORDER BY customer_id
-            """
-        )
-
-        customers = c.fetchall()
-
-        if not customers:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "The Customers table is still empty after "
-                    "the bootstrap attempt."
-                ),
-            )
-
-        # ====================================================
-        # 4. Bootstrap packages if none exist
-        # ====================================================
-
-        c.execute(
-            """
-            SELECT COUNT(*) AS total
-            FROM Packages
-            """
-        )
-
-        package_count = int(
-            c.fetchone()["total"] or 0
-        )
-
-        created_packages = 0
-
-        if package_count == 0:
-
-            demo_packages = [
-                (
-                    "Cape Town Explorer",
-                    "Cape Town",
-                    12900,
-                    4,
-                    "Explore Table Mountain, the V&A Waterfront and the Cape Peninsula.",
-                    "Available",
-                    "Africa",
-                ),
-                (
-                    "Zanzibar Jambiani Escape",
-                    "Zanzibar",
-                    17500,
-                    4,
-                    "Relax on the beaches of Jambiani and experience Zanzibar culture.",
-                    "Available",
-                    "Africa",
-                ),
-                (
-                    "Zanzibar Nungwi Paradise",
-                    "Zanzibar",
-                    22500,
-                    4,
-                    "A premium beach holiday on the northern coast of Zanzibar.",
-                    "Available",
-                    "Africa",
-                ),
-                (
-                    "Namibia Swakopmund Adventure",
-                    "Namibia",
-                    17900,
-                    4,
-                    "Experience the desert meeting the Atlantic Ocean.",
-                    "Available",
-                    "Africa",
-                ),
-                (
-                    "Victoria Falls Livingstone",
-                    "Zambia",
-                    26900,
-                    4,
-                    "Discover Victoria Falls and the Zambezi region.",
-                    "Available",
-                    "Africa",
-                ),
-                (
-                    "Dubai 4 Star",
-                    "Dubai",
-                    24900,
-                    5,
-                    "Experience Dubai's modern architecture, culture and desert.",
-                    "Available",
-                    "Middle East",
-                ),
-                (
-                    "Dubai 5 Star",
-                    "Dubai",
-                    29900,
-                    5,
-                    "Premium Dubai accommodation and luxury experiences.",
-                    "Available",
-                    "Middle East",
-                ),
-                (
-                    "Bali Seminyak",
-                    "Bali",
-                    28900,
-                    7,
-                    "Enjoy beaches, culture, restaurants and sunsets in Seminyak.",
-                    "Available",
-                    "Asia",
-                ),
-                (
-                    "Bali Seminyak and Ubud",
-                    "Bali",
-                    30900,
-                    7,
-                    "Combine the beaches of Seminyak with peaceful Ubud.",
-                    "Available",
-                    "Asia",
-                ),
-                (
-                    "Singapore and Bali",
-                    "Singapore/Bali",
-                    35900,
-                    7,
-                    "A combined Singapore city and Bali island experience.",
-                    "Available",
-                    "Asia",
-                ),
-                (
-                    "Thailand Phuket",
-                    "Thailand",
-                    26900,
-                    7,
-                    "Explore Phuket beaches, food, culture and attractions.",
-                    "Available",
-                    "Asia",
-                ),
-                (
-                    "Thailand Phuket and Bangkok",
-                    "Thailand",
-                    30900,
-                    7,
-                    "Experience both Bangkok and Phuket.",
-                    "Available",
-                    "Asia",
-                ),
-                (
-                    "Mauritius Island Escape",
-                    "Mauritius",
-                    25900,
-                    5,
-                    "Enjoy beaches, resorts and island experiences in Mauritius.",
-                    "Available",
-                    "Africa",
-                ),
-                (
-                    "Cape Town Premium",
-                    "Cape Town",
-                    19900,
-                    5,
-                    "A premium Cape Town travel experience.",
-                    "Available",
-                    "Africa",
-                ),
-            ]
-
-            for (
-                package_name,
-                destination,
-                price,
-                duration,
-                description,
-                availability_status,
-                season_category,
-            ) in demo_packages:
-
-                c.execute(
-                    """
-                    INSERT INTO Packages (
-                        package_name,
-                        destination,
-                        price,
-                        duration,
-                        description,
-                        availability_status,
-                        season_category
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        package_name,
-                        destination,
-                        price,
-                        duration,
-                        description,
-                        availability_status,
-                        season_category,
-                    ),
-                )
-
-                created_packages += 1
-
-        # ====================================================
-        # 5. Read packages
-        # ====================================================
-
-        c.execute(
-            """
-            SELECT
-                package_id,
-                package_name,
-                destination,
-                price
-            FROM Packages
-            ORDER BY package_id
-            """
-        )
-
-        packages = c.fetchall()
-
-        if not packages:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "The Packages table is still empty after "
-                    "the bootstrap attempt."
-                ),
-            )
-
-        # ====================================================
-        # 6. Generate exactly 173 travellers across 72 bookings
-        # ====================================================
-
-        traveller_counts = [1] * TARGET_BOOKINGS
-
-        remaining_travellers = (
-            TARGET_TRAVELLERS - TARGET_BOOKINGS
-        )
-
-        while remaining_travellers > 0:
-
-            eligible = [
-                index
-                for index, value in enumerate(traveller_counts)
-                if value < 5
-            ]
-
-            if not eligible:
-                raise HTTPException(
-                    status_code=500,
-                    detail=(
-                        "Unable to distribute the required "
-                        "number of travellers."
-                    ),
-                )
-
-            index = rng.choice(eligible)
-
-            traveller_counts[index] += 1
-            remaining_travellers -= 1
-
-        # ====================================================
-        # 7. Generate booking records
-        # ====================================================
-
-        today = datetime.date.today()
-
-        booking_start = (
-            today - datetime.timedelta(days=180)
-        )
-
-        generated = []
-
-        for index in range(TARGET_BOOKINGS):
-
-            customer = customers[
-                rng.randrange(len(customers))
-            ]
-
-            package = packages[
-                rng.randrange(len(packages))
-            ]
-
-            booking_date = (
-                booking_start
-                + datetime.timedelta(
-                    days=rng.randint(0, 180)
-                )
-            )
-
-            travel_date = (
-                booking_date
-                + datetime.timedelta(
-                    days=rng.randint(7, 90)
-                )
-            )
-
-            travelers = traveller_counts[index]
-
-            package_price = float(
-                package["price"] or 0
-            )
-
-            if package_price <= 0:
-                package_price = 15000.00
-
-            raw_amount = (
-                package_price * travelers
-            )
-
-            generated.append(
-                {
-                    "customer_id": customer["customer_id"],
-                    "package_id": package["package_id"],
-                    "booking_date": booking_date.isoformat(),
-                    "travel_date": travel_date.isoformat(),
-                    "number_of_travelers": travelers,
-                    "raw_amount": raw_amount,
-                }
-            )
-
-        # ====================================================
-        # 8. Scale revenue to R3,816,500
-        # ====================================================
-
-        raw_total = sum(
-            row["raw_amount"]
-            for row in generated
-        )
-
-        if raw_total <= 0:
-            raise HTTPException(
-                status_code=400,
-                detail="Unable to calculate booking revenue."
-            )
-
-        scale = (
-            TARGET_REVENUE / raw_total
-        )
-
-        for row in generated:
-            row["total_amount"] = round(
-                row["raw_amount"] * scale,
-                2,
-            )
-
-        # Fix rounding difference
-        current_total = round(
-            sum(
-                row["total_amount"]
-                for row in generated
-            ),
-            2,
-        )
-
-        difference = round(
-            TARGET_REVENUE - current_total,
-            2,
-        )
-
-        generated[-1]["total_amount"] = round(
-            generated[-1]["total_amount"]
-            + difference,
-            2,
-        )
-
-        # ====================================================
-        # 9. Detect optional revenue column
-        # ====================================================
-
-        c.execute(
-            "PRAGMA table_info(Bookings)"
-        )
-
-        booking_columns = {
-            row["name"]
-            for row in c.fetchall()
-        }
-
-        has_revenue = (
-            "revenue" in booking_columns
-        )
-
-        # ====================================================
-        # 10. Insert bookings
-        # ====================================================
-
-        payment_methods = [
-            "card",
-            "card",
-            "card",
-            "bank_transfer",
-        ]
-
-        for row in generated:
-
-            payment_method = rng.choice(
-                payment_methods
-            )
-
-            if has_revenue:
-
-                c.execute(
-                    """
-                    INSERT INTO Bookings (
-                        customer_id,
-                        package_id,
-                        booking_date,
-                        travel_date,
-                        number_of_travelers,
-                        total_amount,
-                        status,
-                        payment_method,
-                        revenue
-                    )
-                    VALUES (
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?
-                    )
-                    """,
-                    (
-                        row["customer_id"],
-                        row["package_id"],
-                        row["booking_date"],
-                        row["travel_date"],
-                        row["number_of_travelers"],
-                        row["total_amount"],
-                        "confirmed",
-                        payment_method,
-                        row["total_amount"],
-                    ),
-                )
-
-            else:
-
-                c.execute(
-                    """
-                    INSERT INTO Bookings (
-                        customer_id,
-                        package_id,
-                        booking_date,
-                        travel_date,
-                        number_of_travelers,
-                        total_amount,
-                        status,
-                        payment_method
-                    )
-                    VALUES (
-                        ?, ?, ?, ?, ?, ?, ?, ?
-                    )
-                    """,
-                    (
-                        row["customer_id"],
-                        row["package_id"],
-                        row["booking_date"],
-                        row["travel_date"],
-                        row["number_of_travelers"],
-                        row["total_amount"],
-                        "confirmed",
-                        payment_method,
-                    ),
-                )
-
-        # ====================================================
-        # 11. Verify before commit
-        # ====================================================
-
-        c.execute(
-            """
-            SELECT COUNT(*) AS total
-            FROM Bookings
-            """
-        )
-
-        final_booking_count = int(
-            c.fetchone()["total"] or 0
-        )
-
-        c.execute(
-            """
-            SELECT
-                COALESCE(
-                    SUM(number_of_travelers), 0
-                ) AS total
-            FROM Bookings
-            WHERE status != 'cancelled'
-            """
-        )
-
-        final_traveller_count = int(
-            c.fetchone()["total"] or 0
-        )
-
-        c.execute(
-            """
-            SELECT
-                COALESCE(
-                    SUM(total_amount), 0
-                ) AS total
-            FROM Bookings
-            WHERE status != 'cancelled'
-            """
-        )
-
-        final_revenue = float(
-            c.fetchone()["total"] or 0
-        )
-
-        # ====================================================
-        # 12. Commit
-        # ====================================================
-
-        conn.commit()
-
-        # ====================================================
-        # 13. Audit administrator action
-        # ====================================================
-
-        record_admin_audit(
-            session,
-            "Restored demo booking dataset",
-            "bookings",
-            None,
-            (
-                f"Created {TARGET_BOOKINGS} bookings, "
-                f"{TARGET_TRAVELLERS} travellers. "
-                f"Created {created_customers} demo customers "
-                f"and {created_packages} demo packages. "
-                f"Target revenue R{TARGET_REVENUE:,.2f}. "
-                f"Final revenue "
-                f"R{final_revenue:,.2f}."
-            ),
-        )
-
-        return {
-            "success": True,
-            "created": TARGET_BOOKINGS,
-            "skipped": False,
-            "message": (
-                "Booking dataset restored successfully."
-            ),
-            "data": {
-                "bookings": final_booking_count,
-                "travellers": final_traveller_count,
-                "revenue": round(
-                    final_revenue,
-                    2,
-                ),
-                "customers_created": created_customers,
-                "packages_created": created_packages,
-            },
-        }
-
-    except HTTPException:
-        conn.rollback()
-        raise
-
-    except Exception as exc:
-
-        conn.rollback()
-
-        logger.exception(
-            "Booking dataset restore failed"
-        )
-
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Booking restore failed: "
-                f"{exc}"
-            ),
-        )
-
-    finally:
-        conn.close()
-
-# ============================================================
-# ADMIN DASHBOARD API (FIXED — require_admin now reads cookies)
-# ============================================================
-
 @app.get("/api/bookings")
 async def get_all_bookings(request: Request):
     require_admin(request)
@@ -3108,11 +2753,17 @@ async def get_dashboard_stats(request: Request):
 # ============================================================
 
 def record_admin_audit(session: dict, action: str, entity_type: str = "system", entity_id: Optional[int] = None, details: str = ""):
-    """Record who changed what so every administrator has a shared audit trail."""
+    """Record who changed what so every administrator has a shared audit trail.
+
+    Always stores ONLY the bare username of the performing administrator in
+    actor_name — never the generic "System Administrator" label and never the
+    full name in parentheses — so the activity view displays exactly the
+    username that triggered each change.
+    """
     conn = get_db_connection(); c = conn.cursor()
-    c.execute("SELECT full_name, username FROM Users WHERE user_id=?", (session.get("user_id"),))
+    c.execute("SELECT username FROM Users WHERE user_id=?", (session.get("user_id"),))
     actor = c.fetchone()
-    actor_name = (actor["full_name"] or actor["username"] if actor else "Unknown admin")
+    actor_name = (actor["username"] if actor and actor["username"] else "Unknown admin")
     c.execute("INSERT INTO Admin_Audit_Log(actor_user_id,actor_name,action,entity_type,entity_id,details) VALUES(?,?,?,?,?,?)", (session.get("user_id"), actor_name, action, entity_type, entity_id, details))
     conn.commit(); conn.close()
 
@@ -3143,9 +2794,41 @@ async def get_admins(request: Request):
     return {"success": True, "data": admins}
 
 
+@app.get("/api/admin/admins/check")
+async def check_admin_credential_available(request: Request, username: str = "", email: str = ""):
+    """Lightweight real-time check used while typing in the create-admin form.
+
+    Returns {"available": True} for each validated field, or the specific
+    user-facing error message otherwise. The endpoint is designed for
+    per-field debounced lookups so the frontend can show errors *under*
+    the respective input immediately.
+    """
+    require_admin(request)
+    result = {"username": {"available": True, "message": ""}, "email": {"available": True, "message": ""}}
+    conn = get_db_connection(); c = conn.cursor()
+    try:
+        if username:
+            c.execute("SELECT 1 FROM Users WHERE is_admin=1 AND LOWER(username)=? LIMIT 1", (username.strip().lower(),))
+            if c.fetchone():
+                result["username"] = {"available": False, "message": "This username has already been taken"}
+        if email:
+            norm = normalize_email(email)
+            c.execute("SELECT 1 FROM Users WHERE is_admin=1 AND LOWER(email)=? LIMIT 1", (norm,))
+            if c.fetchone():
+                result["email"] = {"available": False, "message": "An admin account with this email already exists"}
+    finally:
+        conn.close()
+    return {"success": True, "data": result}
+
+
 @app.post("/api/admin/admins")
 async def create_admin(data: AdminCreateRequest, request: Request):
     session = require_admin(request)
+
+    # Requirement 2: Verify confirmation password before executing the action
+    if not verify_admin_password(session["user_id"], data.confirm_password or ""):
+        raise HTTPException(status_code=403, detail="Invalid administrator password. Action rejected.")
+
     username = data.username.strip()
     email = normalize_email(data.email)
     full_name = data.full_name.strip() or username
@@ -3154,13 +2837,36 @@ async def create_admin(data: AdminCreateRequest, request: Request):
     if not is_valid_email(email):
         raise HTTPException(status_code=400, detail="Enter a valid email address.")
 
-    temporary_password = secrets.token_urlsafe(12) + "!"
+    # Requirement 3: Unique admin credential validation with specific error messages
     conn = get_db_connection(); c = conn.cursor()
+    c.execute("SELECT user_id, username, email FROM Users WHERE is_admin=1 AND LOWER(username)=? LIMIT 1", (username.lower(),))
+    dup_username = c.fetchone()
+    if dup_username:
+        conn.close()
+        raise HTTPException(status_code=409, detail="This username has already been taken")
+
+    c.execute("SELECT user_id, username, email FROM Users WHERE is_admin=1 AND LOWER(email)=? LIMIT 1", (email,))
+    dup_email = c.fetchone()
+    if dup_email:
+        conn.close()
+        raise HTTPException(status_code=409, detail="An admin account with this email already exists")
+
+    # Requirement 1: Assign the current shared admin password to new admins
+    shared_hash = get_shared_admin_password_hash()
+    if shared_hash:
+        shared_password_for_email = None
+        password_hash_to_store = shared_hash
+        must_change = 0
+    else:
+        shared_password_for_email = DEFAULT_ADMIN_PASSWORD
+        password_hash_to_store = generate_password_hash(DEFAULT_ADMIN_PASSWORD)
+        must_change = 1
+
     try:
         c.execute("""INSERT INTO Users
             (username,password_hash,role,user_type,full_name,email,account_status,is_admin,must_change_password)
-            VALUES (?,?,'admin','admin',?,?, 'active',1,1)""",
-            (username, generate_password_hash(temporary_password), full_name, email))
+            VALUES (?,?,'admin','admin',?,?, 'active',1,?)""",
+            (username, password_hash_to_store, full_name, email, must_change))
         admin_id = c.lastrowid
         conn.commit()
     except sqlite3.IntegrityError:
@@ -3170,15 +2876,33 @@ async def create_admin(data: AdminCreateRequest, request: Request):
 
     email_sent = False
     try:
-        email_sent = send_bootstrap_admin_email(email, username, temporary_password)
+        if shared_password_for_email:
+            email_sent = send_bootstrap_admin_email(email, username, shared_password_for_email)
+        else:
+            email_sent = send_new_admin_shared_password_email(email, username)
     except Exception:
         logger.exception("Failed to send new administrator credentials to %s", email)
-    record_admin_audit(session, "Created administrator", "admin", admin_id, f"Created {username} ({email}); temporary credentials emailed={email_sent}")
-    return {"success": True, "data": {"user_id": admin_id, "message": "Administrator created. A temporary password was generated and emailed to the new administrator.", "email_sent": email_sent}}
+    record_admin_audit(session, "Created administrator", "admin", admin_id, f"Created {username} ({email}); credentials emailed={email_sent}")
+    return {
+        "success": True,
+        "data": {
+            "user_id": admin_id,
+            "message": (
+                "Administrator created successfully. The universal administrator password "
+                "was applied to the new account. Credentials were emailed to the new administrator."
+            ),
+            "email_sent": email_sent,
+        },
+    }
 
 @app.patch("/api/admin/admins/{user_id}/status")
 async def update_admin_status(user_id: int, data: AdminStatusRequest, request: Request):
     session = require_admin(request)
+
+    # Requirement 2: Verify confirmation password before executing the action
+    if not verify_admin_password(session["user_id"], data.confirm_password or ""):
+        raise HTTPException(status_code=403, detail="Invalid administrator password. Action rejected.")
+
     status = (data.account_status or "").strip().lower()
     if status not in {"active", "disabled"}:
         raise HTTPException(status_code=400, detail="Status must be active or disabled.")
@@ -3200,8 +2924,46 @@ async def update_admin_status(user_id: int, data: AdminStatusRequest, request: R
         c.execute("DELETE FROM Sessions WHERE user_id=?", (user_id,))
     conn.commit()
     conn.close()
-    record_admin_audit(session, f"Set administrator status to {status}", "admin", user_id, f"{target['username']} ({target['email']})")
+    action_label = "Disabled administrator" if status == "disabled" else "Reactivated administrator"
+    record_admin_audit(session, action_label, "admin", user_id, f"{target['username']} ({target['email']})")
     return {"success": True, "data": {"message": f"Administrator {status}."}}
+
+
+@app.delete("/api/admin/admins/{user_id}")
+async def delete_admin(user_id: int, data: AdminDeleteRequest, request: Request):
+    session = require_admin(request)
+
+    # Requirement 2: Verify confirmation password before executing the action
+    if not verify_admin_password(session["user_id"], data.confirm_password or ""):
+        raise HTTPException(status_code=403, detail="Invalid administrator password. Action rejected.")
+
+    if user_id == session["user_id"]:
+        raise HTTPException(status_code=400, detail="You cannot delete your own administrator account.")
+
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT user_id, username, email FROM Users WHERE user_id=? AND is_admin=1", (user_id,))
+    target = c.fetchone()
+    if not target:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Administrator not found.")
+
+    target_username = target["username"]
+    target_email = target["email"]
+
+    try:
+        c.execute("DELETE FROM Sessions WHERE user_id=?", (user_id,))
+        c.execute("DELETE FROM Admin_Audit_Log WHERE actor_user_id=?", (user_id,))
+        c.execute("DELETE FROM Users WHERE user_id=?", (user_id,))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise HTTPException(status_code=500, detail="Failed to delete administrator.")
+    conn.close()
+
+    record_admin_audit(session, "Deleted administrator", "admin", None, f"Deleted {target_username} ({target_email})")
+    return {"success": True, "data": {"message": "Administrator deleted permanently."}}
 
 
 # ============================================================
@@ -3578,6 +3340,39 @@ async def get_last_generated_report(request: Request):
 # REVIEWS, DESTINATIONS, AND USERS ANALYTICS
 # ============================================================
 
+def _trigger_background_review_sync() -> None:
+    """Fire-and-forget SerpApi review sync in a daemon thread.
+
+    The reviews page must remain fast: it returns the cached reviews
+    immediately, then this spawns a short-lived background worker that
+    fetches new reviews from Google and merges them into the cache. If the
+    API call fails for any reason (no key, network error, quota), the
+    existing cached reviews are left untouched and the thread simply exits.
+
+    The sync is throttled to at most once per SYNC_COOLDOWN_MINUTES so that
+    frequent page polling (e.g. every 5 seconds) does not burn through the
+    SerpApi free-tier quota. Every poll still returns the cached reviews
+    instantly; only the actual API call is rate-limited.
+    """
+    import threading
+    global _last_review_sync_at
+    cooldown_minutes = 60
+    now = datetime.datetime.utcnow()
+    if _last_review_sync_at and (now - _last_review_sync_at).total_seconds() < cooldown_minutes * 60:
+        return
+    _last_review_sync_at = now
+
+    def _worker():
+        try:
+            merged = fetch_reviews()
+            logger.info("Background review sync merged %s new review(s).", merged)
+        except Exception:
+            logger.exception("Background review sync failed; cached reviews preserved.")
+
+    thread = threading.Thread(target=_worker, daemon=True)
+    thread.start()
+
+
 @app.get("/api/reviews")
 async def get_reviews_dashboard(request: Request):
     require_admin(request)
@@ -3639,6 +3434,12 @@ async def get_reviews_dashboard(request: Request):
     else:
         synced_at = "Never"
     conn.close()
+
+    # Serve cached reviews immediately for a fast page load, then kick off a
+    # background sync that merges any new Google reviews into the cache. The
+    # response is never blocked on the API call, and if the API fails the
+    # cached reviews are preserved (see _trigger_background_review_sync).
+    _trigger_background_review_sync()
 
     return {
         "success": True,

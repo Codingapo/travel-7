@@ -134,11 +134,10 @@
             const syncText = document.getElementById('syncText');
             const syncStatus = document.getElementById('syncStatus');
             try {
-                if (syncText) syncText.textContent = 'SYNCING...';
+                if (syncText) syncText.textContent = 'LOADING CACHE...';
                 if (syncStatus) syncStatus.classList.add('border-teal-500/50');
 
-                // Add cache-buster to ensure we get the full 138 set every time
-                const r = await fetch('/api/reviews?v=' + Date.now());
+                const r = await fetch('/api/reviews');
                 if (r.status === 401 || r.status === 403) { window.location.href = '/auth/login'; return; }
                 const payload = await r.json();
                 if (!payload.success) return;
@@ -148,13 +147,13 @@
                 document.getElementById('reviewCount').textContent = `(${data.total_reviews || 0})`;
                 
                 allReviews = data.reviews || [];
-                console.log(`Loaded ${allReviews.length} reviews from API`);
+                console.log(`Loaded ${allReviews.length} reviews from cache`);
                 renderReviewCards();
             } catch (e) {
                 if (syncText) syncText.textContent = 'SYNC ERROR';
             } finally {
                 setTimeout(() => {
-                    if (syncText) syncText.textContent = 'LIVE FEED';
+                    if (syncText) syncText.textContent = 'CACHED FEED';
                     if (syncStatus) syncStatus.classList.remove('border-teal-500/50');
                 }, 1000);
             }
@@ -176,9 +175,13 @@
 
         document.getElementById('refreshBtn').addEventListener('click', async () => {
             const btn = document.getElementById('refreshBtn');
+            const syncText = document.getElementById('syncText');
+            const syncStatus = document.getElementById('syncStatus');
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing with Google...';
             try {
+                if (syncText) syncText.textContent = 'SYNCING NEW REVIEWS...';
+                if (syncStatus) syncStatus.classList.add('border-teal-500/50');
                 const r = await fetch('/api/reviews/refresh', { method:'POST' });
                 if (r.status === 401 || r.status === 403) { window.location.href = '/auth/login'; return; }
                 await loadReviews();
@@ -190,8 +193,11 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             loadReviews();
-            // Faster interval for auto-update check (5 seconds)
-            setInterval(loadReviews, 5000); 
+            // Poll the cache every 5 seconds. Each poll returns the cached
+            // reviews instantly and triggers a background SerpApi sync that
+            // merges any new Google reviews into the cache, so the page
+            // stays up to date without ever blocking on the API call.
+            setInterval(loadReviews, 5000);
         });
     </script>
 </body>

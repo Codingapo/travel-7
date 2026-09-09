@@ -1,0 +1,17 @@
+{
+  "model": "LinearRegression",
+  "purpose": "Daily booking demand forecasting",
+  "trained_at": "2026-09-09T00:44:21",
+  "training_window_days": 30,
+  "training_samples": 14,
+  "features": [
+    "day_index"
+  ],
+  "target": "daily_demand",
+  "mae_training": 0.2244,
+  "r2_training": 0.1037,
+  "minimum_samples": 5,
+  "forecast_horizon_days": 28,
+  "preprocessing": "Daily booking counts grouped by booking date; missing spending is handled separately in customer segmentation.",
+  "notes": "The model is retrained automatically each day at 02:00 when at least five days of booking history are available."
+}
