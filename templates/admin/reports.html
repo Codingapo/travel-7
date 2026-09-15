@@ -15,24 +15,72 @@
             --border-color: rgba(255,255,255,0.08); 
             --accent: #2dd4bf; 
         }
+        html { font-size: clamp(14px, 1vw, 18px); }
         body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: #f8fafc; min-height: 100vh; }
-        .sidebar { width: 260px; height: 100vh; position: fixed; left: 0; top: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); padding: 32px 20px; z-index: 50; }
-        .main { margin-left: 260px; padding: 80px 40px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .sidebar { width: clamp(15rem, 22vw, 16.25rem); height: 100vh; position: fixed; left: 0; top: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); padding: clamp(1.25rem,3vw,2rem) clamp(0.75rem,2vw,1.25rem); z-index: 50; }
+        .main { margin-left: clamp(15rem, 22vw, 16.25rem); padding: clamp(3.5rem,10vw,5rem) clamp(1.25rem,4vw,2.5rem); display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         .main-container { width: 100%; max-width: 1000px; }
-        .nav-link { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-radius: 14px; color: #94a3b8; font-weight: 500; transition: all 0.3s; margin-bottom: 8px; }
+        .nav-link { display: flex; align-items: center; gap: clamp(0.5rem,1.5vw,0.875rem); padding: clamp(0.6rem,1.5vw,0.75rem) clamp(0.9rem,2.2vw,1.25rem); border-radius: clamp(0.5rem,1.5vw,0.875rem); color: #94a3b8; font-weight: 500; transition: all 0.3s; margin-bottom: clamp(0.2rem,0.8vw,0.5rem); }
         .nav-link:hover { background: rgba(255,255,255,0.05); color: #fff; }
         .nav-link.active { background: var(--accent); color: #0f172a; font-weight: 700; box-shadow: 0 10px 15px -3px rgba(45, 212, 191, 0.2); }
-        .card { background: var(--card-bg); border-radius: 24px; padding: 32px; border: 1px solid var(--border-color); backdrop-filter: blur(20px); }
-        .glass { background: var(--card-bg); border: 1px solid var(--border-color); backdrop-filter: blur(20px); border-radius: 24px; }
+        .card { background: var(--card-bg); border-radius: clamp(1rem,3vw,1.8rem); padding: clamp(1.75rem,5vw,2.5rem); border: 1px solid var(--border-color); backdrop-filter: blur(20px); }
+        .glass { background: var(--card-bg); border: 1px solid var(--border-color); backdrop-filter: blur(20px); border-radius: clamp(1rem,3vw,1.8rem); padding: clamp(1.25rem,4vw,2rem); }
+        .hamburger-btn { display: none; position: fixed; top: clamp(0.6rem,2vw,1rem); right: clamp(0.6rem,2vw,1rem); z-index: 60; width: clamp(2.25rem,5vw,2.75rem); height: clamp(2.25rem,5vw,2.75rem); border-radius: 0.5rem; align-items: center; justify-content: center; color: #fff; background: rgba(15,23,42,0.8); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 54; backdrop-filter: blur(2px); }
+        @media (max-width: 1023px) {
+            .hamburger-btn { display: flex; }
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; width: clamp(16rem, 80vw, 18rem); z-index: 55; }
+            .sidebar.open { transform: translateX(0); box-shadow: 20px 0 60px rgba(0,0,0,0.6); }
+            .sidebar-overlay.open { display: block; }
+            .main { margin-left: 0 !important; padding-top: clamp(4.5rem, 11vw, 6rem); padding-inline: clamp(0.75rem, 2.5vw, 1.25rem); }
+        }
+        @media (min-width: 1024px) { .hamburger-btn, .sidebar-overlay { display: none !important; } }
+        .sidebar-logo-box { width: clamp(2rem,4.5vw,2.5rem); height: clamp(2rem,4.5vw,2.5rem); border-radius: clamp(0.5rem,1.5vw,0.875rem); display: flex; align-items: center; justify-content: center; }
+        .sidebar-logo-box i { font-size: clamp(0.9rem,2vw,1.25rem); }
+        .sidebar-title { font-size: clamp(0.95rem,2vw,1.35rem); font-weight: 700; }
+        .hero-padding { padding-top: clamp(2.5rem,7vw,4rem); padding-bottom: clamp(2.5rem,7vw,4rem); padding-left: clamp(1.5rem,5vw,3rem); padding-right: clamp(1.5rem,5vw,3rem); }
+        .hero-title { font-size: clamp(1.5rem,4.5vw,2.5rem); margin-bottom: clamp(0.6rem,1.8vw,1rem); }
+        .hero-subtitle { font-size: clamp(0.75rem,1.5vw,1.15rem); }
+        .hero-text-mb { margin-bottom: clamp(1.75rem,6vw,3rem); }
+        .form-grid-gap { gap: clamp(0.75rem,2.5vw,1.5rem); }
+        .form-padding { padding: clamp(1.25rem,4vw,2rem); }
+        .label-text { font-size: clamp(0.45rem,0.95vw,0.7rem); margin-bottom: clamp(0.5rem,1.5vw,0.875rem); }
+        .date-input { padding-left: clamp(0.8rem,2vw,1rem); padding-right: clamp(0.8rem,2vw,1rem); padding-top: clamp(0.6rem,1.6vw,0.9rem); padding-bottom: clamp(0.6rem,1.6vw,0.9rem); border-radius: clamp(0.5rem,1.4vw,0.75rem); }
+        .generate-btn { padding-left: clamp(1rem,2.5vw,1.5rem); padding-right: clamp(1rem,2.5vw,1.5rem); padding-top: clamp(0.65rem,1.7vw,0.9rem); padding-bottom: clamp(0.65rem,1.7vw,0.9rem); border-radius: clamp(0.5rem,1.4vw,0.75rem); font-size: clamp(0.55rem,1.05vw,0.8rem); }
+        .mb-between-sections { margin-bottom: clamp(1.25rem,5vw,2.5rem); }
+        .check-icon-box { width: clamp(2.5rem,6vw,5rem); height: clamp(2.5rem,6vw,5rem); border-radius: 9999px; display: flex; align-items: center; justify-content: center; margin-bottom: clamp(0.25rem,1vw,0.75rem); }
+        .check-icon-box i { font-size: clamp(1.25rem,4vw,2.25rem); }
+        .ready-title { font-size: clamp(1rem,2.5vw,1.6rem); margin-bottom: clamp(0.25rem,1vw,0.5rem); }
+        .ready-subtitle { font-size: clamp(0.65rem,1.25vw,0.95rem); }
+        .btn-padding { padding-left: clamp(1.2rem,3.2vw,2rem); padding-right: clamp(1.2rem,3.2vw,2rem); padding-top: clamp(0.75rem,2vw,1rem); padding-bottom: clamp(0.75rem,2vw,1rem); border-radius: clamp(0.5rem,1.4vw,0.75rem); font-size: clamp(0.55rem,1.05vw,0.8rem); }
+        .btn-row-gap { gap: clamp(0.75rem,2.5vw,1rem); }
+        .ready-area-mt { margin-top: clamp(1rem,3vw,2rem); }
+        .generatedAt-text { font-size: clamp(0.45rem,0.9vw,0.65rem); }
+        .print-padding { padding: clamp(0.75rem,2.5vw,1.5rem); }
+        .page-mt { margin-top: clamp(2.5rem,7vw,3rem); }
+        .page-mb { margin-bottom: clamp(1.25rem,4vw,2rem); }
+        .download-container-gap { gap: clamp(0.75rem,2.5vw,1.5rem); }
+        .rv-space { margin-top: 0; margin-bottom: 0; }
+        .rv-space > * + * { margin-top: clamp(1rem,3vw,2rem); }
+        .rv-2gap { gap: clamp(0.8rem,2.5vw,1.5rem); }
+        .rv-kpi-card-p { padding: clamp(0.75rem,2.5vw,1.5rem); }
+        .rv-kpi-label { font-size: clamp(0.45rem,0.9vw,0.65rem); margin-bottom: clamp(0.1rem,0.4vw,0.25rem); }
+        .rv-kpi-value { font-size: clamp(1.25rem,3.5vw,2rem); }
+        .rv-section-title { font-size: clamp(0.85rem,2vw,1.25rem); margin-bottom: clamp(0.75rem,2.5vw,1.5rem); }
+        .rv-section-pad { padding: clamp(1rem,3vw,2rem); }
+        .rv-item-py { padding-top: clamp(0.4rem,1.2vw,0.65rem); padding-bottom: clamp(0.4rem,1.2vw,0.65rem); }
+        .rv-item-text { font-size: clamp(0.65rem,1.25vw,0.9rem); }
     </style>
 </head>
 <body>
-    <aside class="sidebar flex flex-col">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu"><i class="fas fa-bars"></i></button>
+    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+    <aside class="sidebar flex flex-col" id="adminSidebar">
         <div class="flex items-center gap-3 mb-12 px-2">
-            <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20">
-                <i class="fas fa-robot text-slate-900 text-xl"></i>
+            <div class="sidebar-logo-box bg-teal-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                <i class="fas fa-robot text-slate-900"></i>
             </div>
-            <h1 class="text-xl font-bold text-white tracking-tight">TravelIntel AI</h1>
+            <h1 class="sidebar-title font-bold text-white tracking-tight">TravelIntel AI</h1>
         </div>
 <nav class="flex-grow">
             <a href="/dashboard" class="nav-link"><i class="fas fa-th-large w-5"></i><span>Dashboard</span></a>

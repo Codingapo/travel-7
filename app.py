@@ -35,7 +35,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from config import (
     SESSION_TIMEOUT_MINUTES, MAX_LOGIN_ATTEMPTS, LOGIN_LOCKOUT_MINUTES,
     RESEND_API_KEY, DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_EMAIL,
-    DEFAULT_ADMIN_USERNAME,
+    DEFAULT_ADMIN_USERNAME, OUTBOX_DIR,
+    SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD,
+    SMTP_USE_TLS, SMTP_FROM_EMAIL,
 )
 from database import get_db_connection, init_db, backup_database, get_review_summary, upsert_review_summary
 from ai_engine import train_demand_forecasting, perform_customer_segmentation, run_anomaly_detection, get_forecast_model_metadata
@@ -226,8 +228,8 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown()
 
 # --- App Init ---
-app = FastAPI(title="TravelIntel AI", lifespan=lifespan)
 resend.api_key = RESEND_API_KEY or os.getenv("RESEND_API_KEY", "")
+app = FastAPI(title="TravelIntel AI", lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -254,6 +256,144 @@ if not logger.handlers:
     fh = logging.FileHandler(os.path.join(LOGS_DIR, "system_errors.log"), encoding="utf-8")
     fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     logger.addHandler(fh)
+
+
+# ============================================================
+# EMAIL DELIVERY SYSTEM — Unified Fallback Chain
+# Strategy:  1) Resend API    2) SMTP (if configured)    3) Local outbox file
+# Every email function should call _dispatch_email() below.
+# ============================================================
+
+def _save_email_to_outbox(to_email: str, subject: str, html_body: str,
+                          text_body: Optional[str] = None,
+                          prefix: str = "email") -> str:
+    """Save an email to instance/outbox/ as a last-resort delivery mechanism.
+
+    Returns the path of the saved file so callers can log it.
+    """
+    os.makedirs(OUTBOX_DIR, exist_ok=True)
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_to = re.sub(r"[^a-zA-Z0-9._-]+", "_", to_email)
+    filename = f"{prefix}_{ts}_{uuid.uuid4().hex[:6]}_{safe_to}.txt"
+    path = os.path.join(OUTBOX_DIR, filename)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"TO: {to_email}\n")
+        f.write(f"SUBJECT: {subject}\n")
+        f.write(f"SAVED-AT: {datetime.datetime.now().isoformat()}\n")
+        f.write("-" * 50 + "\n\n")
+        if text_body:
+            f.write(text_body)
+        else:
+            f.write(html_body)
+    logger.info("Email saved to local outbox (no online delivery available). path=%s", path)
+    return path
+
+
+def _send_email_via_smtp(to_email: str, subject: str, html_body: str,
+                         text_body: Optional[str] = None,
+                         from_email: Optional[str] = None,
+                         reply_to: Optional[str] = None) -> bool:
+    """Send email via SMTP. Uses SMTP_* env vars. Returns True on success."""
+    if not SMTP_HOST or not SMTP_USERNAME or not SMTP_PASSWORD:
+        logger.debug("SMTP not configured; skipping SMTP fallback.")
+        return False
+    sender = from_email or SMTP_FROM_EMAIL or SMTP_USERNAME
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = sender
+        msg["To"] = to_email
+        if reply_to:
+            msg["Reply-To"] = reply_to
+        if text_body:
+            msg.set_content(text_body)
+            msg.add_alternative(html_body, subtype="html")
+        else:
+            msg.set_content(html_body, subtype="html")
+        if SMTP_USE_TLS:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
+                server.starttls()
+                server.login(SMTP_USERNAME, SMTP_PASSWORD)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
+                server.login(SMTP_USERNAME, SMTP_PASSWORD)
+                server.send_message(msg)
+        logger.info("Email sent successfully via SMTP. to=%s subject=%s", to_email, subject)
+        return True
+    except Exception as e:
+        logger.warning("SMTP send failed. to=%s error=%s", to_email, str(e))
+        return False
+
+
+def _dispatch_email(to_email: str, subject: str, html_body: str,
+                    text_body: Optional[str] = None,
+                    from_email: str = "TravelIntel AI <noreply@travelintel.ai>",
+                    reply_to: Optional[str] = None,
+                    outbox_prefix: str = "email",
+                    require_online: bool = False) -> bool:
+    """Unified email dispatcher.
+
+    Tries delivery in this order:
+      1. Resend API (if api_key configured and valid)
+      2. SMTP (if SMTP_* variables configured)
+      3. Local instance/outbox/ file (always succeeds unless disk full)
+
+    If require_online=True, function returns False instead of falling back to
+    outbox-only storage (used by callers that need real delivery guarantees).
+    """
+    # --- 1) Resend API ---
+    if resend.api_key:
+        try:
+            payload = {
+                "from": from_email,
+                "to": [to_email],
+                "subject": subject,
+                "html": html_body,
+            }
+            if reply_to:
+                payload["reply_to"] = reply_to
+            if text_body:
+                payload["text"] = text_body
+            response = resend.Emails.send(payload)
+            logger.info("Email sent successfully via Resend. to=%s subject=%s resend_id=%s",
+                        to_email, subject, str(response)[:120])
+            return True
+        except Exception as e:
+            logger.warning("Resend API send failed. to=%s subject=%s error=%s",
+                           to_email, subject, str(e))
+
+    # --- 2) SMTP Fallback ---
+    sent_smtp = _send_email_via_smtp(
+        to_email=to_email,
+        subject=subject,
+        html_body=html_body,
+        text_body=text_body,
+        from_email=(parseaddr(from_email)[1] if from_email else None),
+        reply_to=reply_to,
+    )
+    if sent_smtp:
+        return True
+
+    # --- 3) Local outbox save ---
+    if require_online:
+        logger.error("Online email delivery failed AND require_online=True. "
+                     "to=%s subject=%s", to_email, subject)
+        return False
+    try:
+        _save_email_to_outbox(
+            to_email=to_email,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+            prefix=outbox_prefix,
+        )
+        return True
+    except Exception as e:
+        logger.exception("FATAL: Could not save email to outbox either. to=%s error=%s",
+                         to_email, str(e))
+        return False
+
 
 # --- Session & Security State ---
 # persistent session and lockout tracking
@@ -343,10 +483,39 @@ def is_valid_email(raw: str) -> bool:
     parsed = parseaddr(raw)[1]
     return "@" in parsed and "." in parsed.split("@")[-1]
 
+CARD_BRAND_RULES = [
+    ("Visa", re.compile(r"^4[0-9]{12}(?:[0-9]{3})?$"), (13, 16)),
+    ("Mastercard", re.compile(r"^(?:5[1-5][0-9]{2}|222[1-9]|22[3-9][0-9]|2[3-6][0-9]{2}|27[01][0-9]|2720)[0-9]{12}$"), (16, 16)),
+    ("American Express", re.compile(r"^3[47][0-9]{13}$"), (15, 15)),
+    ("Discover", re.compile(r"^6(?:011|5[0-9]{2})[0-9]{12,}$"), (16, 19)),
+    ("Diners Club", re.compile(r"^3(?:0[0-5]|[68][0-9])[0-9]{11}$"), (14, 14)),
+    ("JCB", re.compile(r"^(?:2131|1800|35\d{3})\d{11}$"), (15, 16)),
+    ("Maestro", re.compile(r"^(?:5[0678]\d\d|6304|6390|67\d\d)\d{8,15}$"), (12, 19)),
+]
+
+def detect_card_brand(card_number: str) -> Optional[str]:
+    digits = re.sub(r"\D", "", card_number or "")
+    if not digits:
+        return None
+    for brand, pattern, _ in CARD_BRAND_RULES:
+        if pattern.match(digits):
+            return brand
+    if 12 <= len(digits) <= 19:
+        return "Generic"
+    return None
+
 def is_valid_card_number(card_number: str) -> bool:
-    """Validate a card number using the Luhn checksum."""
+    """Validate a card number using the Luhn checksum + brand-specific length checks."""
     digits = re.sub(r"\D", "", card_number or "")
     if not 12 <= len(digits) <= 19:
+        return False
+    if digits in {
+        "0000000000000", "1234567890123", "0123456789012",
+        "0000000000000000", "1111111111111111", "2222222222222222",
+        "3333333333333333", "4444444444444444", "5555555555555555",
+        "6666666666666666", "7777777777777777", "8888888888888888",
+        "9999999999999999", "1234567890123456", "1234123412341234",
+    }:
         return False
     total = 0
     parity = len(digits) % 2
@@ -357,8 +526,30 @@ def is_valid_card_number(card_number: str) -> bool:
             if digit > 9:
                 digit -= 9
         total += digit
-    return total % 10 == 0
+    if total % 10 != 0:
+        return False
+    brand = detect_card_brand(card_number)
+    if brand and brand != "Generic":
+        for b, pattern, (min_len, max_len) in CARD_BRAND_RULES:
+            if b == brand:
+                if not (min_len <= len(digits) <= max_len):
+                    return False
+                break
+    return True
 
+def is_valid_card_cvv(cvv: str, card_number: str = "") -> bool:
+    digits = re.sub(r"\D", "", cvv or "")
+    if not digits or len(digits) < 3 or len(digits) > 4:
+        return False
+    if len(set(digits)) == 1:
+        return False
+    if card_number:
+        brand = detect_card_brand(card_number)
+        if brand == "American Express":
+            return len(digits) == 4
+        elif brand in {"Visa", "Mastercard", "Discover"}:
+            return len(digits) == 3
+    return True
 
 def is_valid_card_expiry(value: str) -> bool:
     value = (value or "").strip()
@@ -369,12 +560,205 @@ def is_valid_card_expiry(value: str) -> bool:
     today = datetime.date.today()
     return (year, month) >= (today.year, today.month)
 
-def validate_payment_details(payment_method: str, card_number: str = "", card_expiry: str = ""):
+SA_BANK_NAMES = {
+    "absa", "abs bank", "abs group",
+    "standard bank", "standard bank group",
+    "fnb", "first national bank",
+    "nedbank",
+    "capitec", "capitec bank",
+    "tyme bank", "tymebank", "tyme",
+    "discovery bank", "discovery",
+    "investec", "investec bank",
+    "bidvest bank", "bidvest",
+    "sasfin", "sasfin bank",
+    "albaraka bank", "albaraka",
+    "bank of china", "boc",
+    "bank zerox", "zerox",
+    "grindrod bank", "grindrod",
+    "hbz bank", "hbz",
+    "mercantile bank", "mercantile",
+    "old mutual bank", "old mutual",
+    "rbc bank", "rbc royal bank",
+    "state bank", "sarb",
+    "vbs mutual bank", "vbs",
+    "barclays",
+    "uob bank", "uob",
+    "dbs bank", "dbs",
+    "hsbc", "hsbc bank",
+    "citi bank", "citibank", "citi",
+    "wells fargo",
+    "chase", "jpmorgan", "jp morgan",
+    "bank of america", "boa",
+    "goldman sachs",
+    "deutsche bank",
+    "barclays bank",
+    "standard chartered", "stanchart",
+    "scotiabank", "bank of nova scotia",
+    "bmo", "bank of montreal",
+    "national australia bank", "nab",
+    "anz", "anz bank",
+    "commonwealth bank", "commbank",
+    "westpac",
+    "sberbank",
+    "banco do brasil",
+    "itau",
+    "bradesco",
+    "caixa",
+    "societe generale", "sg",
+    "bnp paribas", "bnp",
+    "credit agricole",
+    "lcl", "le credit lyonnais",
+    "santander",
+    "bbva",
+    "caixa bank",
+    "ing", "ing bank",
+    "rabobank",
+    "abn amro",
+    "nordea",
+    "danske bank",
+    "swedbank",
+    "seb bank",
+    "handelsbanken",
+    "dnb bank",
+    "commerzbank",
+    "kfw",
+    "unicredit",
+    "intesa sanpaolo",
+    "banco santander",
+    "icbc",
+    "boc", "china construction bank",
+    "agricultural bank of china",
+    "mufg", "mizuho",
+    "smbc",
+    "kb", "kookmin bank",
+    "shinhan bank",
+    "hdfc", "hdfc bank",
+    "icici", "icici bank",
+    "sbi", "state bank of india",
+    "axis bank", "axis",
+    "kotak mahindra", "kotak",
+    "yes bank",
+    "rbc",
+    "td bank", "toronto dominion",
+}
+
+SA_BANK_WHITELIST = frozenset({
+    "Absa Bank",
+    "Standard Bank",
+    "FNB",
+    "Nedbank",
+    "Capitec Bank",
+    "TymeBank",
+    "Discovery Bank",
+    "Investec Bank",
+    "Bidvest Bank",
+    "Sasfin Bank",
+    "Albaraka Bank",
+    "African Bank",
+    "Old Mutual Bank",
+    "Grindrod Bank",
+    "Mercantile Bank",
+})
+
+SA_BANK_ACCOUNT_RULES = {
+    "Absa Bank":       (7, 10),
+    "Standard Bank":   (8, 11),
+    "FNB":             (8, 10),
+    "Nedbank":         (8, 11),
+    "Capitec Bank":    (12, 16),
+    "TymeBank":        (11, 13),
+    "Discovery Bank":  (9, 11),
+    "Investec Bank":   (8, 10),
+    "Bidvest Bank":    (8, 11),
+    "Sasfin Bank":     (8, 10),
+    "Albaraka Bank":   (8, 10),
+    "African Bank":    (9, 11),
+    "Old Mutual Bank": (8, 10),
+    "Grindrod Bank":   (8, 10),
+    "Mercantile Bank": (8, 10),
+}
+
+def normalize_bank_name(raw: str) -> str:
+    return re.sub(r"[^a-z0-9 ]", "", (raw or "").lower()).strip()
+
+def is_valid_bank_name(bank_name: str) -> bool:
+    """Strict bank name validation — must exactly match the SA dropdown whitelist."""
+    if not bank_name:
+        return False
+    bn = (bank_name or "").strip()
+    return bn in SA_BANK_WHITELIST
+
+
+def is_valid_account_number(account_number: str, bank_name: str = "") -> bool:
+    if not account_number:
+        return False
+    raw = (account_number or "").strip()
+    digits = re.sub(r"\D", "", raw)
+    if not digits:
+        return False
+    if len(digits) < 6 or len(digits) > 18:
+        return False
+    if len(set(digits)) == 1:
+        return False
+    if all(digits[i] >= digits[i - 1] for i in range(1, len(digits))) and len(digits) >= 5:
+        return False
+    if all(digits[i] <= digits[i - 1] for i in range(1, len(digits))) and len(digits) >= 5:
+        return False
+
+    bank_key = (bank_name or "").strip()
+    if bank_key and bank_key in SA_BANK_ACCOUNT_RULES:
+        min_len, max_len = SA_BANK_ACCOUNT_RULES[bank_key]
+        if not (min_len <= len(digits) <= max_len):
+            return False
+
+    return True
+
+def validate_payment_details(
+    payment_method: str,
+    card_number: str = "",
+    card_expiry: str = "",
+    cvv: str = "",
+    bank_name: str = "",
+    account_number: str = "",
+):
+    if not payment_method or payment_method == "unknown":
+        return True
     if payment_method == "credit_card":
+        if not card_number:
+            raise HTTPException(status_code=400, detail="Please enter your card number.")
         if not is_valid_card_number(card_number):
-            raise HTTPException(status_code=400, detail="Please enter a valid card number.")
+            raise HTTPException(status_code=400, detail="Please enter a valid credit card number.")
+        if not card_expiry:
+            raise HTTPException(status_code=400, detail="Please enter your card expiry date.")
         if not is_valid_card_expiry(card_expiry):
             raise HTTPException(status_code=400, detail="Please enter a valid, non-expired card expiry date (MM/YY).")
+        if cvv is not None and cvv != "":
+            if not is_valid_card_cvv(cvv, card_number):
+                raise HTTPException(status_code=400, detail="Please enter a valid CVV security code (3-4 digits on the back of your card).")
+    elif payment_method == "eft":
+        if not bank_name:
+            raise HTTPException(status_code=400, detail="Please select your bank from the dropdown list.")
+        if not is_valid_bank_name(bank_name):
+            raise HTTPException(
+                status_code=400,
+                detail="Please select a valid South African bank from the dropdown list."
+            )
+        if not account_number:
+            raise HTTPException(status_code=400, detail="Please enter your bank account number.")
+        digits_only = re.sub(r"\D", "", account_number or "")
+        bank_stripped = (bank_name or "").strip()
+        if not is_valid_account_number(account_number, bank_name):
+            detail = "Please enter a valid bank account number (digits only, no test numbers like 12345 or all the same digit)."
+            if bank_stripped in SA_BANK_ACCOUNT_RULES:
+                min_len, max_len = SA_BANK_ACCOUNT_RULES[bank_stripped]
+                dlen = len(digits_only)
+                if dlen and (dlen < min_len or dlen > max_len):
+                    detail = (
+                        f"Invalid account number length for {bank_stripped}: "
+                        f"you entered {dlen} digit{'s' if dlen != 1 else ''}, but "
+                        f"{bank_stripped} requires {min_len}-{max_len} digits."
+                    )
+            raise HTTPException(status_code=400, detail=detail)
     return True
 
 
@@ -394,841 +778,274 @@ def get_active_admin(user_id: int):
 
 
 def send_bootstrap_admin_email(email: str, username: str, temporary_password: str) -> bool:
-    """Send the one-time bootstrap administrator credentials."""
-    if not resend.api_key:
-        logger.warning("RESEND_API_KEY is not configured; bootstrap admin email was not sent to %s", email)
-        return False
-    resend.Emails.send({
-        "from": "TravelIntel AI <reset@notify.moviewatchtv.fun>",
-        "to": [email],
-        "subject": "Your TravelIntel AI administrator account",
-        "reply_to": "support@travelintel.ai",
-        "html": f"""<h2>TravelIntel AI Administrator</h2>
-        <p>Your administrator account has been created.</p>
-        <p><b>Email:</b> {email}<br><b>Username:</b> {username}<br><b>Temporary password:</b> {temporary_password}</p>
-        <p>Sign in at <b>/auth/login</b>. You will be required to change this temporary password immediately.</p>
-        <p>If you did not expect this account, contact the system owner immediately.</p>"""
-    })
-    return True
+    """Send the one-time bootstrap administrator credentials.
+
+    Uses unified fallback chain: Resend → SMTP → local outbox.
+    Returns True if the email was dispatched (either online or to outbox).
+    """
+    html = f"""<h2>TravelIntel AI Administrator</h2>
+    <p>Your administrator account has been created.</p>
+    <p><b>Email:</b> {email}<br><b>Username:</b> {username}<br><b>Temporary password:</b> {temporary_password}</p>
+    <p>Sign in at <b>/auth/login</b>. You will be required to change this temporary password immediately.</p>
+    <p>If you did not expect this account, contact the system owner immediately.</p>"""
+
+    text = (
+        f"TravelIntel AI Administrator\n\n"
+        f"Your administrator account has been created.\n\n"
+        f"Email: {email}\n"
+        f"Username: {username}\n"
+        f"Temporary password: {temporary_password}\n\n"
+        f"Sign in at /auth/login. You will be required to change this temporary password immediately."
+    )
+
+    return _dispatch_email(
+        to_email=email,
+        subject="Your TravelIntel AI administrator account",
+        html_body=html,
+        text_body=text,
+        from_email="TravelIntel AI <reset@notify.moviewatchtv.fun>",
+        reply_to="support@travelintel.ai",
+        outbox_prefix="admin_bootstrap",
+    )
 
 
 def send_new_admin_shared_password_email(email: str, username: str) -> bool:
     """Notify a newly-added administrator that they share the universal admin password."""
-    if not resend.api_key:
-        logger.warning("RESEND_API_KEY is not configured; new-admin email was not sent to %s", email)
-        return False
-    resend.Emails.send({
-        "from": "TravelIntel AI <reset@notify.moviewatchtv.fun>",
-        "to": [email],
-        "subject": "Your TravelIntel AI administrator account is ready",
-        "reply_to": "support@travelintel.ai",
-        "html": f"""<h2>TravelIntel AI Administrator Access</h2>
-        <p>Your administrator account has been created and is linked to the shared platform password.</p>
-        <p><b>Email:</b> {email}<br><b>Username:</b> {username}</p>
-        <p>Use the current universal TravelIntel administrator password to sign in at <b>/auth/login</b>.
-        If you do not already know it, contact any active administrator or the system owner.</p>
-        <p>All administrators share one password. When any administrator changes the password, every account is updated automatically.</p>
-        <p>If you did not expect this account, contact the system owner immediately.</p>"""
-    })
-    return True
+    html = f"""<h2>TravelIntel AI Administrator Access</h2>
+    <p>Your administrator account has been created and is linked to the shared platform password.</p>
+    <p><b>Email:</b> {email}<br><b>Username:</b> {username}</p>
+    <p>Use the current universal TravelIntel administrator password to sign in at <b>/auth/login</b>.
+    If you do not already know it, contact any active administrator or the system owner.</p>
+    <p>All administrators share one password. When any administrator changes the password, every account is updated automatically.</p>
+    <p>If you did not expect this account, contact the system owner immediately.</p>"""
+
+    text = (
+        f"TravelIntel AI Administrator Access\n\n"
+        f"Your administrator account has been created and is linked to the shared platform password.\n\n"
+        f"Email: {email}\nUsername: {username}\n\n"
+        f"Use the current universal TravelIntel administrator password to sign in at /auth/login.\n"
+        f"All administrators share one password. When any administrator changes the password, every account is updated automatically."
+    )
+
+    return _dispatch_email(
+        to_email=email,
+        subject="Your TravelIntel AI administrator account is ready",
+        html_body=html,
+        text_body=text,
+        from_email="TravelIntel AI <reset@notify.moviewatchtv.fun>",
+        reply_to="support@travelintel.ai",
+        outbox_prefix="admin_added",
+    )
 
 
-def send_verification_email(email, otp):
-    if not resend.api_key:
-        logger.warning("RESEND_API_KEY is not configured; verification email was not sent to %s", email)
-        raise RuntimeError("Email service is not configured. Please contact support.")
-    try:
-        resend.Emails.send({
-            "from": "TravelIntel AI <verify@notify.moviewatchtv.fun>",
-            "to": [email],
-            "subject": "Verify your TravelIntel AI account",
-            "reply_to": "support@travelintel.ai",
-            "headers": {
-                "X-Entity-Ref-ID": os.urandom(8).hex(),
-                "List-Unsubscribe": "<mailto:support@travelintel.ai?subject=unsubscribe>",
-                "X-Priority": "1",
-            },
-            "html": f"""
-            <!DOCTYPE html>
-            <html>
-            <body style="font-family: Arial, sans-serif; background:#f4f7fb; padding:30px;">
-                <div style="max-width:560px; margin:auto; background:white; padding:30px; border-radius:12px;">
-                    <h2 style="color:#2563eb;">TravelIntel AI</h2>
-                    <p>Welcome to TravelIntel AI! Please verify your email address to activate your account.</p>
-                    <p>Your verification code is:</p>
-                    <div style="font-size:32px;font-weight:bold;letter-spacing:8px;text-align:center;padding:20px;background:#f1f5f9;border-radius:10px;margin:20px 0;">
-                        {otp}
-                    </div>
-                    <p>This code expires in 10 minutes.</p>
-                    <p>If you did not create a TravelIntel AI account, you can safely ignore this email.</p>
-                </div>
-            </body>
-            </html>
-            """
-        })
-    except Exception:
-        logger.exception("Failed to send verification email to %s", email)
-        raise
+def send_verification_email(email, otp) -> bool:
+    """Send a registration OTP verification email.
+
+    Uses unified fallback chain. The email is ALWAYS saved to outbox if
+    online delivery fails, so the OTP is never lost to the system.
+    Returns True on success (either online or outbox saved).
+    """
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: Arial, sans-serif; background:#f4f7fb; padding:30px;">
+        <div style="max-width:560px; margin:auto; background:white; padding:30px; border-radius:12px;">
+            <h2 style="color:#2563eb;">TravelIntel AI</h2>
+            <p>Welcome to TravelIntel AI! Please verify your email address to activate your account.</p>
+            <p>Your verification code is:</p>
+            <div style="font-size:32px;font-weight:bold;letter-spacing:8px;text-align:center;padding:20px;background:#f1f5f9;border-radius:10px;margin:20px 0;">
+                {otp}
+            </div>
+            <p>This code expires in 10 minutes.</p>
+            <p>If you did not create a TravelIntel AI account, you can safely ignore this email.</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    text = (
+        f"TravelIntel AI — Email Verification\n\n"
+        f"Welcome to TravelIntel AI! Please verify your email address to activate your account.\n\n"
+        f"Your verification code is:  {otp}\n\n"
+        f"This code expires in 10 minutes.\n\n"
+        f"If you did not create a TravelIntel AI account, you can safely ignore this email."
+    )
+
+    return _dispatch_email(
+        to_email=email,
+        subject="Verify your TravelIntel AI account",
+        html_body=html,
+        text_body=text,
+        from_email="TravelIntel AI <verify@notify.moviewatchtv.fun>",
+        reply_to="support@travelintel.ai",
+        outbox_prefix="verify_otp",
+    )
 
 
-def send_password_reset_email(email: str, otp: str):
-    if not resend.api_key:
-        logger.warning("RESEND_API_KEY is not configured; password reset email was not sent to %s", email)
-        raise RuntimeError("Email service is not configured. Please contact support.")
-    try:
-        resend.Emails.send({
-            "from": "TravelIntel AI <reset@notify.moviewatchtv.fun>",
-            "to": [email],
-            "subject": "Your TravelIntel AI password reset code",
-            "reply_to": "support@travelintel.ai",
-            "headers": {
-                "X-Entity-Ref-ID": os.urandom(8).hex(),
-                "List-Unsubscribe": "<mailto:support@travelintel.ai?subject=unsubscribe>",
-                "X-Priority": "1",
-            },
-            "html": f"""
-            <!DOCTYPE html>
-            <html>
-            <body style="font-family: Arial, sans-serif; background:#f4f7fb; padding:30px;">
-                <div style="max-width:600px; margin:auto; background:white; padding:30px; border-radius:12px;">
-                    <h2 style="color:#2563eb;">TravelIntel AI</h2>
+def send_password_reset_email(email: str, otp: str) -> bool:
+    """Send a password-reset OTP code. Falls back to outbox on failure."""
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: Arial, sans-serif; background:#f4f7fb; padding:30px;">
+        <div style="max-width:600px; margin:auto; background:white; padding:30px; border-radius:12px;">
+            <h2 style="color:#2563eb;">TravelIntel AI</h2>
 
-                    <p>We received a request to reset your password.</p>
+            <p>We received a request to reset your password.</p>
 
-                    <p>Your password reset verification code is:</p>
+            <p>Your password reset verification code is:</p>
 
-                    <div style="
-                        font-size:32px;
-                        font-weight:bold;
-                        letter-spacing:8px;
-                        text-align:center;
-                        padding:20px;
-                        background:#f1f5f9;
-                        border-radius:10px;
-                        margin:20px 0;
-                    ">
-                        {otp}
-                    </div>
+            <div style="
+                font-size:32px;
+                font-weight:bold;
+                letter-spacing:8px;
+                text-align:center;
+                padding:20px;
+                background:#f1f5f9;
+                border-radius:10px;
+                margin:20px 0;
+            ">
+                {otp}
+            </div>
 
-                    <p>This code expires in 10 minutes.</p>
+            <p>This code expires in 10 minutes.</p>
 
-                    <p>If you did not request a password reset, you can safely ignore this email.</p>
+            <p>If you did not request a password reset, you can safely ignore this email.</p>
 
-                    <p>TravelIntel AI</p>
-                </div>
-            </body>
-            </html>
-            """
-        })
-    except Exception:
-        logger.exception("Failed to send password reset email to %s", email)
-        raise
+            <p>TravelIntel AI</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    text = (
+        f"TravelIntel AI — Password Reset\n\n"
+        f"We received a request to reset your password.\n\n"
+        f"Your password reset verification code is:  {otp}\n\n"
+        f"This code expires in 10 minutes.\n\n"
+        f"If you did not request a password reset, you can safely ignore this email.\n\n"
+        f"TravelIntel AI"
+    )
+
+    return _dispatch_email(
+        to_email=email,
+        subject="Your TravelIntel AI password reset code",
+        html_body=html,
+        text_body=text,
+        from_email="TravelIntel AI <reset@notify.moviewatchtv.fun>",
+        reply_to="support@travelintel.ai",
+        outbox_prefix="reset_otp",
+    )
     
 def send_booking_email(to_email: str, booking: dict) -> bool:
+    """Send a premium booking confirmation email.
+
+    Uses unified fallback chain:
+      1) Resend API    2) SMTP (if configured)    3) instance/outbox/
+
+    Returns True if the email was dispatched through any channel.
     """
-    Send a premium booking confirmation email using Resend.
 
-    Returns:
-        True  -> Email successfully submitted to Resend
-        False -> Email could not be sent
+    booking_id = booking.get("booking_id", "unknown")
+    reference = f"TI-{str(booking_id).zfill(5)}" if booking_id != "unknown" else "TI-?????"
+
+    customer_name = booking.get("name", "Valued Traveller")
+    customer_email = booking.get("email", to_email)
+    phone = booking.get("phone", "Not provided")
+    package_name = booking.get("package_name", "Travel Package")
+    destination = booking.get("destination", "Destination")
+    duration = booking.get("duration", "Not specified")
+    travel_date = booking.get("travel_date", "Not specified")
+    travelers = booking.get("number_of_travelers", 1)
+    total_amount = booking.get("total_amount", 0)
+    booking_date = booking.get("booking_date", "Not specified")
+    payment_method = booking.get("payment_method", "Not specified")
+
+    subject = f"✈️ Booking Confirmed — {destination} | {reference}"
+
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Booking Confirmation</title>
+    </head>
+    <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#0f172a;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f1f5f9;padding:40px 15px;">
+      <tr><td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 20px 50px rgba(15,23,42,0.10);">
+          <tr><td style="background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 50%,#1e40af 100%);padding:42px 35px;text-align:center;color:#ffffff;">
+            <div style="font-size:42px;margin-bottom:12px;">✈️</div>
+            <h1 style="margin:0;font-size:28px;line-height:1.3;font-weight:800;color:#ffffff;">Your Trip Is Confirmed!</h1>
+            <p style="margin:12px 0 0;font-size:15px;line-height:1.5;color:#dbeafe;">Thank you, {customer_name}. We can't wait to travel with you.</p>
+          </td></tr>
+          <tr><td style="padding:20px 35px;background:#eff6ff;border-bottom:1px solid #dbeafe;">
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;">
+              <div>
+                <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;margin-bottom:4px;">Booking Reference</div>
+                <div style="font-family:'Courier New',Courier,monospace;font-size:22px;font-weight:800;color:#1d4ed8;letter-spacing:2px;">{reference}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;margin-bottom:4px;">Booking Date</div>
+                <div style="font-size:15px;color:#0f172a;font-weight:600;">{booking_date}</div>
+              </div>
+            </div>
+          </td></tr>
+          <tr><td style="padding:35px;">
+            <h2 style="margin:0 0 20px;font-size:18px;font-weight:700;color:#0f172a;padding-bottom:10px;border-bottom:2px solid #e2e8f0;">Trip Summary</h2>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:15px;">
+              <tr><td style="padding:10px 0;color:#64748b;width:35%;">Package</td><td style="padding:10px 0;font-weight:600;color:#0f172a;">{package_name}</td></tr>
+              <tr><td style="padding:10px 0;color:#64748b;">Destination</td><td style="padding:10px 0;font-weight:600;color:#0f172a;">📍 {destination}</td></tr>
+              <tr><td style="padding:10px 0;color:#64748b;">Travel Date</td><td style="padding:10px 0;font-weight:600;color:#0f172a;">{travel_date}</td></tr>
+              <tr><td style="padding:10px 0;color:#64748b;">Duration</td><td style="padding:10px 0;font-weight:600;color:#0f172a;">{duration}</td></tr>
+              <tr><td style="padding:10px 0;color:#64748b;">Travellers</td><td style="padding:10px 0;font-weight:600;color:#0f172a;">👥 {travelers} traveller{'s' if travelers != 1 else ''}</td></tr>
+            </table>
+          </td></tr>
+          <tr><td style="padding:25px 35px;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">
+            <h2 style="margin:0 0 18px;font-size:18px;font-weight:700;color:#0f172a;">Payment Details</h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+              <div>
+                <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;margin-bottom:6px;">Payment Method</div>
+                <div style="font-size:15px;font-weight:600;color:#0f172a;text-transform:capitalize;">{payment_method}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;margin-bottom:6px;">Total Paid</div>
+                <div style="font-size:26px;font-weight:800;color:#16a34a;">R {total_amount:,.2f}</div>
+              </div>
+            </div>
+          </td></tr>
+          <tr><td style="padding:35px;">
+            <h2 style="margin:0 0 20px;font-size:18px;font-weight:700;color:#0f172a;padding-bottom:10px;border-bottom:2px solid #e2e8f0;">Traveller Information</h2>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:15px;">
+              <tr><td style="padding:10px 0;color:#64748b;width:30%;">Full Name</td><td style="padding:10px 0;font-weight:600;color:#0f172a;">{customer_name}</td></tr>
+              <tr><td style="padding:10px 0;color:#64748b;">Email</td><td style="padding:10px 0;font-weight:500;color:#1d4ed8;">✉️ {customer_email}</td></tr>
+              <tr><td style="padding:10px 0;color:#64748b;">Phone</td><td style="padding:10px 0;font-weight:600;color:#0f172a;">📞 {phone}</td></tr>
+            </table>
+          </td></tr>
+          <tr><td style="padding:30px 35px 40px;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);">
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:16px;padding:24px;text-align:center;">
+              <div style="font-size:32px;margin-bottom:10px;">🎉</div>
+              <h3 style="margin:0 0 10px;font-size:18px;font-weight:700;color:#1d4ed8;">Your adventure begins here!</h3>
+              <p style="margin:0;font-size:14px;color:#475569;line-height:1.6;">We've received your booking. If you have any questions, need to make changes, or want to add extras, please don't hesitate to get in touch.</p>
+              <p style="margin:16px 0 0;font-size:14px;font-weight:600;color:#1e40af;">Contact: support@travelintel.ai</p>
+            </div>
+          </td></tr>
+          <tr><td style="padding:25px 35px;background:#0f172a;color:#cbd5e1;text-align:center;">
+            <div style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;margin-bottom:8px;">✈️ TravelIntel AI</div>
+            <div style="font-size:13px;color:#94a3b8;margin-bottom:18px;">Smart travel. Better journeys.</div>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:12px;color:#64748b;">
+              <tr><td align="center" style="padding:6px 0;">Email: <a href="mailto:support@travelintel.ai" style="color:#93c5fd;text-decoration:none;">support@travelintel.ai</a></td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+    <p style="margin:25px 0 0;font-size:12px;color:#94a3b8;text-align:center;">© {datetime.datetime.now().year} TravelIntel AI. All rights reserved.</p>
+    </body></html>
     """
 
-    try:
-        booking_id = booking["booking_id"]
-
-        # --------------------------------------------------
-        # Booking details
-        # --------------------------------------------------
-
-        reference = f"TI-{str(booking_id).zfill(5)}"
-
-        customer_name = booking.get("name", "Valued Traveller")
-        customer_email = booking.get("email", to_email)
-        phone = booking.get("phone", "Not provided")
-
-        package_name = booking.get(
-            "package_name",
-            "Travel Package"
-        )
-
-        destination = booking.get(
-            "destination",
-            "Destination"
-        )
-
-        duration = booking.get(
-            "duration",
-            "Not specified"
-        )
-
-        travel_date = booking.get(
-            "travel_date",
-            "Not specified"
-        )
-
-        travelers = booking.get(
-            "number_of_travelers",
-            1
-        )
-
-        total_amount = booking.get(
-            "total_amount",
-            0
-        )
-
-        booking_date = booking.get(
-            "booking_date",
-            "Not specified"
-        )
-
-        payment_method = booking.get(
-            "payment_method",
-            "Not specified"
-        )
-
-        subject = (
-            f"✈️ Booking Confirmed — "
-            f"{destination} | {reference}"
-        )
-
-
-        # --------------------------------------------------
-        # Premium HTML Email
-        # --------------------------------------------------
-
-        html = f"""
-        <!DOCTYPE html>
-
-        <html lang="en">
-
-        <head>
-
-            <meta charset="UTF-8">
-
-            <meta name="viewport"
-                  content="width=device-width, initial-scale=1.0">
-
-            <title>
-                Booking Confirmation
-            </title>
-
-        </head>
-
-
-        <body style="
-            margin:0;
-            padding:0;
-            background-color:#f1f5f9;
-            font-family:
-                -apple-system,
-                BlinkMacSystemFont,
-                'Segoe UI',
-                Roboto,
-                Arial,
-                sans-serif;
-            color:#0f172a;
-        ">
-
-
-        <!-- Main Wrapper -->
-
-        <table
-            width="100%"
-            cellpadding="0"
-            cellspacing="0"
-            border="0"
-            style="
-                background-color:#f1f5f9;
-                padding:40px 15px;
-            "
-        >
-
-        <tr>
-
-        <td align="center">
-
-
-        <!-- Email Container -->
-
-        <table
-            width="100%"
-            cellpadding="0"
-            cellspacing="0"
-            border="0"
-            style="
-                max-width:620px;
-                background:#ffffff;
-                border-radius:24px;
-                overflow:hidden;
-                box-shadow:
-                    0 20px 50px
-                    rgba(15,23,42,0.10);
-            "
-        >
-
-
-        <!-- Hero Header -->
-
-        <tr>
-
-        <td style="
-            background:
-                linear-gradient(
-                    135deg,
-                    #2563eb 0%,
-                    #1d4ed8 50%,
-                    #1e40af 100%
-                );
-            padding:42px 35px;
-            text-align:center;
-            color:#ffffff;
-        ">
-
-            <div style="
-                font-size:42px;
-                margin-bottom:12px;
-            ">
-                ✈️
-            </div>
-
-            <h1 style="
-                margin:0;
-                font-size:28px;
-                line-height:1.3;
-                font-weight:800;
-                color:#ffffff;
-            ">
-                Your Trip Is Confirmed!
-            </h1>
-
-            <p style="
-                margin:12px 0 0;
-                font-size:16px;
-                line-height:1.6;
-                color:#dbeafe;
-            ">
-                Get ready for an unforgettable journey
-                with TravelIntel AI.
-            </p>
-
-        </td>
-
-        </tr>
-
-
-        <!-- Confirmation Badge -->
-
-        <tr>
-
-        <td style="
-            padding:30px 35px 10px;
-            text-align:center;
-        ">
-
-            <div style="
-                display:inline-block;
-                background:#dcfce7;
-                color:#166534;
-                padding:10px 20px;
-                border-radius:999px;
-                font-size:14px;
-                font-weight:700;
-            ">
-                ✓ BOOKING CONFIRMED
-            </div>
-
-            <p style="
-                margin:15px 0 0;
-                font-size:14px;
-                color:#64748b;
-            ">
-                Booking Reference
-            </p>
-
-            <p style="
-                margin:5px 0 0;
-                font-size:24px;
-                font-weight:800;
-                letter-spacing:2px;
-                color:#2563eb;
-            ">
-                {reference}
-            </p>
-
-        </td>
-
-        </tr>
-
-
-        <!-- Greeting -->
-
-        <tr>
-
-        <td style="
-            padding:25px 35px 10px;
-        ">
-
-            <h2 style="
-                margin:0 0 10px;
-                font-size:22px;
-                color:#0f172a;
-            ">
-                Hello {customer_name}! 👋
-            </h2>
-
-            <p style="
-                margin:0;
-                font-size:15px;
-                line-height:1.7;
-                color:#64748b;
-            ">
-                Thank you for choosing TravelIntel AI.
-                Your booking has been successfully confirmed.
-                Below you'll find everything you need for
-                your upcoming adventure.
-            </p>
-
-        </td>
-
-        </tr>
-
-
-        <!-- Destination Highlight -->
-
-        <tr>
-
-        <td style="
-            padding:25px 35px;
-        ">
-
-            <table
-                width="100%"
-                cellpadding="0"
-                cellspacing="0"
-                style="
-                    background:#eff6ff;
-                    border:1px solid #dbeafe;
-                    border-radius:18px;
-                "
-            >
-
-            <tr>
-
-            <td style="
-                padding:25px;
-                text-align:center;
-            ">
-
-                <div style="
-                    font-size:14px;
-                    color:#64748b;
-                    margin-bottom:8px;
-                ">
-                    YOUR DESTINATION
-                </div>
-
-                <div style="
-                    font-size:28px;
-                    font-weight:800;
-                    color:#1d4ed8;
-                ">
-                    🌍 {destination}
-                </div>
-
-                <div style="
-                    margin-top:8px;
-                    font-size:15px;
-                    color:#64748b;
-                ">
-                    {package_name}
-                </div>
-
-            </td>
-
-            </tr>
-
-            </table>
-
-        </td>
-
-        </tr>
-
-
-        <!-- Booking Details -->
-
-        <tr>
-
-        <td style="
-            padding:0 35px 25px;
-        ">
-
-            <h3 style="
-                margin:0 0 15px;
-                font-size:18px;
-                color:#0f172a;
-            ">
-                🧳 Your Booking Details
-            </h3>
-
-
-            <table
-                width="100%"
-                cellpadding="0"
-                cellspacing="0"
-                style="
-                    border:1px solid #e2e8f0;
-                    border-radius:16px;
-                    overflow:hidden;
-                "
-            >
-
-            <tr style="
-                background:#f8fafc;
-            ">
-
-                <td style="
-                    padding:15px;
-                    color:#64748b;
-                    font-size:14px;
-                ">
-                    Travel Date
-                </td>
-
-                <td style="
-                    padding:15px;
-                    text-align:right;
-                    font-weight:700;
-                    font-size:14px;
-                ">
-                    📅 {travel_date}
-                </td>
-
-            </tr>
-
-
-            <tr>
-
-                <td style="
-                    padding:15px;
-                    color:#64748b;
-                    font-size:14px;
-                ">
-                    Duration
-                </td>
-
-                <td style="
-                    padding:15px;
-                    text-align:right;
-                    font-weight:700;
-                    font-size:14px;
-                ">
-                    ⏱️ {duration}
-                </td>
-
-            </tr>
-
-
-            <tr style="
-                background:#f8fafc;
-            ">
-
-                <td style="
-                    padding:15px;
-                    color:#64748b;
-                    font-size:14px;
-                ">
-                    Travellers
-                </td>
-
-                <td style="
-                    padding:15px;
-                    text-align:right;
-                    font-weight:700;
-                    font-size:14px;
-                ">
-                    👥 {travelers}
-                </td>
-
-            </tr>
-
-
-            <tr>
-
-                <td style="
-                    padding:15px;
-                    color:#64748b;
-                    font-size:14px;
-                ">
-                    Payment Method
-                </td>
-
-                <td style="
-                    padding:15px;
-                    text-align:right;
-                    font-weight:700;
-                    font-size:14px;
-                ">
-                    💳 {payment_method}
-                </td>
-
-            </tr>
-
-
-            <tr style="
-                background:#f8fafc;
-            ">
-
-                <td style="
-                    padding:15px;
-                    color:#64748b;
-                    font-size:14px;
-                ">
-                    Booking Date
-                </td>
-
-                <td style="
-                    padding:15px;
-                    text-align:right;
-                    font-weight:700;
-                    font-size:14px;
-                ">
-                    {booking_date}
-                </td>
-
-            </tr>
-
-            </table>
-
-        </td>
-
-        </tr>
-
-
-        <!-- Total -->
-
-        <tr>
-
-        <td style="
-            padding:0 35px 30px;
-        ">
-
-            <table
-                width="100%"
-                cellpadding="0"
-                cellspacing="0"
-                style="
-                    background:#0f172a;
-                    border-radius:18px;
-                "
-            >
-
-            <tr>
-
-            <td style="
-                padding:25px;
-            ">
-
-                <div style="
-                    color:#94a3b8;
-                    font-size:14px;
-                ">
-                    TOTAL BOOKING VALUE
-                </div>
-
-                <div style="
-                    margin-top:6px;
-                    color:#ffffff;
-                    font-size:30px;
-                    font-weight:800;
-                ">
-                    R {total_amount:,.2f}
-                </div>
-
-            </td>
-
-            <td style="
-                padding:25px;
-                text-align:right;
-                vertical-align:middle;
-            ">
-
-                <div style="
-                    width:48px;
-                    height:48px;
-                    line-height:48px;
-                    text-align:center;
-                    border-radius:50%;
-                    background:#2563eb;
-                    color:#ffffff;
-                    font-size:22px;
-                ">
-                    ✓
-                </div>
-
-            </td>
-
-            </tr>
-
-            </table>
-
-        </td>
-
-        </tr>
-
-
-        <!-- Contact Information -->
-
-        <tr>
-
-        <td style="
-            padding:0 35px 30px;
-        ">
-
-            <div style="
-                background:#f8fafc;
-                border-radius:16px;
-                padding:20px;
-            ">
-
-                <h3 style="
-                    margin:0 0 10px;
-                    font-size:16px;
-                ">
-                    📩 Booking Contact
-                </h3>
-
-                <p style="
-                    margin:5px 0;
-                    font-size:14px;
-                    color:#64748b;
-                ">
-                    Email: {customer_email}
-                </p>
-
-                <p style="
-                    margin:5px 0;
-                    font-size:14px;
-                    color:#64748b;
-                ">
-                    Phone: {phone}
-                </p>
-
-            </div>
-
-        </td>
-
-        </tr>
-
-
-        <!-- Next Steps -->
-
-        <tr>
-
-        <td style="
-            padding:0 35px 30px;
-        ">
-
-            <h3 style="
-                margin:0 0 12px;
-                font-size:18px;
-            ">
-                ✨ What's Next?
-            </h3>
-
-            <p style="
-                margin:0;
-                font-size:14px;
-                line-height:1.8;
-                color:#64748b;
-            ">
-                Keep this email for your records and make sure
-                your travel documents are ready before departure.
-                Your booking reference
-                <strong>{reference}</strong>
-                may be required when contacting our support team.
-            </p>
-
-        </td>
-
-        </tr>
-
-
-        <!-- Footer -->
-
-        <tr>
-
-        <td style="
-            background:#f8fafc;
-            padding:30px 35px;
-            text-align:center;
-            border-top:1px solid #e2e8f0;
-        ">
-
-            <div style="
-                font-size:18px;
-                font-weight:800;
-                color:#2563eb;
-            ">
-                TravelIntel AI
-            </div>
-
-            <p style="
-                margin:8px 0;
-                font-size:13px;
-                color:#64748b;
-            ">
-                Smart travel. Better journeys.
-            </p>
-
-            <p style="
-                margin:15px 0 0;
-                font-size:12px;
-                color:#94a3b8;
-                line-height:1.6;
-            ">
-                This is an automated booking confirmation.
-                Please do not reply directly to this email.
-            </p>
-
-        </td>
-
-        </tr>
-
-
-        </table>
-
-
-        <!-- Copyright -->
-
-        <p style="
-            margin:25px 0 0;
-            font-size:12px;
-            color:#94a3b8;
-            text-align:center;
-        ">
-            © {datetime.datetime.now().year}
-            TravelIntel AI. All rights reserved.
-        </p>
-
-
-        </td>
-
-        </tr>
-
-        </table>
-
-        </body>
-
-        </html>
-        """
-
-
-        # --------------------------------------------------
-        # Plain-text fallback
-        # --------------------------------------------------
-
-        text = f"""
-TravelIntel AI — BOOKING CONFIRMED
+    text = f"""TravelIntel AI — BOOKING CONFIRMED
 
 Hello {customer_name},
 
@@ -1263,42 +1080,15 @@ Thank you for choosing TravelIntel AI.
 Smart travel. Better journeys.
 """
 
-
-        # --------------------------------------------------
-        # Send using Resend
-        # --------------------------------------------------
-
-        response = resend.Emails.send({
-            "from": "TravelIntel AI <bookings@notify.moviewatchtv.fun>",
-            "to": [to_email],
-            "subject": subject,
-            "html": html,
-            "text": text,
-        })
-
-
-        logger.info(
-            "Booking confirmation email sent successfully. "
-            "booking_id=%s email=%s resend_response=%s",
-            booking_id,
-            to_email,
-            response
-        )
-
-        return True
-
-
-    except Exception as e:
-
-        logger.exception(
-            "Failed to send booking confirmation email. "
-            "booking_id=%s email=%s error=%s",
-            booking.get("booking_id", "unknown"),
-            to_email,
-            str(e)
-        )
-
-        return False
+    return _dispatch_email(
+        to_email=to_email,
+        subject=subject,
+        html_body=html,
+        text_body=text,
+        from_email="TravelIntel AI <bookings@notify.moviewatchtv.fun>",
+        reply_to="support@travelintel.ai",
+        outbox_prefix=f"booking_{booking_id}" if booking_id != "unknown" else "booking",
+    )
 
 # --- Global Exception Handlers ---
 @app.exception_handler(HTTPException)
@@ -1468,21 +1258,24 @@ async def customer_register(data: CustomerRegisterRequest):
     print("REGISTER OTP:", email, otp)
 
     try:
-        send_verification_email(
-            email,
-            otp
-        )
+        email_ok = send_verification_email(email, otp)
     except Exception:
+        email_ok = False
+        logger.exception("Unhandled error sending registration verification email to %s", email)
+
+    if not email_ok:
         registration_otps.pop(email, None)
-        logger.exception("Failed to send registration verification email to %s", email)
         raise HTTPException(
             status_code=500,
-            detail="Unable to send verification email. Please try again or contact support."
+            detail="Unable to send verification email. Please try again or contact support at " + DEFAULT_ADMIN_EMAIL + "."
         )
 
     return {
         "success": True,
-        "message": "Verification email sent"
+        "message": (
+            "Verification code dispatched. If you don't receive it within 2 minutes, "
+            "check your spam folder or contact support at " + DEFAULT_ADMIN_EMAIL + "."
+        )
     }
 
 class VerifyRegistrationRequest(BaseModel):
@@ -1599,20 +1392,23 @@ async def resend_registration_otp(data: VerifyRegistrationRequest):
     print("RE-SEND REGISTER OTP:", email, otp)
 
     try:
-        send_verification_email(
-            email,
-            otp
-        )
+        email_ok = send_verification_email(email, otp)
     except Exception:
-        logger.exception("Failed to resend registration verification email to %s", email)
+        email_ok = False
+        logger.exception("Unhandled error resending registration verification email to %s", email)
+
+    if not email_ok:
         raise HTTPException(
             status_code=500,
-            detail="Unable to resend verification code. Please try again or contact support."
+            detail="Unable to resend verification code. Please try again or contact support at " + DEFAULT_ADMIN_EMAIL + "."
         )
 
     return {
         "success": True,
-        "message": "A new verification code has been sent"
+        "message": (
+            "A new verification code has been dispatched. If you don't receive it within 2 minutes, "
+            "check your spam folder or contact support at " + DEFAULT_ADMIN_EMAIL + "."
+        )
     }
 
 @app.post("/api/auth/login")
@@ -1735,13 +1531,30 @@ async def request_admin_password_reset(data: AdminForgotPasswordRequest):
     }
 
     try:
-        send_password_reset_email(account_email, otp)
-        logger.info("Admin password reset OTP sent to %s", account_email)
-        return {"success": True, "data": {"message": "Password reset code sent to the administrator email.", "email": account_email}}
+        email_ok = send_password_reset_email(account_email, otp)
     except Exception:
+        email_ok = False
+        logger.exception("Unhandled error sending admin password reset email to %s", account_email)
+
+    if not email_ok:
         password_reset_otps.pop(account_email, None)
-        logger.exception("Failed to send admin password reset email to %s", account_email)
-        raise HTTPException(status_code=500, detail="Unable to send password reset email. Please try again.")
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to send password reset email. Please try again or contact support at " + DEFAULT_ADMIN_EMAIL + "."
+        )
+
+    logger.info("Admin password reset OTP dispatched to %s", account_email)
+    return {
+        "success": True,
+        "data": {
+            "message": (
+                "Password reset code dispatched to the administrator email. "
+                "If you don't receive it within 2 minutes, check your spam folder "
+                "or contact support at " + DEFAULT_ADMIN_EMAIL + "."
+            ),
+            "email": account_email,
+        },
+    }
 
 
 
@@ -1896,14 +1709,31 @@ async def request_customer_password_reset(data: PasswordResetRequest):
     }
 
     try:
-        send_password_reset_email(account_email, otp)
-        is_admin_flag = int(user.get("is_admin") or 0) == 1 or user.get("role") == "admin" or user.get("user_type") == "admin"
-        logger.info("Password reset OTP sent to %s (is_admin=%s)", account_email, is_admin_flag)
-        return {"success": True, "data": {"message": "Password reset code sent to your email.", "email": account_email}}
+        email_ok = send_password_reset_email(account_email, otp)
     except Exception:
+        email_ok = False
+        logger.exception("Unhandled error sending password reset email to %s", account_email)
+
+    if not email_ok:
         password_reset_otps.pop(account_email, None)
-        logger.exception("Failed to send password reset email to %s", account_email)
-        raise HTTPException(status_code=500, detail="Unable to send password reset email. Please try again.")
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to send password reset email. Please try again or contact support at " + DEFAULT_ADMIN_EMAIL + "."
+        )
+
+    is_admin_flag = int(user.get("is_admin") or 0) == 1 or user.get("role") == "admin" or user.get("user_type") == "admin"
+    logger.info("Password reset OTP dispatched to %s (is_admin=%s)", account_email, is_admin_flag)
+    return {
+        "success": True,
+        "data": {
+            "message": (
+                "Password reset code dispatched to your email. "
+                "If you don't receive it within 2 minutes, check your spam folder "
+                "or contact support at " + DEFAULT_ADMIN_EMAIL + "."
+            ),
+            "email": account_email,
+        },
+    }
 
 
 @app.post("/api/auth/forgot-password/verify")
@@ -2096,7 +1926,14 @@ async def update_profile(request: Request, data: ProfileUpdateRequest):
     if not session:
         raise HTTPException(status_code=401, detail="Please login first")
 
-    validate_payment_details(data.payment_method, data.card_number, data.card_expiry)
+    validate_payment_details(
+        data.payment_method,
+        data.card_number,
+        data.card_expiry,
+        "",
+        data.bank_name,
+        data.account_number,
+    )
 
     conn = get_db_connection()
     c = conn.cursor()
@@ -2486,7 +2323,14 @@ async def create_booking(data: BookingRequest, request: Request):
         raise HTTPException(status_code=400, detail="Invalid travel date format")
     if travel_date_obj < datetime.date.today():
         raise HTTPException(status_code=400, detail="Travel date cannot be in the past")
-    validate_payment_details(data.payment_method, data.card_number, data.card_expiry)
+    validate_payment_details(
+        data.payment_method,
+        data.card_number,
+        data.card_expiry,
+        "",
+        data.bank_name,
+        data.account_number,
+    )
 
     email = normalize_email(data.email)
     if not is_valid_email(email):
@@ -2610,6 +2454,64 @@ async def create_booking(data: BookingRequest, request: Request):
         conn.close()
 
     return {"success": True, "data": {"message": "Booking successful!", "booking_id": booking_id, "booking": booking_summary, "email_sent": email_sent}}
+
+
+@app.post("/api/bookings/{booking_id}/resend-email")
+async def resend_booking_email(booking_id: int):
+    if booking_id <= 0:
+        raise HTTPException(status_code=400, detail="Invalid booking ID")
+
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    try:
+        c.execute(
+            '''SELECT b.booking_id, b.booking_date, b.travel_date, b.number_of_travelers,
+                      b.total_amount, b.status, b.payment_method,
+                      c.name, c.email, c.phone, c.address,
+                      p.package_name, p.destination, p.duration, p.price
+               FROM Bookings b
+               JOIN Customers c ON b.customer_id = c.customer_id
+               JOIN Packages p ON b.package_id = p.package_id
+               WHERE b.booking_id = ?''',
+            (booking_id,)
+        )
+        row = c.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Booking not found")
+
+        booking_summary = {
+            "booking_id": row["booking_id"],
+            "name": row["name"] or "Valued Traveller",
+            "email": row["email"],
+            "phone": row["phone"] or "Not provided",
+            "package_name": row["package_name"] or "Travel Package",
+            "destination": row["destination"] or "Destination",
+            "duration": f"{row['duration']} Days" if row["duration"] else "Not specified",
+            "travel_date": row["travel_date"],
+            "number_of_travelers": row["number_of_travelers"],
+            "total_amount": row["total_amount"],
+            "booking_date": row["booking_date"],
+            "payment_method": row["payment_method"] or "unknown",
+        }
+
+        if not booking_summary["email"] or not is_valid_email(booking_summary["email"]):
+            raise HTTPException(status_code=400, detail="No valid email address associated with this booking")
+
+        email_sent = send_booking_email(booking_summary["email"], booking_summary)
+
+        if not email_sent:
+            raise HTTPException(status_code=500, detail="Failed to resend booking confirmation email. Please try again later.")
+
+        return {"success": True, "message": "Booking confirmation email resent successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to resend booking confirmation email. booking_id=%s error=%s", booking_id, str(e))
+        raise HTTPException(status_code=500, detail="An error occurred while resending the email. Please try again later.")
+    finally:
+        conn.close()
 
 
 @app.get("/api/my-bookings")

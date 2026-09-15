@@ -1,0 +1,2 @@
+﻿Import OK
+Resend routes: ['/api/auth/register/resend', '/api/bookings/{booking_id}/resend-email']

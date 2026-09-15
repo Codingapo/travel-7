@@ -12,6 +12,7 @@
             --glass-bg: rgba(255, 255, 255, 0.03);
             --glass-border: rgba(255, 255, 255, 0.08);
         }
+        html { font-size: clamp(14px, 1vw, 18px); }
         body {
             background-color: var(--bg-dark);
             color: #f8fafc;
@@ -23,103 +24,179 @@
             backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border);
         }
+        .nav-logo {
+            width: clamp(1.75rem, 3.5vw, 2rem);
+            height: clamp(1.75rem, 3.5vw, 2rem);
+        }
+        .navbar-h { height: clamp(3.5rem, 6vw, 5rem); }
+        .btn-py { padding-top: clamp(0.75rem, 1.5vw, 1rem); padding-bottom: clamp(0.75rem, 1.5vw, 1rem); }
+        .input-px { padding-left: clamp(1rem, 2vw, 1.25rem); padding-right: clamp(1rem, 2vw, 1.25rem); }
+        .input-py { padding-top: clamp(0.75rem, 1.5vw, 1rem); padding-bottom: clamp(0.75rem, 1.5vw, 1rem); }
+        .input-sm-py { padding-top: clamp(0.5rem, 1.2vw, 0.75rem); padding-bottom: clamp(0.5rem, 1.2vw, 0.75rem); }
+        .card-round { border-radius: clamp(1.25rem, 3vw, 2.5rem); }
+        .section-padding { padding: clamp(1.5rem, 4vw, 3rem); }
+        .hero-pad { padding-top: clamp(6rem, 14vw, 8rem); padding-bottom: clamp(3rem, 8vw, 5rem); }
+        .page-title { font-size: clamp(1.5rem, 4vw, 1.875rem); }
+        .section-title { font-size: clamp(1.25rem, 3vw, 1.5rem); }
+        .avatar-size {
+            width: clamp(4rem, 8vw, 5rem);
+            height: clamp(4rem, 8vw, 5rem);
+        }
+        .avatar-size i { font-size: clamp(1.5rem, 4vw, 1.875rem); }
+        .form-gap { gap: clamp(0.75rem, 2vw, 1.5rem); }
+        .form-space { space-y: clamp(1rem, 3vw, 2rem); }
+        .section-gap { margin-top: clamp(1.5rem, 4vw, 2.5rem); }
+        .booking-icon {
+            width: clamp(2.5rem, 5vw, 3rem);
+            height: clamp(2.5rem, 5vw, 3rem);
+        }
+        .booking-icon i { font-size: clamp(1rem, 2.5vw, 1.25rem); }
+        @media (max-width: 767px) {
+            .mobile-menu {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: rgba(15, 23, 42, 0.98);
+                backdrop-filter: blur(20px);
+                padding: 1rem 1.5rem;
+                border-bottom: 1px solid var(--glass-border);
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.75rem;
+            }
+            .mobile-menu.open { display: flex; }
+            .mobile-menu > * { width: 100%; justify-content: center; }
+            .hamburger { display: flex; }
+        }
+        @media (min-width: 768px) {
+            .hamburger { display: none; }
+            .mobile-menu { display: flex !important; }
+        }
     </style>
 </head>
 <body class="font-sans min-h-screen">
     <nav class="glass fixed w-full z-50 top-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-20 items-center">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <div class="flex justify-between navbar-h items-center">
                 <a href="/home" class="flex items-center space-x-2">
-                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <div class="nav-logo bg-blue-600 rounded-lg flex items-center justify-center">
                         <i class="fas fa-robot text-white"></i>
                     </div>
-                    <span class="text-xl font-black text-white">TravelIntel AI</span>
+                    <span class="text-[clamp(0.9rem,2vw,1.25rem)] font-black text-white">TravelIntel AI</span>
                 </a>
-                <div class="flex items-center space-x-6">
-                    <a href="/home" class="text-gray-400 hover:text-white transition font-medium">Home</a>
-                    <button onclick="logout()" class="text-gray-400 hover:text-red-400 transition font-medium"><i class="fas fa-power-off mr-2"></i> Logout</button>
+                <button class="hamburger w-10 h-10 items-center justify-center text-white rounded-lg hover:bg-white/5 transition" onclick="toggleMobileMenu()" aria-label="Menu">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+                <div id="nav-menu" class="mobile-menu flex items-center space-x-0 md:space-x-6">
+                    <a href="/home" class="text-gray-400 hover:text-white transition font-medium" onclick="closeMobileMenu()">Home</a>
+                    <button onclick="logoutAndCloseMenu()" class="text-gray-400 hover:text-red-400 transition font-medium py-2 md:py-0"><i class="fas fa-power-off mr-2"></i> Logout</button>
                 </div>
             </div>
         </div>
     </nav>
 
-    <main class="max-w-3xl mx-auto pt-32 px-4 pb-20">
-        <div class="glass p-8 md:p-12 rounded-[2.5rem]">
-            <div class="flex items-center space-x-6 mb-12">
-                <div class="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center shadow-xl shadow-blue-600/20">
-                    <i class="fas fa-user text-3xl text-white"></i>
+    <main class="max-w-3xl mx-auto hero-pad px-4 pb-[clamp(3rem,8vw,5rem)]">
+        <div class="glass section-padding card-round">
+            <div class="flex items-center space-x-[clamp(1rem,3vw,1.5rem)] mb-[clamp(1.5rem,5vw,3rem)] flex-col sm:flex-row text-center sm:text-left">
+                <div class="avatar-size bg-blue-600 rounded-3xl flex items-center justify-center shadow-xl shadow-blue-600/20 flex-shrink-0">
+                    <i class="fas fa-user text-white"></i>
                 </div>
                 <div>
-                    <h1 class="text-3xl font-black text-white">Your Profile</h1>
-                    <p class="text-gray-400" id="profile-email-display">--</p>
+                    <h1 class="page-title font-black text-white">Your Profile</h1>
+                    <p class="text-gray-400 text-[clamp(0.7rem,1.3vw,0.9rem)]" id="profile-email-display">--</p>
                 </div>
             </div>
 
-            <form id="profile-form" class="space-y-8">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form id="profile-form" class="form-space">
+                <div class="grid grid-cols-1 md:grid-cols-2 form-gap">
                     <div>
-                        <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Full Name</label>
-                        <input type="text" id="full-name" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="e.g., Alexander Hamilton">
+                        <label class="block text-[clamp(0.7rem,1.3vw,0.875rem)] font-bold text-gray-400 mb-[clamp(0.35rem,1vw,0.5rem)] ml-1">Full Name</label>
+                        <input type="text" id="full-name" class="w-full input-px input-py bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="e.g., Alexander Hamilton">
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Contact Number</label>
-                        <input type="tel" id="phone" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="+27 82 000 0000">
+                        <label class="block text-[clamp(0.7rem,1.3vw,0.875rem)] font-bold text-gray-400 mb-[clamp(0.35rem,1vw,0.5rem)] ml-1">Contact Number</label>
+                        <input type="tel" id="phone" class="w-full input-px input-py bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="+27 82 000 0000">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Residential Address</label>
-                    <textarea id="address" rows="3" class="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="Street name, Suburb, City, Postal Code"></textarea>
+                    <label class="block text-[clamp(0.7rem,1.3vw,0.875rem)] font-bold text-gray-400 mb-[clamp(0.35rem,1vw,0.5rem)] ml-1">Residential Address</label>
+                    <textarea id="address" rows="3" class="w-full input-px input-py bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white" placeholder="Street name, Suburb, City, Postal Code"></textarea>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-bold text-gray-400 mb-2 ml-1">Default Payment Method</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    <label class="block text-[clamp(0.7rem,1.3vw,0.875rem)] font-bold text-gray-400 mb-[clamp(0.35rem,1vw,0.5rem)] ml-1">Default Payment Method</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 form-gap mb-[clamp(1rem,3vw,1.5rem)]">
                         <label class="relative glass p-4 rounded-2xl cursor-pointer flex items-center space-x-4 border-2 border-transparent hover:border-blue-500 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-600/10">
                             <input type="radio" name="payment" value="credit_card" class="hidden" onchange="togglePaymentFields(this.value)">
-                            <i class="fas fa-credit-card text-blue-400 text-xl"></i>
-                            <span class="text-white font-bold">Credit / Debit Card</span>
+                            <i class="fas fa-credit-card text-blue-400 text-[clamp(1rem,2vw,1.25rem)]"></i>
+                            <span class="text-white font-bold text-[clamp(0.75rem,1.3vw,0.9rem)]">Credit / Debit Card</span>
                         </label>
                         <label class="relative glass p-4 rounded-2xl cursor-pointer flex items-center space-x-4 border-2 border-transparent hover:border-blue-500 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-600/10">
                             <input type="radio" name="payment" value="eft" class="hidden" onchange="togglePaymentFields(this.value)">
-                            <i class="fas fa-university text-blue-400 text-xl"></i>
-                            <span class="text-white font-bold">EFT Transfer</span>
+                            <i class="fas fa-university text-blue-400 text-[clamp(1rem,2vw,1.25rem)]"></i>
+                            <span class="text-white font-bold text-[clamp(0.75rem,1.3vw,0.9rem)]">EFT Transfer</span>
                         </label>
                     </div>
 
                     <!-- Card Details -->
-                    <div id="card-details" class="payment-fields hidden space-y-4 mb-6">
+                    <div id="card-details" class="payment-fields hidden space-y-4 mb-[clamp(1rem,3vw,1.5rem)]">
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">Card Number</label>
-                            <input type="text" id="card-number" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="XXXX XXXX XXXX XXXX">
+                            <label class="block text-[clamp(0.6rem,1.1vw,0.75rem)] font-bold text-gray-500 mb-[clamp(0.25rem,0.8vw,0.5rem)] ml-1">Card Number</label>
+                            <input type="text" id="card-number" class="w-full input-px input-sm-py bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-[clamp(0.7rem,1.3vw,0.875rem)]" placeholder="XXXX XXXX XXXX XXXX">
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-2 form-gap">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">Expiry Date</label>
-                                <input type="text" id="card-expiry" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="MM/YY">
+                                <label class="block text-[clamp(0.6rem,1.1vw,0.75rem)] font-bold text-gray-500 mb-[clamp(0.25rem,0.8vw,0.5rem)] ml-1">Expiry Date</label>
+                                <input type="text" id="card-expiry" class="w-full input-px input-sm-py bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-[clamp(0.7rem,1.3vw,0.875rem)]" placeholder="MM/YY">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">CVV</label>
-                                <input type="password" id="card-cvv" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="***">
+                                <label class="block text-[clamp(0.6rem,1.1vw,0.75rem)] font-bold text-gray-500 mb-[clamp(0.25rem,0.8vw,0.5rem)] ml-1">CVV</label>
+                                <input type="password" id="card-cvv" class="w-full input-px input-sm-py bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-[clamp(0.7rem,1.3vw,0.875rem)]" placeholder="***">
                             </div>
                         </div>
                     </div>
 
                     <!-- EFT Details -->
-                    <div id="eft-details" class="payment-fields hidden space-y-4 mb-6">
+                    <div id="eft-details" class="payment-fields hidden space-y-4 mb-[clamp(1rem,3vw,1.5rem)]">
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">Bank Name</label>
-                            <input type="text" id="bank-name" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="e.g. Standard Bank">
+                            <label class="block text-[clamp(0.6rem,1.1vw,0.75rem)] font-bold text-gray-500 mb-[clamp(0.25rem,0.8vw,0.5rem)] ml-1">Bank Name</label>
+                            <select id="bank-name" class="w-full input-px input-sm-py bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-[clamp(0.7rem,1.3vw,0.875rem)]">
+                                <option value="" class="bg-slate-800 text-white">-- Select your bank --</option>
+                                <option value="Absa Bank" class="bg-slate-800 text-white">Absa Bank</option>
+                                <option value="Standard Bank" class="bg-slate-800 text-white">Standard Bank</option>
+                                <option value="FNB" class="bg-slate-800 text-white">FNB (First National Bank)</option>
+                                <option value="Nedbank" class="bg-slate-800 text-white">Nedbank</option>
+                                <option value="Capitec Bank" class="bg-slate-800 text-white">Capitec Bank</option>
+                                <option value="TymeBank" class="bg-slate-800 text-white">TymeBank</option>
+                                <option value="Discovery Bank" class="bg-slate-800 text-white">Discovery Bank</option>
+                                <option value="Investec Bank" class="bg-slate-800 text-white">Investec Bank</option>
+                                <option value="Bidvest Bank" class="bg-slate-800 text-white">Bidvest Bank</option>
+                                <option value="Sasfin Bank" class="bg-slate-800 text-white">Sasfin Bank</option>
+                                <option value="Albaraka Bank" class="bg-slate-800 text-white">Albaraka Bank</option>
+                                <option value="African Bank" class="bg-slate-800 text-white">African Bank</option>
+                                <option value="Old Mutual Bank" class="bg-slate-800 text-white">Old Mutual Bank</option>
+                                <option value="Grindrod Bank" class="bg-slate-800 text-white">Grindrod Bank</option>
+                                <option value="Mercantile Bank" class="bg-slate-800 text-white">Mercantile Bank</option>
+                            </select>
+                            <p id="bank-name-msg" class="text-[clamp(0.55rem,1vw,0.7rem)] mt-2 font-bold hidden"></p>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-2 ml-1">Account Number</label>
-                            <input type="text" id="account-number" class="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-sm" placeholder="XXXXXXXXXX">
+                            <label class="block text-[clamp(0.6rem,1.1vw,0.75rem)] font-bold text-gray-500 mb-[clamp(0.25rem,0.8vw,0.5rem)] ml-1">Account Number</label>
+                            <input type="text" id="account-number" inputmode="numeric" maxlength="18" class="w-full input-px input-sm-py bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 transition outline-none text-white text-[clamp(0.7rem,1.3vw,0.875rem)]" placeholder="XXXXXXXXXX">
+                            <p id="account-number-msg" class="text-[clamp(0.55rem,1vw,0.7rem)] mt-2 font-bold hidden"></p>
+                            <p id="account-hint" class="text-[clamp(0.55rem,1vw,0.7rem)] mt-1 text-gray-500 italic hidden"></p>
+                            <p class="text-[clamp(0.55rem,1vw,0.7rem)] mt-1 text-gray-600 italic">
+                                Note: We validate the account number format for your bank. Please double-check your details.
+                            </p>
                         </div>
                     </div>
                 </div>
 
                 <div class="pt-6">
-                    <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-blue-700 transition shadow-2xl shadow-blue-600/30">
+                    <button type="submit" class="w-full bg-blue-600 text-white btn-py rounded-2xl font-black text-[clamp(0.875rem,1.5vw,1.125rem)] hover:bg-blue-700 transition shadow-2xl shadow-blue-600/30">
                         Save Changes
                     </button>
                 </div>
@@ -128,15 +205,15 @@
         </div>
 
         <!-- My Bookings Section -->
-        <div id="bookings" class="glass p-8 md:p-12 rounded-[2.5rem] mt-10">
-            <div class="flex items-center justify-between mb-8">
-                <div class="flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-blue-600/20 rounded-2xl flex items-center justify-center">
-                        <i class="fas fa-suitcase text-xl text-blue-500"></i>
+        <div id="bookings" class="glass section-padding card-round section-gap">
+            <div class="flex items-center justify-between mb-[clamp(1rem,3vw,2rem)]">
+                <div class="flex items-center space-x-[clamp(0.75rem,2vw,1rem)]">
+                    <div class="booking-icon bg-blue-600/20 rounded-2xl flex items-center justify-center">
+                        <i class="fas fa-suitcase text-blue-500"></i>
                     </div>
-                    <h2 class="text-2xl font-black text-white">My Bookings</h2>
+                    <h2 class="section-title font-black text-white">My Bookings</h2>
                 </div>
-                <span id="booking-count" class="bg-blue-600/10 text-blue-400 px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest border border-blue-500/20">0 Trips</span>
+                <span id="booking-count" class="bg-blue-600/10 text-blue-400 px-[clamp(0.75rem,2vw,1rem)] py-[clamp(0.2rem,0.8vw,0.25rem)] rounded-full text-[clamp(0.55rem,1vw,0.75rem)] font-black uppercase tracking-widest border border-blue-500/20">0 Trips</span>
             </div>
 
             <div id="bookings-list" class="space-y-4">
@@ -156,6 +233,18 @@
 
     <script src="/static/js/main.js"></script>
     <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('nav-menu');
+            if (menu) menu.classList.toggle('open');
+        }
+        function closeMobileMenu() {
+            const menu = document.getElementById('nav-menu');
+            if (menu) menu.classList.remove('open');
+        }
+        function logoutAndCloseMenu() {
+            closeMobileMenu();
+            logout();
+        }
         function checkAuthStatus() {
             const userStr = localStorage.getItem('user');
             if (userStr) {
@@ -200,7 +289,10 @@
                     }
                     if (u.card_number) document.getElementById('card-number').value = u.card_number;
                     if (u.card_expiry) document.getElementById('card-expiry').value = u.card_expiry;
-                    if (u.bank_name) document.getElementById('bank-name').value = u.bank_name;
+                    if (u.bank_name) {
+                        document.getElementById('bank-name').value = u.bank_name;
+                        updateAccountHint(u.bank_name);
+                    }
                     if (u.account_number) document.getElementById('account-number').value = u.account_number;
                 }
                 
@@ -234,29 +326,29 @@
                     }
                     
                     list.innerHTML = bookings.map(b => `
-                        <div class="glass p-6 rounded-3xl hover:bg-white/5 transition border border-white/5 hover:border-white/10 group">
-                            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                <div class="flex items-center space-x-5">
-                                    <div class="w-14 h-14 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-500 group-hover:scale-110 transition">
-                                        <i class="fas fa-map-marked-alt text-2xl"></i>
+                        <div class="glass p-[clamp(1rem,3vw,1.5rem)] rounded-[clamp(1.25rem,3vw,2rem)] hover:bg-white/5 transition border border-white/5 hover:border-white/10 group">
+                            <div class="flex flex-col md:flex-row md:items-center justify-between gap-[clamp(1rem,3vw,1.5rem)]">
+                                <div class="flex items-center space-x-[clamp(0.75rem,2vw,1.25rem)]">
+                                    <div class="w-[clamp(2.75rem,6vw,3.5rem)] h-[clamp(2.75rem,6vw,3.5rem)] bg-blue-600/10 rounded-[clamp(0.75rem,2vw,1rem)] flex items-center justify-center text-blue-500 group-hover:scale-110 transition">
+                                        <i class="fas fa-map-marked-alt text-[clamp(1rem,2.5vw,1.5rem)]"></i>
                                     </div>
                                     <div>
-                                        <h4 class="text-lg font-black text-white">${b.package_name}</h4>
-                                        <p class="text-blue-500 text-xs font-bold uppercase tracking-widest">${b.destination}</p>
+                                        <h4 class="text-[clamp(0.875rem,2vw,1.125rem)] font-black text-white">${b.package_name}</h4>
+                                        <p class="text-blue-500 text-[clamp(0.55rem,1.1vw,0.75rem)] font-bold uppercase tracking-widest">${b.destination}</p>
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-8 flex-grow md:ml-10">
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-[clamp(1rem,3vw,2rem)] flex-grow md:ml-[clamp(1rem,3vw,2.5rem)]">
                                     <div>
-                                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Travel Date</p>
-                                        <p class="text-sm font-bold text-white">${b.travel_date}</p>
+                                        <p class="text-[clamp(0.5rem,0.9vw,0.625rem)] font-bold text-gray-500 uppercase tracking-widest mb-[clamp(0.15rem,0.5vw,0.25rem)]">Travel Date</p>
+                                        <p class="text-[clamp(0.75rem,1.3vw,0.875rem)] font-bold text-white">${b.travel_date}</p>
                                     </div>
                                     <div>
-                                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Total Paid</p>
-                                        <p class="text-sm font-black text-teal-400">R ${b.total_amount.toLocaleString()}</p>
+                                        <p class="text-[clamp(0.5rem,0.9vw,0.625rem)] font-bold text-gray-500 uppercase tracking-widest mb-[clamp(0.15rem,0.5vw,0.25rem)]">Total Paid</p>
+                                        <p class="text-[clamp(0.75rem,1.3vw,0.875rem)] font-black text-teal-400">R ${b.total_amount.toLocaleString()}</p>
                                     </div>
                                     <div class="col-span-2 md:col-span-1">
-                                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Status</p>
-                                        <span class="px-3 py-1 bg-green-500/10 text-green-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-500/20">
+                                        <p class="text-[clamp(0.5rem,0.9vw,0.625rem)] font-bold text-gray-500 uppercase tracking-widest mb-[clamp(0.15rem,0.5vw,0.25rem)]">Status</p>
+                                        <span class="px-[clamp(0.6rem,1.5vw,0.75rem)] py-[clamp(0.2rem,0.6vw,0.25rem)] bg-green-500/10 text-green-400 rounded-full text-[clamp(0.5rem,0.9vw,0.625rem)] font-black uppercase tracking-widest border border-green-500/20">
                                             ${b.status}
                                         </span>
                                     </div>
@@ -286,17 +378,164 @@
             return sum % 10 === 0;
         }
 
+        const SA_BANK_RULES = {
+            'Absa Bank':         { min: 7,  max: 10, label: 'Absa Bank account numbers are 7-10 digits.' },
+            'Standard Bank':     { min: 8,  max: 11, label: 'Standard Bank account numbers are 8-11 digits.' },
+            'FNB':               { min: 8,  max: 10, label: 'FNB account numbers are 8-10 digits.' },
+            'Nedbank':           { min: 8,  max: 11, label: 'Nedbank account numbers are 8-11 digits.' },
+            'Capitec Bank':      { min: 12, max: 16, label: 'Capitec Bank account numbers are 12-16 digits (typically 14).' },
+            'TymeBank':          { min: 11, max: 13, label: 'TymeBank account numbers are 11-13 digits (typically 12).' },
+            'Discovery Bank':    { min: 9,  max: 11, label: 'Discovery Bank account numbers are 9-11 digits.' },
+            'Investec Bank':     { min: 8,  max: 10, label: 'Investec Bank account numbers are 8-10 digits.' },
+            'Bidvest Bank':      { min: 8,  max: 11, label: 'Bidvest Bank account numbers are 8-11 digits.' },
+            'Sasfin Bank':       { min: 8,  max: 10, label: 'Sasfin Bank account numbers are 8-10 digits.' },
+            'Albaraka Bank':     { min: 8,  max: 10, label: 'Albaraka Bank account numbers are 8-10 digits.' },
+            'African Bank':      { min: 9,  max: 11, label: 'African Bank account numbers are 9-11 digits.' },
+            'Old Mutual Bank':   { min: 8,  max: 10, label: 'Old Mutual Bank account numbers are 8-10 digits.' },
+            'Grindrod Bank':     { min: 8,  max: 10, label: 'Grindrod Bank account numbers are 8-10 digits.' },
+            'Mercantile Bank':   { min: 8,  max: 10, label: 'Mercantile Bank account numbers are 8-10 digits.' },
+        };
+
+        function isValidBankName(value) {
+            const v = (value || '').trim();
+            if (!v) return false;
+            return Object.prototype.hasOwnProperty.call(SA_BANK_RULES, v);
+        }
+
+        function isValidAccountNumber(value, bankName) {
+            const raw = (value || '').trim();
+            if (!raw) return false;
+            const digits = raw.replace(/\D/g, '');
+            if (!digits) return false;
+            if (digits.length < 6 || digits.length > 18) return false;
+            if (new Set(digits).size === 1) return false;
+            let ascending = true, descending = true;
+            for (let i = 1; i < digits.length; i++) {
+                if (digits[i] < digits[i-1]) ascending = false;
+                if (digits[i] > digits[i-1]) descending = false;
+            }
+            if (digits.length >= 5 && (ascending || descending)) return false;
+            const bank = (bankName || '').trim();
+            if (bank && SA_BANK_RULES[bank]) {
+                const rule = SA_BANK_RULES[bank];
+                if (digits.length < rule.min || digits.length > rule.max) return false;
+            }
+            return true;
+        }
+
+        function updateAccountHint(bankName) {
+            const hintEl = document.getElementById('account-hint');
+            if (!hintEl) return;
+            const bank = (bankName || '').trim();
+            if (bank && SA_BANK_RULES[bank]) {
+                hintEl.textContent = '💡 ' + SA_BANK_RULES[bank].label;
+                hintEl.classList.remove('hidden');
+            } else {
+                hintEl.classList.add('hidden');
+            }
+        }
+
+        function setFieldValidation(id, valid, message) {
+            const input = document.getElementById(id);
+            const msg = document.getElementById(id + '-msg');
+            if (!input) return valid;
+            input.classList.toggle('border-green-500', !!valid);
+            input.classList.toggle('border-red-500', !valid);
+            if (msg) {
+                msg.textContent = message;
+                msg.classList.remove('hidden', 'text-green-400', 'text-red-400');
+                if (valid === true) msg.classList.add('text-green-400');
+                else if (valid === false) msg.classList.add('text-red-400');
+                else msg.classList.add('hidden');
+            }
+            return valid;
+        }
+
+        const bankNameInput = document.getElementById('bank-name');
+        const accountNumberInput = document.getElementById('account-number');
+        if (bankNameInput) {
+            bankNameInput.addEventListener('change', () => {
+                const v = bankNameInput.value;
+                updateAccountHint(v);
+                if (!v) { setFieldValidation('bank-name', null, ''); return; }
+                setFieldValidation('bank-name', isValidBankName(v),
+                    isValidBankName(v) ? 'Bank selected.' : 'Please select a valid South African bank from the list.');
+                const accVal = accountNumberInput ? accountNumberInput.value : '';
+                if (accVal) {
+                    const valid = isValidAccountNumber(accVal, v);
+                    setFieldValidation('account-number', valid,
+                        valid ? 'Account number format is valid.' :
+                            (SA_BANK_RULES[v] ? `Invalid length for ${v}. ${SA_BANK_RULES[v].label}` :
+                                'Please enter a valid bank account number.'));
+                }
+            });
+        }
+        if (accountNumberInput) {
+            accountNumberInput.addEventListener('input', () => {
+                let digits = accountNumberInput.value.replace(/\D/g, '').slice(0, 18);
+                accountNumberInput.value = digits;
+                if (!digits) { setFieldValidation('account-number', null, ''); return; }
+                const relatedBank = bankNameInput ? bankNameInput.value : '';
+                const valid = isValidAccountNumber(digits, relatedBank);
+                let msg = 'Account number format is valid.';
+                if (!valid) {
+                    if (relatedBank && SA_BANK_RULES[relatedBank]) {
+                        const rule = SA_BANK_RULES[relatedBank];
+                        const dlen = digits.length;
+                        if (dlen < rule.min || dlen > rule.max) {
+                            msg = `Invalid length for ${relatedBank}: ${dlen} digits entered. ${rule.label}`;
+                        } else {
+                            msg = 'Please enter a valid bank account number (no test sequences).';
+                        }
+                    } else {
+                        msg = 'Please enter a valid bank account number.';
+                    }
+                }
+                setFieldValidation('account-number', valid, msg);
+            });
+        }
+
         document.getElementById('profile-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const msg = document.getElementById('profile-msg');
             const paymentMethod = document.querySelector('input[name="payment"]:checked')?.value || '';
             const cardNumber = document.getElementById('card-number').value.trim();
-            if (paymentMethod === 'credit_card' && !isValidCardNumber(cardNumber)) {
-                msg.textContent = 'Please enter a valid card number.';
-                msg.className = 'mt-6 text-center text-red-400 font-bold';
-                msg.classList.remove('hidden');
-                document.getElementById('card-number').focus();
-                return;
+            const bankName = document.getElementById('bank-name').value.trim();
+            const accountNumber = document.getElementById('account-number').value.trim();
+
+            if (paymentMethod === 'credit_card' && cardNumber) {
+                if (!isValidCardNumber(cardNumber)) {
+                    msg.textContent = 'Please enter a valid card number.';
+                    msg.className = 'mt-6 text-center text-red-400 font-bold';
+                    msg.classList.remove('hidden');
+                    document.getElementById('card-number').focus();
+                    return;
+                }
+            }
+
+            if (paymentMethod === 'eft') {
+                if (!isValidBankName(bankName)) {
+                    msg.textContent = 'Please select a valid South African bank from the dropdown list.';
+                    msg.className = 'mt-6 text-center text-red-400 font-bold';
+                    msg.classList.remove('hidden');
+                    document.getElementById('bank-name').focus();
+                    return;
+                }
+                if (!isValidAccountNumber(accountNumber, bankName)) {
+                    let errMsg = 'Please enter a valid bank account number for your selected bank.';
+                    if (bankName && SA_BANK_RULES[bankName]) {
+                        const rule = SA_BANK_RULES[bankName];
+                        const dlen = accountNumber.replace(/\D/g, '').length;
+                        if (dlen < rule.min || dlen > rule.max) {
+                            errMsg = `Invalid account number length for ${bankName}: entered ${dlen} digits. ${rule.label}`;
+                        }
+                    }
+                    msg.textContent = errMsg;
+                    msg.className = 'mt-6 text-center text-red-400 font-bold';
+                    msg.classList.remove('hidden');
+                    document.getElementById('account-number').focus();
+                    return;
+                }
             }
 
             const profileData = {

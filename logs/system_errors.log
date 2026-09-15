@@ -1180,3 +1180,250 @@ AttributeError: 'sqlite3.Row' object has no attribute 'get'
 2026-09-09 12:34:29,865 INFO Password reset OTP sent to ajayipeter135@gmail.com (is_admin=True)
 2026-09-09 12:55:26,345 INFO Background review sync merged 0 new review(s).
 2026-09-09 13:04:25,140 INFO Booking confirmation email sent successfully. booking_id=73 email=ajayiabel858@gmail.com resend_response={'id': '56d9e5e0-fc76-4018-8a68-07324e163fc9', 'http_headers': {'Date': 'Wed, 09 Sep 2026 11:04:28 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'ratelimit-limit': '10', 'ratelimit-policy': '10;w=1', 'ratelimit-remaining': '9', 'ratelimit-reset': '1', 'x-resend-daily-quota': '13', 'x-resend-monthly-quota': '31', 'cf-cache-status': 'DYNAMIC', 'Server': 'cloudflare', 'CF-RAY': 'a385b657a843f4f0-JNB'}}
+2026-09-12 12:04:29,571 INFO Background review sync merged 127 new review(s).
+2026-09-13 17:28:26,013 ERROR Failed to send booking confirmation email. booking_id=73 email=atangmaleka4@gmail.com error=Request failed: HTTPSConnectionPool(host='api.resend.com', port=443): Max retries exceeded with url: /emails (Caused by NameResolutionError("HTTPSConnection(host='api.resend.com', port=443): Failed to resolve 'api.resend.com' ([Errno 11001] getaddrinfo failed)"))
+Traceback (most recent call last):
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\socket.py", line 989, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='api.resend.com', port=443): Failed to resolve 'api.resend.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\util\retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.resend.com', port=443): Max retries exceeded with url: /emails (Caused by NameResolutionError("HTTPSConnection(host='api.resend.com', port=443): Failed to resolve 'api.resend.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\http_client_requests.py", line 36, in request
+    resp = requests.request(
+        method=method,
+    ...<4 lines>...
+        timeout=self._timeout,
+    )
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.resend.com', port=443): Max retries exceeded with url: /emails (Caused by NameResolutionError("HTTPSConnection(host='api.resend.com', port=443): Failed to resolve 'api.resend.com' ([Errno 11001] getaddrinfo failed)"))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\request.py", line 119, in make_request
+    content, status_code, resp_headers = sync_client.request(**kwargs)
+                                         ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\http_client_requests.py", line 48, in request
+    raise RuntimeError(f"Request failed: {e}") from e
+RuntimeError: Request failed: HTTPSConnectionPool(host='api.resend.com', port=443): Max retries exceeded with url: /emails (Caused by NameResolutionError("HTTPSConnection(host='api.resend.com', port=443): Failed to resolve 'api.resend.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\ThinkPad\Documents\GitHub\travel-7\app.py", line 1271, in send_booking_email
+    response = resend.Emails.send({
+        "from": "TravelIntel AI <bookings@notify.moviewatchtv.fun>",
+    ...<3 lines>...
+        "text": text,
+    })
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\emails\_emails.py", line 512, in send
+    ).perform_with_content()
+      ~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\request.py", line 70, in perform_with_content
+    resp = self.perform()
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\request.py", line 39, in perform
+    data = self.make_request(url=f"{resend.api_url}{self.path}")
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\request.py", line 123, in make_request
+    raise ResendError(
+    ...<4 lines>...
+    )
+resend.exceptions.ResendError: Request failed: HTTPSConnectionPool(host='api.resend.com', port=443): Max retries exceeded with url: /emails (Caused by NameResolutionError("HTTPSConnection(host='api.resend.com', port=443): Failed to resolve 'api.resend.com' ([Errno 11001] getaddrinfo failed)"))
+2026-09-13 17:28:54,842 INFO Booking confirmation email sent successfully. booking_id=73 email=atangmaleka4@gmail.com resend_response={'id': '3ff345fc-5b08-42ce-bcb4-4b8c5b7c3782', 'http_headers': {'Date': 'Sun, 13 Sep 2026 15:28:55 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'ratelimit-limit': '10', 'ratelimit-policy': '10;w=1', 'ratelimit-remaining': '9', 'ratelimit-reset': '1', 'x-resend-daily-quota': '1', 'x-resend-monthly-quota': '50', 'cf-cache-status': 'DYNAMIC', 'Server': 'cloudflare', 'CF-RAY': 'a3a82f371dc116d9-JNB'}}
+2026-09-13 17:29:12,636 INFO Booking confirmation email sent successfully. booking_id=73 email=atangmaleka4@gmail.com resend_response={'id': 'c8779fe4-d5fb-4a0f-9c05-26c62b4a8034', 'http_headers': {'Date': 'Sun, 13 Sep 2026 15:29:13 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'ratelimit-limit': '10', 'ratelimit-policy': '10;w=1', 'ratelimit-remaining': '9', 'ratelimit-reset': '1', 'x-resend-daily-quota': '2', 'x-resend-monthly-quota': '51', 'cf-cache-status': 'DYNAMIC', 'Server': 'cloudflare', 'CF-RAY': 'a3a82fa32a85aa15-JNB'}}
+2026-09-13 17:29:31,955 INFO Booking confirmation email sent successfully. booking_id=74 email=atangmaleka4@gmail.com resend_response={'id': '8678c1ac-6e26-4c06-8b8a-ce252aa519df', 'http_headers': {'Date': 'Sun, 13 Sep 2026 15:29:32 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'ratelimit-limit': '10', 'ratelimit-policy': '10;w=1', 'ratelimit-remaining': '9', 'ratelimit-reset': '1', 'x-resend-daily-quota': '3', 'x-resend-monthly-quota': '52', 'cf-cache-status': 'DYNAMIC', 'Server': 'cloudflare', 'CF-RAY': 'a3a8301f6efe421a-JNB'}}
+2026-09-13 17:29:44,690 INFO Booking confirmation email sent successfully. booking_id=74 email=atangmaleka4@gmail.com resend_response={'id': '63818e60-f70d-483a-b7f2-f392aba3528d', 'http_headers': {'Date': 'Sun, 13 Sep 2026 15:29:45 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'ratelimit-limit': '10', 'ratelimit-policy': '10;w=1', 'ratelimit-remaining': '9', 'ratelimit-reset': '1', 'x-resend-daily-quota': '4', 'x-resend-monthly-quota': '53', 'cf-cache-status': 'DYNAMIC', 'Server': 'cloudflare', 'CF-RAY': 'a3a8306ede8e1560-JNB'}}
+2026-09-13 17:29:46,125 INFO Booking confirmation email sent successfully. booking_id=74 email=atangmaleka4@gmail.com resend_response={'id': '1c45c3ec-a74f-4bcb-b23f-a2352367251c', 'http_headers': {'Date': 'Sun, 13 Sep 2026 15:29:46 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'ratelimit-limit': '10', 'ratelimit-policy': '10;w=1', 'ratelimit-remaining': '9', 'ratelimit-reset': '1', 'x-resend-daily-quota': '5', 'x-resend-monthly-quota': '54', 'cf-cache-status': 'DYNAMIC', 'Server': 'cloudflare', 'CF-RAY': 'a3a83077997e3ed5-JNB'}}
+2026-09-13 17:29:47,459 INFO Booking confirmation email sent successfully. booking_id=74 email=atangmaleka4@gmail.com resend_response={'id': '583923a5-5cb3-4588-a624-c5cdca8b46b4', 'http_headers': {'Date': 'Sun, 13 Sep 2026 15:29:47 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'ratelimit-limit': '10', 'ratelimit-policy': '10;w=1', 'ratelimit-remaining': '9', 'ratelimit-reset': '1', 'x-resend-daily-quota': '6', 'x-resend-monthly-quota': '55', 'cf-cache-status': 'DYNAMIC', 'Server': 'cloudflare', 'CF-RAY': 'a3a8307fed5a4530-JNB'}}
+2026-09-15 20:42:39,948 ERROR Failed to send booking confirmation email. booking_id=75 email=atangmaleka4@gmail.com error=Request failed: HTTPSConnectionPool(host='api.resend.com', port=443): Max retries exceeded with url: /emails (Caused by NameResolutionError("HTTPSConnection(host='api.resend.com', port=443): Failed to resolve 'api.resend.com' ([Errno 11001] getaddrinfo failed)"))
+Traceback (most recent call last):
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+        (self._dns_host, self.port),
+    ...<2 lines>...
+        socket_options=self.socket_options,
+    )
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\util\connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\socket.py", line 989, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connection.py", line 211, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='api.resend.com', port=443): Failed to resolve 'api.resend.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\adapters.py", line 696, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\util\retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.resend.com', port=443): Max retries exceeded with url: /emails (Caused by NameResolutionError("HTTPSConnection(host='api.resend.com', port=443): Failed to resolve 'api.resend.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\http_client_requests.py", line 36, in request
+    resp = requests.request(
+        method=method,
+    ...<4 lines>...
+        timeout=self._timeout,
+    )
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.resend.com', port=443): Max retries exceeded with url: /emails (Caused by NameResolutionError("HTTPSConnection(host='api.resend.com', port=443): Failed to resolve 'api.resend.com' ([Errno 11001] getaddrinfo failed)"))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\request.py", line 119, in make_request
+    content, status_code, resp_headers = sync_client.request(**kwargs)
+                                         ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\http_client_requests.py", line 48, in request
+    raise RuntimeError(f"Request failed: {e}") from e
+RuntimeError: Request failed: HTTPSConnectionPool(host='api.resend.com', port=443): Max retries exceeded with url: /emails (Caused by NameResolutionError("HTTPSConnection(host='api.resend.com', port=443): Failed to resolve 'api.resend.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\ThinkPad\Documents\GitHub\travel-7\app.py", line 1515, in send_booking_email
+    response = resend.Emails.send({
+        "from": "TravelIntel AI <bookings@notify.moviewatchtv.fun>",
+    ...<3 lines>...
+        "text": text,
+    })
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\emails\_emails.py", line 512, in send
+    ).perform_with_content()
+      ~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\request.py", line 70, in perform_with_content
+    resp = self.perform()
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\request.py", line 39, in perform
+    data = self.make_request(url=f"{resend.api_url}{self.path}")
+  File "C:\Users\ThinkPad\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\resend\request.py", line 123, in make_request
+    raise ResendError(
+    ...<4 lines>...
+    )
+resend.exceptions.ResendError: Request failed: HTTPSConnectionPool(host='api.resend.com', port=443): Max retries exceeded with url: /emails (Caused by NameResolutionError("HTTPSConnection(host='api.resend.com', port=443): Failed to resolve 'api.resend.com' ([Errno 11001] getaddrinfo failed)"))
+2026-09-15 20:45:43,819 INFO Booking confirmation email sent successfully. booking_id=75 email=atangmaleka4@gmail.com resend_response={'id': '4cf089f9-04e8-4ccd-ac4f-200bda7e2c40', 'http_headers': {'Date': 'Tue, 15 Sep 2026 18:45:42 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'ratelimit-limit': '10', 'ratelimit-policy': '10;w=1', 'ratelimit-remaining': '9', 'ratelimit-reset': '1', 'x-resend-daily-quota': '0', 'x-resend-monthly-quota': '56', 'cf-cache-status': 'DYNAMIC', 'Server': 'cloudflare', 'CF-RAY': 'a3b9c9b6695ede16-JNB'}}
+2026-09-15 20:46:11,861 INFO Booking confirmation email sent successfully. booking_id=75 email=atangmaleka4@gmail.com resend_response={'id': '665146ca-4e9b-4276-9bfe-d68aac7d1690', 'http_headers': {'Date': 'Tue, 15 Sep 2026 18:46:10 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'ratelimit-limit': '10', 'ratelimit-policy': '10;w=1', 'ratelimit-remaining': '9', 'ratelimit-reset': '1', 'x-resend-daily-quota': '1', 'x-resend-monthly-quota': '57', 'cf-cache-status': 'DYNAMIC', 'Server': 'cloudflare', 'CF-RAY': 'a3b9cadefd6f599e-JNB'}}
+2026-09-15 20:46:59,649 INFO Booking confirmation email sent successfully. booking_id=75 email=atangmaleka4@gmail.com resend_response={'id': 'f41640c1-29ab-4394-8a57-8172abb06e1d', 'http_headers': {'Date': 'Tue, 15 Sep 2026 18:46:57 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'ratelimit-limit': '10', 'ratelimit-policy': '10;w=1', 'ratelimit-remaining': '9', 'ratelimit-reset': '1', 'x-resend-daily-quota': '2', 'x-resend-monthly-quota': '58', 'cf-cache-status': 'DYNAMIC', 'Server': 'cloudflare', 'CF-RAY': 'a3b9cc0b1f6b4530-JNB'}}
+2026-09-15 20:47:43,031 INFO Booking confirmation email sent successfully. booking_id=76 email=atangmaleka4@gmail.com resend_response={'id': '26123c9e-c81b-4319-ba0c-e40d30bad20e', 'http_headers': {'Date': 'Tue, 15 Sep 2026 18:47:42 GMT', 'Content-Type': 'application/json', 'Content-Length': '45', 'Connection': 'keep-alive', 'ratelimit-limit': '10', 'ratelimit-policy': '10;w=1', 'ratelimit-remaining': '9', 'ratelimit-reset': '1', 'x-resend-daily-quota': '3', 'x-resend-monthly-quota': '59', 'cf-cache-status': 'DYNAMIC', 'Server': 'cloudflare', 'CF-RAY': 'a3b9cd1cfc419839-JNB'}}
+2026-09-15 21:41:37,229 INFO Password reset OTP sent to atangmaleka4@gmail.com (is_admin=False)
+2026-09-15 21:43:49,419 INFO Password reset OTP sent to atangmaleka4@gmail.com (is_admin=False)
+2026-09-15 23:14:53,585 WARNING Resend API send failed. to=test_user_verify@example.com subject=Verify your TravelIntel AI account error=Invalid `to` field. Please use our testing email address instead of domains like `example.com`. See our documentation for more information.
+2026-09-15 23:14:53,591 INFO Email saved to local outbox (no online delivery available). path=C:\Users\ThinkPad\Documents\GitHub\travel-7\instance\outbox\verify_otp_20260915_231453_86dd04_test_user_verify_example.com.txt
+2026-09-15 23:14:54,226 WARNING Resend API send failed. to=test_user_reset@example.com subject=Your TravelIntel AI password reset code error=Invalid `to` field. Please use our testing email address instead of domains like `example.com`. See our documentation for more information.
+2026-09-15 23:14:54,230 INFO Email saved to local outbox (no online delivery available). path=C:\Users\ThinkPad\Documents\GitHub\travel-7\instance\outbox\reset_otp_20260915_231454_b40e54_test_user_reset_example.com.txt
+2026-09-15 23:14:54,844 WARNING Resend API send failed. to=test_user_booking@example.com subject=✈️ Booking Confirmed — Cape Town | TI-99999 error=Invalid `to` field. Please use our testing email address instead of domains like `example.com`. See our documentation for more information.
+2026-09-15 23:14:54,852 INFO Email saved to local outbox (no online delivery available). path=C:\Users\ThinkPad\Documents\GitHub\travel-7\instance\outbox\booking_99999_20260915_231454_1fb183_test_user_booking_example.com.txt
+2026-09-15 23:14:55,430 WARNING Resend API send failed. to=test_admin_bootstrap@example.com subject=Your TravelIntel AI administrator account error=Invalid `to` field. Please use our testing email address instead of domains like `example.com`. See our documentation for more information.
+2026-09-15 23:14:55,439 INFO Email saved to local outbox (no online delivery available). path=C:\Users\ThinkPad\Documents\GitHub\travel-7\instance\outbox\admin_bootstrap_20260915_231455_5a4cdc_test_admin_bootstrap_example.com.txt
+2026-09-15 23:14:56,655 WARNING Resend API send failed. to=test_admin_new@example.com subject=Your TravelIntel AI administrator account is ready error=Invalid `to` field. Please use our testing email address instead of domains like `example.com`. See our documentation for more information.
+2026-09-15 23:14:56,662 INFO Email saved to local outbox (no online delivery available). path=C:\Users\ThinkPad\Documents\GitHub\travel-7\instance\outbox\admin_added_20260915_231456_1d9786_test_admin_new_example.com.txt
+2026-09-15 23:23:35,744 INFO Email sent successfully via Resend. to=atangmaleka4@gmail.com subject=Your TravelIntel AI password reset code resend_id={'id': '78f560ed-468e-4af4-bd66-0fbe54ce0972', 'http_headers': {'Date': 'Tue, 15 Sep 2026 21:23:32 GMT', 'Content-Type':
+2026-09-15 23:23:35,744 INFO Password reset OTP dispatched to atangmaleka4@gmail.com (is_admin=False)
+2026-09-15 23:25:21,496 INFO Email sent successfully via Resend. to=ajayiabel858@gmail.com subject=Verify your TravelIntel AI account resend_id={'id': '0cec08e2-2cf6-4823-a649-688dde5a05e8', 'http_headers': {'Date': 'Tue, 15 Sep 2026 21:25:20 GMT', 'Content-Type':
+2026-09-15 23:27:54,068 INFO Email sent successfully via Resend. to=ajayiabel858@gmail.com subject=✈️ Booking Confirmed — Zanzibar | TI-00077 resend_id={'id': '7ebb9507-593a-4048-a934-bded60cfcf89', 'http_headers': {'Date': 'Tue, 15 Sep 2026 21:27:53 GMT', 'Content-Type':
+2026-09-15 23:29:01,953 INFO Email sent successfully via Resend. to=ajayiabel858@gmail.com subject=✈️ Booking Confirmed — Zanzibar | TI-00077 resend_id={'id': 'c48f0bdb-586e-42e7-b340-753f445391cb', 'http_headers': {'Date': 'Tue, 15 Sep 2026 21:29:01 GMT', 'Content-Type':
+2026-09-15 23:29:59,093 INFO Email sent successfully via Resend. to=ajayiabel858@gmail.com subject=✈️ Booking Confirmed — Namibia | TI-00078 resend_id={'id': '07a62419-aa06-401a-abe7-7e7e63c8795a', 'http_headers': {'Date': 'Tue, 15 Sep 2026 21:29:58 GMT', 'Content-Type':

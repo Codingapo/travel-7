@@ -1,0 +1,16 @@
+TO: test_user_reset@example.com
+SUBJECT: Your TravelIntel AI password reset code
+SAVED-AT: 2026-09-15T23:14:54.229706
+--------------------------------------------------
+
+TravelIntel AI — Password Reset
+
+We received a request to reset your password.
+
+Your password reset verification code is:  654321
+
+This code expires in 10 minutes.
+
+If you did not request a password reset, you can safely ignore this email.
+
+TravelIntel AI

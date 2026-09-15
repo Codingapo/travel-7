@@ -1,0 +1,38 @@
+TO: test_user_booking@example.com
+SUBJECT: ✈️ Booking Confirmed — Cape Town | TI-99999
+SAVED-AT: 2026-09-15T23:14:54.851238
+--------------------------------------------------
+
+TravelIntel AI — BOOKING CONFIRMED
+
+Hello Test User Booking,
+
+Your trip has been successfully booked!
+
+BOOKING REFERENCE
+TI-99999
+
+TRIP DETAILS
+----------------------------------------
+Package: Safaricom Test Package
+Destination: Cape Town
+Travel Date: 2099-01-01
+Duration: 5 Days
+Travellers: 2
+
+PAYMENT
+----------------------------------------
+Payment Method: credit_card
+Total: R 12,345.00
+
+CUSTOMER DETAILS
+----------------------------------------
+Name: Test User Booking
+Email: test_user_booking@example.com
+Phone: +27 000 000 000
+
+Booking Date: 2026-09-15
+
+Thank you for choosing TravelIntel AI.
+
+Smart travel. Better journeys.

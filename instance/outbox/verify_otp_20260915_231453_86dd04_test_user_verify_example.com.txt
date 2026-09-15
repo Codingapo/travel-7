@@ -1,0 +1,14 @@
+TO: test_user_verify@example.com
+SUBJECT: Verify your TravelIntel AI account
+SAVED-AT: 2026-09-15T23:14:53.590585
+--------------------------------------------------
+
+TravelIntel AI — Email Verification
+
+Welcome to TravelIntel AI! Please verify your email address to activate your account.
+
+Your verification code is:  123456
+
+This code expires in 10 minutes.
+
+If you did not create a TravelIntel AI account, you can safely ignore this email.

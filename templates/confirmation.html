@@ -12,6 +12,7 @@
             --glass-border: rgba(255, 255, 255, 0.08);
             --accent: #2dd4bf;
         }
+        html { font-size: clamp(14px, 1vw, 18px); }
         body {
             background-color: var(--bg-dark);
             color: #f8fafc;
@@ -24,32 +25,259 @@
             background: var(--glass-bg);
             backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 clamp(12px, 3vw, 25px) clamp(24px, 6vw, 50px) clamp(-6px, -1vw, -12px) rgba(0, 0, 0, 0.5);
         }
         .check-icon {
             background: linear-gradient(135deg, #2dd4bf 0%, #0ea5e9 100%);
         }
+        .section-padding { padding: clamp(1.5rem, 6vw, 5rem); }
+        .check-size { width: clamp(3.5rem, 9vw, 5rem); height: clamp(3.5rem, 9vw, 5rem); }
+        .check-size svg { width: clamp(1.75rem, 4vw, 2.5rem); height: clamp(1.75rem, 4vw, 2.5rem); }
+        .title-size { font-size: clamp(1.75rem, 6vw, 3.125rem); }
+        .subtitle-size { font-size: clamp(1rem, 2.5vw, 1.25rem); }
+        .btn-px { padding-left: clamp(1.5rem, 4vw, 2.5rem); padding-right: clamp(1.5rem, 4vw, 2.5rem); }
+        .btn-py { padding-top: clamp(0.75rem, 2vw, 1rem); padding-bottom: clamp(0.75rem, 2vw, 1rem); }
+        .resend-btn {
+            transition: all 0.2s ease;
+        }
+        .resend-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .resend-btn:not(:disabled):hover {
+            transform: translateY(-1px);
+        }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 400px;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast.success { background: linear-gradient(135deg, #10b981, #059669); }
+        .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center px-4">
-    <main class="glass rounded-[2.5rem] p-12 md:p-20 max-w-2xl w-full text-center">
-        <div class="check-icon w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-teal-500/20">
-            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<body class="min-h-screen flex items-center justify-center px-4 py-8">
+    <main class="glass rounded-[clamp(1.5rem,4vw,2.5rem)] section-padding max-w-2xl w-full text-center">
+        <div class="check-icon check-size rounded-full flex items-center justify-center mx-auto mb-[clamp(1.5rem,5vw,2rem)] shadow-lg shadow-teal-500/20">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
             </svg>
         </div>
-        <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4 text-white">
+        <h1 class="title-size font-black tracking-tight mb-[clamp(0.5rem,2vw,1rem)] text-white">
             Booking Confirmed!
         </h1>
-        <p class="text-xl text-slate-400 mb-12 font-medium">
+        <p class="subtitle-size text-slate-400 mb-[clamp(1rem,4vw,2rem)] font-medium">
             We've sent the details to your email.
         </p>
-        <a href="/home" class="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-200 transition-all font-bold rounded-2xl px-10 py-4 text-lg">
+
+        <div class="mb-[clamp(1.5rem,4vw,2.5rem)]">
+            <p class="text-slate-400 text-[clamp(0.8rem,1.5vw,0.95rem)] mb-3 font-medium">
+                Didn't receive the email?
+            </p>
+
+            <div id="resend-container">
+                <button id="resend-btn" class="resend-btn inline-flex items-center justify-center gap-2 bg-teal-600 text-white hover:bg-teal-700 font-bold rounded-2xl px-6 py-3 text-[clamp(0.8rem,1.5vw,0.95rem)] shadow-lg shadow-teal-600/20 mb-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span id="resend-btn-text">Resend Confirmation Email</span>
+                    <span id="resend-count-badge" class="ml-1 text-xs font-semibold bg-white/20 px-2 py-0.5 rounded-full">3 remaining</span>
+                </button>
+            </div>
+
+            <div id="resend-status-container" class="hidden mt-2">
+                <p id="resend-attempts-text" class="text-slate-500 text-[clamp(0.75rem,1.3vw,0.875rem)]"></p>
+            </div>
+
+            <div id="limit-message" class="hidden mt-4 p-5 bg-red-500/10 border border-red-500/20 rounded-2xl">
+                <div class="flex items-center justify-center gap-2 text-red-400 font-bold mb-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <span>Resend Limit Reached</span>
+                </div>
+                <p class="text-slate-300 text-[clamp(0.8rem,1.5vw,0.9rem)] leading-relaxed">
+                    You have reached the maximum number of resend attempts (3).
+                    If you are still facing issues and haven't received the booking confirmation email,
+                    please contact the TravelIntel support team at
+                    <a href="mailto:skalahante@gmail.com" class="text-teal-400 hover:text-teal-300 font-bold underline underline-offset-2">
+                        skalahante@gmail.com
+                    </a>
+                </p>
+            </div>
+        </div>
+
+        <a href="/home" class="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-200 transition-all font-bold rounded-2xl btn-px btn-py text-[clamp(0.875rem,1.5vw,1.125rem)]">
             <span>Back to Home</span>
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-[clamp(0.875rem,2vw,1.25rem)] h-[clamp(0.875rem,2vw,1.25rem)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l7-7-7-7"></path>
             </svg>
         </a>
     </main>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const MAX_RESEND_ATTEMPTS = 3;
+        const SUPPORT_EMAIL = "skalahante@gmail.com";
+
+        function getBookingId() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("bookingId");
+        }
+
+        function getResendStorageKey(bookingId) {
+            return `resend_attempts_booking_${bookingId}`;
+        }
+
+        function getResendCount(bookingId) {
+            const key = getResendStorageKey(bookingId);
+            const count = parseInt(localStorage.getItem(key) || "0", 10);
+            return isNaN(count) ? 0 : count;
+        }
+
+        function setResendCount(bookingId, count) {
+            const key = getResendStorageKey(bookingId);
+            localStorage.setItem(key, String(count));
+        }
+
+        function showToast(message, type = "success") {
+            const toast = document.getElementById("toast");
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            requestAnimationFrame(() => {
+                toast.classList.add("show");
+            });
+            setTimeout(() => {
+                toast.classList.remove("show");
+            }, 4500);
+        }
+
+        function updateUI(count, bookingId) {
+            const remaining = MAX_RESEND_ATTEMPTS - count;
+            const btn = document.getElementById("resend-btn");
+            const btnText = document.getElementById("resend-btn-text");
+            const badge = document.getElementById("resend-count-badge");
+            const attemptsText = document.getElementById("resend-attempts-text");
+            const statusContainer = document.getElementById("resend-status-container");
+            const limitMessage = document.getElementById("limit-message");
+            const resendContainer = document.getElementById("resend-container");
+
+            if (count >= MAX_RESEND_ATTEMPTS) {
+                btn.disabled = true;
+                btn.classList.remove("bg-teal-600", "hover:bg-teal-700");
+                btn.classList.add("bg-slate-700");
+                btnText.textContent = "Resend Unavailable";
+                badge.classList.add("hidden");
+                resendContainer.classList.add("hidden");
+                limitMessage.classList.remove("hidden");
+            } else {
+                badge.textContent = `${remaining} remaining`;
+                statusContainer.classList.remove("hidden");
+                attemptsText.textContent = count > 0
+                    ? `You have used ${count} of ${MAX_RESEND_ATTEMPTS} resend attempts.`
+                    : "";
+                if (count === 0) {
+                    statusContainer.classList.add("hidden");
+                }
+            }
+        }
+
+        function setLoading(isLoading) {
+            const btn = document.getElementById("resend-btn");
+            const btnText = document.getElementById("resend-btn-text");
+            const badge = document.getElementById("resend-count-badge");
+
+            if (isLoading) {
+                btn.disabled = true;
+                btnText.innerHTML = '<span class="spinner"></span>Sending...';
+                badge.classList.add("hidden");
+            } else {
+                const bookingId = getBookingId();
+                const count = getResendCount(bookingId);
+                const remaining = MAX_RESEND_ATTEMPTS - count;
+                btn.disabled = count >= MAX_RESEND_ATTEMPTS;
+                btnText.textContent = "Resend Confirmation Email";
+                badge.textContent = `${remaining} remaining`;
+                badge.classList.remove("hidden");
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const bookingId = getBookingId();
+            const count = bookingId ? getResendCount(bookingId) : 0;
+            updateUI(count, bookingId);
+
+            const resendBtn = document.getElementById("resend-btn");
+            resendBtn.addEventListener("click", async () => {
+                const currentBookingId = getBookingId();
+
+                if (!currentBookingId) {
+                    showToast("Booking reference not found. Please refresh the page.", "error");
+                    return;
+                }
+
+                const currentCount = getResendCount(currentBookingId);
+                if (currentCount >= MAX_RESEND_ATTEMPTS) {
+                    updateUI(currentCount, currentBookingId);
+                    showToast("Resend limit reached. Please contact support.", "error");
+                    return;
+                }
+
+                setLoading(true);
+
+                try {
+                    const res = await fetch(`/api/bookings/${currentBookingId}/resend-email`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                    });
+
+                    const data = await res.json();
+
+                    if (data.success || res.ok) {
+                        const newCount = currentCount + 1;
+                        setResendCount(currentBookingId, newCount);
+                        updateUI(newCount, currentBookingId);
+                        showToast("Booking confirmation email has been resent! Please check your inbox and spam folder.", "success");
+                    } else {
+                        showToast(data.error || "Failed to resend email. Please try again.", "error");
+                    }
+                } catch (err) {
+                    showToast("Network error. Please check your connection and try again.", "error");
+                } finally {
+                    setLoading(false);
+                }
+            });
+        });
+    </script>
 </body>
 </html>

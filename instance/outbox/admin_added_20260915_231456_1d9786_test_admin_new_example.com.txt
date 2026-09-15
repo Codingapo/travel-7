@@ -1,0 +1,14 @@
+TO: test_admin_new@example.com
+SUBJECT: Your TravelIntel AI administrator account is ready
+SAVED-AT: 2026-09-15T23:14:56.661716
+--------------------------------------------------
+
+TravelIntel AI Administrator Access
+
+Your administrator account has been created and is linked to the shared platform password.
+
+Email: test_admin_new@example.com
+Username: new_test_admin
+
+Use the current universal TravelIntel administrator password to sign in at /auth/login.
+All administrators share one password. When any administrator changes the password, every account is updated automatically.

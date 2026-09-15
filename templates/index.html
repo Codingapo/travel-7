@@ -13,6 +13,7 @@
             --glass-bg: rgba(255, 255, 255, 0.03);
             --glass-border: rgba(255, 255, 255, 0.08);
         }
+        html { font-size: clamp(14px, 1vw, 18px); }
         body {
             background-color: var(--bg-dark);
             color: #f8fafc;
@@ -28,42 +29,91 @@
                         radial-gradient(circle at bottom left, rgba(30, 27, 75, 0.2), transparent);
         }
         .card-hover:hover {
-            transform: translateY(-8px);
+            transform: translateY(clamp(-4px, -1vw, -8px));
             background: rgba(255, 255, 255, 0.05);
             border-color: rgba(255, 255, 255, 0.15);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .nav-logo {
+            width: clamp(2rem, 4vw, 2.5rem);
+            height: clamp(2rem, 4vw, 2.5rem);
+        }
+        .nav-logo i { font-size: clamp(1rem, 2vw, 1.25rem); }
+        .navbar-h { height: clamp(3.5rem, 6vw, 5rem); }
+        .section-pt { padding-top: clamp(6rem, 14vw, 12rem); }
+        .section-pb { padding-bottom: clamp(4rem, 10vw, 8rem); }
+        .section-py { padding-top: clamp(4rem, 10vw, 8rem); padding-bottom: clamp(4rem, 10vw, 8rem); }
+        .btn-px { padding-left: clamp(1.5rem, 4vw, 2.5rem); padding-right: clamp(1.5rem, 4vw, 2.5rem); }
+        .btn-py { padding-top: clamp(0.75rem, 1.5vw, 1rem); padding-bottom: clamp(0.75rem, 1.5vw, 1rem); }
+        .input-px { padding-left: clamp(1rem, 2vw, 1.25rem); padding-right: clamp(1rem, 2vw, 1.25rem); }
+        .input-py { padding-top: clamp(0.6rem, 1.5vw, 0.75rem); padding-bottom: clamp(0.6rem, 1.5vw, 0.75rem); }
+        .card-round { border-radius: clamp(1.25rem, 3vw, 1.875rem); }
+        .hero-title { font-size: clamp(2rem, 8vw, 4.375rem); }
+        .hero-subtitle { font-size: clamp(1rem, 2.5vw, 1.5rem); }
+        .section-title { font-size: clamp(1.5rem, 4vw, 2.5rem); }
+        .card-padding { padding: clamp(0.75rem, 2vw, 1rem); }
+        .gap-section { gap: clamp(1.25rem, 3vw, 2.5rem); }
+        @media (max-width: 767px) {
+            .mobile-menu {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: rgba(15, 23, 42, 0.98);
+                backdrop-filter: blur(20px);
+                padding: 1rem 1.5rem;
+                border-bottom: 1px solid var(--glass-border);
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.75rem;
+            }
+            .mobile-menu.open { display: flex; }
+            .mobile-menu a {
+                width: 100%;
+                padding: 0.75rem 1rem;
+                border-radius: 0.75rem;
+                text-align: center;
+            }
+            .mobile-menu a:hover { background: rgba(255, 255, 255, 0.05); }
+            .hamburger { display: flex; }
+        }
+        @media (min-width: 768px) {
+            .hamburger { display: none; }
+            .mobile-menu { display: flex !important; }
         }
     </style>
 </head>
 <body class="font-sans selection:bg-blue-500 selection:text-white">
     <!-- Navbar -->
     <nav class="glass fixed w-full z-50 top-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-20 items-center">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <div class="flex justify-between navbar-h items-center">
                 <div class="flex items-center space-x-2">
-                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                        <i class="fas fa-robot text-xl text-white"></i>
+                    <div class="nav-logo bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                        <i class="fas fa-robot text-white"></i>
                     </div>
-                    <span class="text-2xl font-black tracking-tighter text-white">TravelIntel <span class="text-blue-500">AI</span></span>
+                    <span class="text-[clamp(1rem,2.5vw,1.5rem)] font-black tracking-tighter text-white">TravelIntel <span class="text-blue-500">AI</span></span>
                 </div>
-                <div class="hidden md:block">
-                    <div class="ml-10 flex items-center space-x-8">
+                <button class="hamburger w-10 h-10 items-center justify-center text-white rounded-lg hover:bg-white/5 transition" onclick="toggleMobileMenu()" aria-label="Menu">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+                <div id="nav-menu" class="mobile-menu ml-0 md:ml-10 md:items-center space-x-0 md:space-x-8">
 <a href="/home" class="text-gray-300 hover:text-white transition font-medium">Home</a>
-                        <a href="#packages" class="text-gray-300 hover:text-white transition font-medium">Explore</a>
-                        <div id="auth-links" class="flex items-center space-x-4">
-                            <a href="/auth/login" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full font-bold transition shadow-lg shadow-blue-600/20">Sign In</a>
-                        </div>
-                        <div id="user-info" class="hidden flex items-center space-x-6">
-                            <div class="flex flex-col items-end">
-                                <span id="username-display" class="text-white font-bold text-sm"></span>
-                                <div class="flex space-x-3">
-                                    <a href="/profile.html" class="text-blue-400 text-xs hover:underline">Manage Profile</a>
-                                    <span class="text-gray-700 text-xs">•</span>
-                                    <a href="/profile.html#bookings" class="text-blue-400 text-xs hover:underline">My Bookings</a>
-                                </div>
+                    <a href="#packages" class="text-gray-300 hover:text-white transition font-medium" onclick="closeMobileMenu()">Explore</a>
+                    <div id="auth-links" class="flex items-center justify-center space-x-4 md:space-x-4 flex-col md:flex-row gap-3 md:gap-0">
+                        <a href="/auth/login" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full font-bold transition shadow-lg shadow-blue-600/20" onclick="closeMobileMenu()">Sign In</a>
+                    </div>
+                    <div id="user-info" class="hidden flex items-center justify-center space-x-0 md:space-x-6 flex-col md:flex-row gap-3 md:gap-0">
+                        <div class="flex flex-col md:items-end items-center">
+                            <span id="username-display" class="text-white font-bold text-sm"></span>
+                            <div class="flex space-x-3 justify-center">
+                                <a href="/profile.html" class="text-blue-400 text-xs hover:underline" onclick="closeMobileMenu()">Manage Profile</a>
+                                <span class="text-gray-700 text-xs hidden md:inline">•</span>
+                                <a href="/profile.html#bookings" class="text-blue-400 text-xs hover:underline" onclick="closeMobileMenu()">My Bookings</a>
                             </div>
-                            <button onclick="logout()" class="text-gray-400 hover:text-red-400 transition"><i class="fas fa-power-off"></i></button>
                         </div>
+                        <button onclick="logout()" class="text-gray-400 hover:text-red-400 transition py-2"><i class="fas fa-power-off"></i></button>
                     </div>
                 </div>
             </div>
@@ -71,33 +121,33 @@
     </nav>
 
     <!-- Hero Section -->
-    <header class="hero-gradient pt-48 pb-32 relative overflow-hidden">
+    <header class="hero-gradient section-pt section-pb relative overflow-hidden">
         <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
         <div class="max-w-7xl mx-auto px-4 relative z-10 text-center">
-            <h1 class="text-5xl md:text-7xl font-black mb-8 leading-tight">
+            <h1 class="hero-title font-black mb-[clamp(1.5rem,5vw,3rem)] leading-tight">
                 Your Intelligent <br>
                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">Gateway to the World</span>
             </h1>
-            <p class="text-xl md:text-2xl mb-12 text-gray-400 max-w-3xl mx-auto leading-relaxed">
+            <p class="hero-subtitle mb-[clamp(1.5rem,6vw,3rem)] text-gray-400 max-w-3xl mx-auto leading-relaxed">
                 Experience AI-driven travel curation. From Cape Town's peaks to Bali's serene beaches, discover packages tailored just for you.
             </p>
-            <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                <a href="#packages" class="w-full sm:w-auto bg-blue-600 text-white px-10 py-4 rounded-full font-black text-lg hover:bg-blue-700 transition shadow-2xl shadow-blue-600/40">Browse Packages</a>
-                <a href="/profile.html#bookings" id="hero-bookings-btn" class="hidden w-full sm:w-auto glass text-white px-10 py-4 rounded-full font-black text-lg hover:bg-white/10 transition">My Bookings</a>
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-[clamp(0.75rem,2vw,1.5rem)]">
+                <a href="#packages" class="w-full sm:w-auto bg-blue-600 text-white btn-px btn-py rounded-full font-black text-[clamp(0.875rem,1.5vw,1.125rem)] hover:bg-blue-700 transition shadow-2xl shadow-blue-600/40" onclick="closeMobileMenu()">Browse Packages</a>
+                <a href="/profile.html#bookings" id="hero-bookings-btn" class="hidden w-full sm:w-auto glass text-white btn-px btn-py rounded-full font-black text-[clamp(0.875rem,1.5vw,1.125rem)] hover:bg-white/10 transition">My Bookings</a>
             </div>
         </div>
     </header>
 
     <!-- Packages Section -->
-    <section id="packages" class="py-32 bg-[#0a0f1d]">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 space-y-4 md:space-y-0">
+    <section id="packages" class="section-py bg-[#0a0f1d]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-[clamp(2rem,6vw,4rem)] space-y-4 md:space-y-0 gap-4">
                 <div>
-                    <h2 class="text-4xl font-black text-white mb-4">Travel Packages</h2>
+                    <h2 class="section-title font-black text-white mb-[clamp(0.5rem,2vw,1rem)]">Travel Packages</h2>
                 </div>
-                <div class="flex items-center gap-3">
-                    <label for="package-sort" class="text-xs font-bold uppercase tracking-widest text-gray-500">Sort by</label>
-                    <select id="package-sort" class="bg-slate-900 border border-white/10 text-white rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <label for="package-sort" class="text-[clamp(0.6rem,1.2vw,0.75rem)] font-bold uppercase tracking-widest text-gray-500">Sort by</label>
+                    <select id="package-sort" class="bg-slate-900 border border-white/10 text-white rounded-xl input-px input-py text-[clamp(0.75rem,1.3vw,0.875rem)] font-bold outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="default">Recommended</option>
                         <option value="price_asc">Price: Low to High</option>
                         <option value="price_desc">Price: High to Low</option>
@@ -106,15 +156,15 @@
                 </div>
             </div>
             
-            <div id="packages-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            <div id="packages-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-section">
                 <!-- Loading State -->
-                <div class="glass p-4 rounded-3xl animate-pulse">
-                    <div class="bg-white/5 h-64 rounded-2xl mb-6"></div>
-                    <div class="h-8 bg-white/5 rounded-full w-3/4 mb-4"></div>
-                    <div class="h-4 bg-white/5 rounded-full w-1/2 mb-8"></div>
-                    <div class="flex justify-between items-center">
-                        <div class="h-10 bg-white/5 rounded-full w-1/3"></div>
-                        <div class="h-10 bg-white/5 rounded-full w-1/3"></div>
+                <div class="glass card-padding card-round animate-pulse">
+                    <div class="bg-white/5 h-[clamp(12rem,30vw,16rem)] card-round mb-[clamp(0.75rem,2vw,1.5rem)]"></div>
+                    <div class="h-[clamp(1rem,2vw,2rem)] bg-white/5 rounded-full w-3/4 mb-[clamp(0.5rem,1.5vw,1rem)]"></div>
+                    <div class="h-[clamp(0.6rem,1.2vw,1rem)] bg-white/5 rounded-full w-1/2 mb-[clamp(1rem,3vw,2rem)]"></div>
+                    <div class="flex justify-between items-center gap-2">
+                        <div class="h-[clamp(1.5rem,3vw,2.5rem)] bg-white/5 rounded-full w-1/3"></div>
+                        <div class="h-[clamp(1.5rem,3vw,2.5rem)] bg-white/5 rounded-full w-1/3"></div>
                     </div>
                 </div>
             </div>
@@ -122,36 +172,36 @@
     </section>
 
     <!-- Footer -->
-    <footer class="glass border-t-0 border-b-0 border-x-0 pt-20 pb-10">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+    <footer class="glass border-t-0 border-b-0 border-x-0 pt-[clamp(2rem,8vw,5rem)] pb-[clamp(1.5rem,4vw,2.5rem)]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-[clamp(1.5rem,5vw,3rem)] mb-[clamp(2rem,6vw,4rem)]">
                 <div class="col-span-1 md:col-span-2">
-                    <div class="flex items-center space-x-2 mb-6">
+                    <div class="flex items-center space-x-2 mb-[clamp(1rem,3vw,1.5rem)]">
                         <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
                             <i class="fas fa-robot text-white"></i>
                         </div>
-                        <span class="text-xl font-black text-white">TravelIntel AI</span>
+                        <span class="text-[clamp(0.9rem,2vw,1.25rem)] font-black text-white">TravelIntel AI</span>
                     </div>
-                    <p class="text-gray-500 max-w-md leading-relaxed">
+                    <p class="text-gray-500 max-w-md leading-relaxed text-[clamp(0.75rem,1.3vw,0.9rem)]">
                         Redefining travel planning through artificial intelligence. We combine human expertise from Dalani Trip Planners with smart technology to create unforgettable journeys.
                     </p>
                 </div>
                 <div>
-                    <h4 class="text-white font-bold mb-6 uppercase text-sm tracking-widest">Quick Links</h4>
-                    <ul class="space-y-4 text-gray-500">
+                    <h4 class="text-white font-bold mb-[clamp(0.75rem,2vw,1.5rem)] uppercase text-[clamp(0.65rem,1.2vw,0.875rem)] tracking-widest">Quick Links</h4>
+                    <ul class="space-y-[clamp(0.5rem,1.5vw,1rem)] text-gray-500 text-[clamp(0.75rem,1.3vw,0.9rem)]">
                         <li><a href="#" class="hover:text-blue-400 transition">About Us</a></li>
                         <li><a href="#" class="hover:text-blue-400 transition">Destinations</a></li>
                         <li><a href="#" class="hover:text-blue-400 transition">Contact</a></li>
                     </ul>
                 </div>
                 <div>
-                    <h4 class="text-white font-bold mb-6 uppercase text-sm tracking-widest">Connect</h4>
-                    <div class="flex space-x-4 mb-8">
+                    <h4 class="text-white font-bold mb-[clamp(0.75rem,2vw,1.5rem)] uppercase text-[clamp(0.65rem,1.2vw,0.875rem)] tracking-widest">Connect</h4>
+                    <div class="flex space-x-4 mb-[clamp(1rem,3vw,2rem)]">
                         <a href="https://www.facebook.com/Dalanitriplanners?_rdc=1&_rdr#" target="_blank" rel="noopener noreferrer" title="Facebook" class="glass w-10 h-10 flex items-center justify-center rounded-lg hover:bg-blue-600 transition"><i class="fab fa-facebook-f"></i></a>
                         <a href="https://wa.me/27672442263" target="_blank" rel="noopener noreferrer" title="WhatsApp" class="glass w-10 h-10 flex items-center justify-center rounded-lg hover:bg-green-500 transition"><i class="fab fa-whatsapp"></i></a>
                         <a href="mailto:bookings@dalanitravel.com" title="Email" class="glass w-10 h-10 flex items-center justify-center rounded-lg hover:bg-blue-400 transition"><i class="fas fa-envelope"></i></a>
                     </div>
-                    <ul class="space-y-3 text-gray-500 text-sm">
+                    <ul class="space-y-[clamp(0.5rem,1.5vw,0.75rem)] text-gray-500 text-[clamp(0.7rem,1.2vw,0.875rem)]">
                         <li class="flex items-start gap-3">
                             <i class="fas fa-envelope mt-1 text-blue-400"></i>
                             <a href="mailto:bookings@dalanitravel.com" class="hover:text-blue-400 transition">bookings@dalanitravel.com</a>
@@ -167,7 +217,7 @@
                     </ul>
                 </div>
             </div>
-            <div class="border-t border-white/5 pt-10 text-center text-gray-600 text-sm">
+            <div class="border-t border-white/5 pt-[clamp(1rem,3vw,2.5rem)] text-center text-gray-600 text-[clamp(0.65rem,1.2vw,0.875rem)]">
                 &copy; 2026 TravelIntel AI. All rights reserved.
             </div>
         </div>
@@ -175,12 +225,12 @@
 
     <!-- Booking Modal (Prompt to sign in) -->
     <div id="booking-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[100] px-4">
-        <div class="glass p-10 rounded-[2.5rem] max-w-md w-full text-center">
-            <div class="w-20 h-20 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-8">
-                <i class="fas fa-user-lock text-3xl text-blue-500"></i>
+        <div class="glass section-padding rounded-[clamp(1.5rem,4vw,2.5rem)] max-w-md w-full text-center">
+            <div class="w-[clamp(3.5rem,8vw,5rem)] h-[clamp(3.5rem,8vw,5rem)] bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-[clamp(1.25rem,4vw,2rem)]">
+                <i class="fas fa-user-lock text-[clamp(1.25rem,3vw,1.875rem)] text-blue-500"></i>
             </div>
-            <h3 class="text-3xl font-black text-white mb-4">Start Your Journey</h3>
-            <p class="text-gray-400 mb-10 leading-relaxed">Please create an account or sign in to finalize your booking and unlock exclusive AI-curated travel benefits.</p>
+            <h3 class="text-[clamp(1.5rem,4vw,1.875rem)] font-black text-white mb-[clamp(0.5rem,1.5vw,1rem)]">Start Your Journey</h3>
+            <p class="text-gray-400 mb-[clamp(1.5rem,5vw,2.5rem)] leading-relaxed text-[clamp(0.75rem,1.3vw,0.9rem)]">Please create an account or sign in to finalize your booking and unlock exclusive AI-curated travel benefits.</p>
             <div class="flex flex-col space-y-4">
                 <a href="/auth/login" class="bg-blue-600 text-white py-4 rounded-2xl font-black hover:bg-blue-700 transition shadow-xl shadow-blue-600/20">Sign In / Register</a>
                 <button onclick="closeModal()" class="text-gray-500 hover:text-white transition font-bold">Maybe Later</button>
@@ -191,6 +241,14 @@
     <script src="/static/js/package-images.js"></script>
     <script src="/static/js/main.js?v=1.2"></script>
     <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('nav-menu');
+            if (menu) menu.classList.toggle('open');
+        }
+        function closeMobileMenu() {
+            const menu = document.getElementById('nav-menu');
+            if (menu) menu.classList.remove('open');
+        }
         async function logout() {
             try { await fetch('/admin/logout', { method: 'POST' }); } catch(e) {}
             localStorage.clear();

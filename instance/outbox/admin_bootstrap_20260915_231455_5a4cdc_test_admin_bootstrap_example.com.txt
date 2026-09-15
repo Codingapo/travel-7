@@ -1,0 +1,14 @@
+TO: test_admin_bootstrap@example.com
+SUBJECT: Your TravelIntel AI administrator account
+SAVED-AT: 2026-09-15T23:14:55.437874
+--------------------------------------------------
+
+TravelIntel AI Administrator
+
+Your administrator account has been created.
+
+Email: test_admin_bootstrap@example.com
+Username: test_admin
+Temporary password: TempP@ss123!
+
+Sign in at /auth/login. You will be required to change this temporary password immediately.

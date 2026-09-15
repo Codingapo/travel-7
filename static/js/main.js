@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPackages();
     initPasswordToggles();
     initPasswordValidation();
+    initAdminIdleTimeout();
 
     const sortSelect = document.getElementById('package-sort');
     if (sortSelect) {
@@ -514,4 +515,84 @@ function closeModal() {
 function logout() {
     clearLocalAuth();
     window.location.href = '/home';
+}
+
+// ============================================================
+// ADMIN INACTIVITY TIMEOUT (CLIENT-SIDE)
+// Warns admin after 14 minutes then auto-logs out after 15 minutes.
+// (The server also enforces SESSION_TIMEOUT_MINUTES (15 mins) via the Sessions table.
+// This ensures UX so admins can't bypass timeout while tab is open without activity.
+// ============================================================
+function initAdminIdleTimeout() {
+    const isAdminPage = /^\/(admin|dashboard|packages|bookings|customers|admins|users|reviews|reports|analytics|backup|ai-analysis)/.test(window.location.pathname);
+    const loggedInEl = document.getElementById('user-info') || document.getElementById('admin-header') || document.querySelector('[data-admin-page="true"]');
+    if (!isAdminPage && !loggedInEl) return;
+
+    const ADMIN_IDLE_SECONDS = 15 * 60;
+    const WARN_SECONDS_BEFORE = 60;
+    let idleSeconds = 0;
+    let warningShown = false;
+    let warningEl = null;
+
+    function resetIdle() {
+        idleSeconds = 0;
+        if (warningShown && warningEl) {
+            warningEl.remove();
+            warningEl = null;
+            warningShown = false;
+        }
+    }
+
+    const activityEvents = ['mousedown','mousemove','keydown','touchstart','scroll','click'];
+    activityEvents.forEach(ev => document.addEventListener(ev, resetIdle, { passive: true }));
+
+    function showWarning(remaining) {
+        if (warningShown) {
+            if (warningEl) {
+                const counterSpan = warningEl.querySelector('[data-idle-countdown]');
+                if (counterSpan) counterSpan.textContent = remaining;
+            }
+            return;
+        }
+        warningShown = true;
+        warningEl = document.createElement('div');
+        warningEl.id = 'idle-timeout-warning';
+        warningEl.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] max-w-md w-[calc(100%-2rem)]';
+        warningEl.innerHTML = `
+            <div class="bg-amber-500 text-slate-900 rounded-2xl px-6 py-4 shadow-2xl border border-amber-400/50">
+                <div class="flex items-center gap-3 mb-2">
+                    <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="font-black text-lg">Session Timeout Warning</p>
+                </div>
+                <p class="text-sm font-semibold">
+                    You have been inactive. Your session will automatically end in
+                    <span data-idle-countdown class="font-black">${remaining}</span>
+                    seconds due to inactivity.
+                </p>
+                <p class="text-sm font-medium mt-1 opacity-90">Move your mouse or press any key to stay logged in.</p>
+            </div>
+        `;
+        document.body.appendChild(warningEl);
+    }
+
+    function forceLogout() {
+        clearInterval(tickHandle);
+        clearLocalAuth();
+        try { sessionStorage.clear(); } catch(e){}
+        const isAdmin = false;
+        window.location.replace('/auth/login?timeout=1');
+    }
+
+    const tickHandle = setInterval(async () => {
+        idleSeconds += 1;
+        const remaining = Math.max(0, ADMIN_IDLE_SECONDS - idleSeconds);
+        if (remaining <= WARN_SECONDS_BEFORE) {
+            showWarning(remaining);
+        }
+        if (remaining <= 0) {
+            forceLogout();
+        }
+    }, 1000);
 }

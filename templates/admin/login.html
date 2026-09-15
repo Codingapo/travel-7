@@ -13,6 +13,30 @@
             --glass-bg: rgba(255, 255, 255, 0.05);
             --glass-border: rgba(255, 255, 255, 0.1);
         }
+        html { font-size: clamp(14px, 1vw, 18px); }
+        .logo-box { width: clamp(3rem, 7vw, 4rem); height: clamp(3rem, 7vw, 4rem); }
+        .logo-box i { font-size: clamp(1.1rem, 2.5vw, 1.5rem); }
+        .card-padding { padding: clamp(1.5rem, 6vw, 3rem); }
+        .card-round { border-radius: clamp(1.5rem, 4vw, 2.5rem); }
+        .header-title { font-size: clamp(1.25rem, 3.5vw, 2rem); }
+        .header-subtitle { font-size: clamp(0.9rem, 1.8vw, 1.5rem); }
+        .mb-logo { margin-bottom: clamp(1.5rem, 5vw, 2.5rem); }
+        .mb-header { margin-bottom: clamp(1.25rem, 4vw, 2rem); }
+        .label-text { font-size: clamp(0.7rem, 1.3vw, 0.875rem); }
+        .input-icon-size { font-size: clamp(0.9rem, 1.6vw, 1.1rem); }
+        .input-px { padding-left: clamp(1rem, 2vw, 1.25rem); padding-right: clamp(1rem, 2vw, 1.25rem); }
+        .input-py { padding-top: clamp(0.75rem, 1.5vw, 0.875rem); padding-bottom: clamp(0.75rem, 1.5vw, 0.875rem); }
+        .btn-py { padding-top: clamp(0.85rem, 1.8vw, 1rem); padding-bottom: clamp(0.85rem, 1.8vw, 1rem); }
+        .btn-text { font-size: clamp(0.875rem, 1.5vw, 1.125rem); }
+        .helper-text { font-size: clamp(0.65rem, 1.2vw, 0.875rem); }
+        .input-group-mb { margin-bottom: clamp(0.75rem, 2vw, 1.5rem); }
+        .error-mt { margin-top: clamp(0.75rem, 2vw, 1rem); }
+        .body-p { padding: clamp(0.75rem, 3vw, 1.5rem); }
+        .input-round { border-radius: clamp(0.6rem, 1.5vw, 0.875rem); }
+        .btn-round { border-radius: clamp(0.6rem, 1.5vw, 0.875rem); }
+        .logo-round { border-radius: clamp(0.6rem, 1.5vw, 0.875rem); }
+        .link-gap { margin-right: clamp(0.2rem, 0.6vw, 0.3rem); }
+        .mt-footer { margin-top: clamp(1.25rem, 3vw, 1.5rem); }
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-dark);
@@ -23,6 +47,7 @@
             justify-content: center;
             position: relative;
             overflow: hidden;
+            padding: clamp(0.75rem, 3vw, 1.5rem);
         }
         .hero-gradient {
             background: radial-gradient(circle at top right, #1e3a8a, transparent),
@@ -40,29 +65,30 @@
         .login-card {
             width: 100%;
             max-width: 450px;
-            padding: 48px;
+            padding: clamp(1.5rem, 6vw, 3rem);
             z-index: 10;
-            border-radius: 2.5rem;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            border-radius: clamp(1.5rem, 4vw, 2.5rem);
+            box-shadow: 0 clamp(1rem, 3vw, 1.25rem) clamp(1.5rem, 4vw, 2.5rem) rgba(0, 0, 0, 0.2);
         }
         .input-group {
             position: relative;
-            margin-bottom: 24px;
+            margin-bottom: clamp(0.75rem, 2vw, 1.5rem);
         }
         .input-group i {
             position: absolute;
-            left: 16px;
+            left: clamp(1rem, 2vw, 1.25rem);
             top: 50%;
             transform: translateY(-50%);
             color: #94a3b8;
+            font-size: clamp(0.9rem, 1.6vw, 1.1rem);
         }
         .input-field {
             width: 100%;
-            padding: 14px 16px 14px 48px;
+            padding: clamp(0.75rem, 1.5vw, 0.875rem) clamp(1rem, 2vw, 1.25rem) clamp(0.75rem, 1.5vw, 0.875rem) clamp(2.5rem, 5vw, 3rem);
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            font-size: 16px;
+            border-radius: clamp(0.6rem, 1.5vw, 0.875rem);
+            font-size: clamp(0.875rem, 1.5vw, 1rem);
             transition: all 0.3s ease;
             color: #f8fafc;
         }
@@ -70,62 +96,63 @@
             outline: none;
             border-color: #3b82f6;
             background: rgba(255, 255, 255, 0.1);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+            box-shadow: 0 0 0 clamp(0.15rem, 0.4vw, 0.25rem) rgba(59, 130, 246, 0.2);
         }
         .btn-login {
             width: 100%;
-            padding: 16px;
+            padding-top: clamp(0.85rem, 1.8vw, 1rem);
+            padding-bottom: clamp(0.85rem, 1.8vw, 1rem);
             background: #2563eb;
             color: white;
-            border-radius: 12px;
+            border-radius: clamp(0.6rem, 1.5vw, 0.875rem);
             font-weight: 700;
-            font-size: 16px;
+            font-size: clamp(0.875rem, 1.5vw, 1.125rem);
             transition: all 0.3s ease;
-            margin-top: 12px;
-            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+            margin-top: clamp(0.5rem, 1.2vw, 0.75rem);
+            box-shadow: 0 clamp(0.5rem, 1.5vw, 0.75rem) clamp(1rem, 2.5vw, 1.5rem) rgba(37, 99, 235, 0.3);
         }
         .btn-login:hover {
             background: #1d4ed8;
             transform: translateY(-2px);
-            box-shadow: 0 15px 35px rgba(37, 99, 235, 0.4);
+            box-shadow: 0 clamp(0.75rem, 2vw, 1rem) clamp(1.25rem, 3vw, 2rem) rgba(37, 99, 235, 0.4);
         }
     </style>
 </head>
-<body class="selection:bg-blue-500 selection:text-white">
+<body class="selection:bg-blue-500 selection:text-white p-[clamp(0.75rem,3vw,1.5rem)]">
     <div class="hero-gradient"></div>
     <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
     
     <div class="login-card glass">
-        <div class="flex items-center justify-center gap-3 mb-10">
-            <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <i class="fas fa-robot text-white text-xl"></i>
+        <div class="flex items-center justify-center gap-3 mb-logo">
+            <div class="logo-box bg-blue-600 logo-round flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <i class="fas fa-robot text-white"></i>
             </div>
-            <h1 class="text-3xl font-black tracking-tighter text-white">TravelIntel <span class="text-blue-500">Admin</span></h1>
+            <h1 class="header-title font-black tracking-tighter text-white">TravelIntel <span class="text-blue-500">Admin</span></h1>
         </div>
 
-        <h2 class="text-2xl font-bold text-center text-gray-300 mb-8">Secure Login</h2>
+        <h2 class="header-subtitle font-bold text-center text-gray-300 mb-header">Secure Login</h2>
 
         <form id="adminLoginForm">
             <div class="input-group">
                 <i class="far fa-user"></i>
-                <input type="text" id="username" class="input-field" placeholder="Username or admin email" required>
+                <input type="text" id="username" class="input-field input-round" placeholder="Username or admin email" required>
             </div>
             
             <div class="input-group">
                 <i class="fas fa-lock"></i>
-                <input type="password" id="password" class="input-field" placeholder="Password" required>
+                <input type="password" id="password" class="input-field input-round" placeholder="Password" required>
             </div>
 
-<button type="submit" class="btn-login">Access Dashboard</button>
+<button type="submit" class="btn-login btn-round btn-py btn-text">Access Dashboard</button>
         </form>
 
-        <div class="mt-6 text-center flex items-center justify-center gap-4 flex-wrap">
-            <a href="/admin/forgot-password" class="text-blue-400 hover:text-blue-300 font-bold text-sm transition">
-                <i class="fas fa-key mr-1"></i> Forgot password?
+        <div class="mt-footer text-center flex items-center justify-center gap-4 flex-wrap">
+            <a href="/admin/forgot-password" class="text-blue-400 hover:text-blue-300 font-bold helper-text transition">
+                <i class="fas fa-key mr-[clamp(0.2rem,0.6vw,0.3rem)]"></i> Forgot password?
             </a>
         </div>
         
-        <div id="errorMessage" class="mt-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-center text-sm hidden font-medium"></div>
+        <div id="errorMessage" class="error-mt p-[clamp(0.6rem,1.8vw,1rem)] rounded-[clamp(0.4rem,1vw,0.6rem)] bg-red-500/10 border border-red-500/20 text-red-400 text-center helper-text hidden font-medium"></div>
     </div>
 
     <script src="/static/js/main.js"></script>

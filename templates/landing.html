@@ -13,6 +13,7 @@
             --glass-bg: rgba(255, 255, 255, 0.03);
             --glass-border: rgba(255, 255, 255, 0.08);
         }
+        html { font-size: clamp(14px, 1vw, 18px); }
         body {
             background-color: var(--bg-dark);
             color: #f8fafc;
@@ -31,10 +32,10 @@
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .role-card:hover {
-            transform: translateY(-10px);
+            transform: translateY(clamp(-4px, -1vw, -10px));
             background: rgba(255, 255, 255, 0.05);
             border-color: rgba(59, 130, 246, 0.4);
-            box-shadow: 0 25px 50px -12px rgba(37, 99, 235, 0.25);
+            box-shadow: 0 clamp(12px, 3vw, 25px) clamp(24px, 6vw, 50px) clamp(-6px, -1vw, -12px) rgba(37, 99, 235, 0.25);
         }
         .role-icon {
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -43,43 +44,58 @@
             transform: scale(1.1) rotate(-4deg);
         }
         @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(25px); }
+            from { opacity: 0; transform: translateY(clamp(12px, 3vw, 25px)); }
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-up { animation: fadeUp 0.7s ease-out; }
+        .logo-box {
+            width: clamp(3rem, 8vw, 5rem);
+            height: clamp(3rem, 8vw, 5rem);
+        }
+        .logo-box i { font-size: clamp(1.25rem, 3vw, 2rem); }
+        .role-icon-box {
+            width: clamp(3rem, 8vw, 5rem);
+            height: clamp(3rem, 8vw, 5rem);
+        }
+        .role-icon-box i { font-size: clamp(1.25rem, 3vw, 2rem); }
+        .section-padding { padding: clamp(1.5rem, 4vw, 2.5rem); }
+        @media (max-width: 480px) {
+            .mobile-stack { flex-direction: column; }
+            .mobile-gap { gap: 1rem; }
+        }
     </style>
 </head>
 <body class="font-sans min-h-screen flex items-center justify-center p-4 selection:bg-blue-500 selection:text-white">
 
-    <div class="w-full max-w-4xl animate-fade-up">
+    <div class="w-full max-w-4xl animate-fade-up px-2 sm:px-4">
 
         <!-- Logo & Title -->
-        <div class="text-center mb-14">
-            <div class="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-7 shadow-2xl shadow-blue-600/30">
-                <i class="fas fa-robot text-3xl text-white"></i>
+        <div class="text-center mb-[clamp(2rem,6vw,3.5rem)]">
+            <div class="logo-box bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-[clamp(1rem,3vw,1.75rem)] shadow-2xl shadow-blue-600/30">
+                <i class="fas fa-robot text-white"></i>
             </div>
-            <h1 class="text-4xl md:text-5xl font-black text-white tracking-tight mb-3">
+            <h1 class="text-[clamp(1.75rem,5vw,3.125rem)] font-black text-white tracking-tight mb-[clamp(0.5rem,1.5vw,0.75rem)]">
                 TravelIntel <span class="text-blue-500">AI</span>
             </h1>
-            <p class="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
+            <p class="text-gray-400 text-[clamp(0.875rem,1.5vw,1.125rem)] max-w-2xl mx-auto leading-relaxed">
                 Welcome! Please choose your role to continue to your personalized experience.
             </p>
         </div>
 
         <!-- Role Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-[clamp(1rem,3vw,2rem)]">
 
             <!-- Customer -->
             <a href="/home" class="block">
-                <div class="role-card glass rounded-[2.5rem] p-10 text-center h-full">
-                    <div class="w-20 h-20 bg-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-7 role-icon">
-                        <i class="fas fa-user text-3xl text-blue-400"></i>
+                <div class="role-card glass rounded-[clamp(1.5rem,4vw,2.5rem)] section-padding text-center h-full">
+                    <div class="role-icon-box bg-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-[clamp(1rem,3vw,1.75rem)] role-icon">
+                        <i class="fas fa-user text-blue-400"></i>
                     </div>
-                    <h2 class="text-2xl font-black text-white mb-3">Customer</h2>
-                    <p class="text-gray-400 leading-relaxed mb-8">
+                    <h2 class="text-[clamp(1.25rem,3vw,1.5rem)] font-black text-white mb-[clamp(0.5rem,1.5vw,0.75rem)]">Customer</h2>
+                    <p class="text-gray-400 leading-relaxed mb-[clamp(1rem,3vw,2rem)] text-[clamp(0.8rem,1.3vw,1rem)]">
                         Browse travel packages, plan your dream vacation, and book your journey with AI-curated recommendations.
                     </p>
-                    <span class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-black transition shadow-lg shadow-blue-600/30">
+                    <span class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-[clamp(1.5rem,4vw,2rem)] py-[clamp(0.6rem,1.5vw,0.75rem)] rounded-full font-black transition shadow-lg shadow-blue-600/30 text-[clamp(0.8rem,1.3vw,1rem)]">
                         Continue as Customer
                     </span>
                 </div>
@@ -89,7 +105,7 @@
         </div>
 
         <!-- Footer -->
-        <p class="text-center text-xs text-gray-600 mt-14">
+        <p class="text-center text-xs text-gray-600 mt-[clamp(2rem,6vw,3.5rem)]">
             <i class="fas fa-shield-halved mr-1"></i>
             Your account information is securely protected.
         </p>
