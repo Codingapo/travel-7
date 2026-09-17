@@ -161,11 +161,17 @@
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('endDate').setAttribute('max', todayStr);
             document.getElementById('startDate').setAttribute('max', todayStr);
+
+            // Lightweight polling every 30s — refreshes the "Last generated"
+            // timestamp so another admin's freshly-compiled report is reflected.
+            setInterval(() => {
+                if (!document.hidden) fetchLastGenerated();
+            }, 30000);
         });
 
         async function fetchLastGenerated() {
             try {
-                const res = await fetch('/api/reports/last-generated');
+                const res = await fetch('/api/reports/last-generated?v=' + Date.now());
                 if (res.status === 401 || res.status === 403) return;
                 const data = await res.json();
                 if (data.success) {

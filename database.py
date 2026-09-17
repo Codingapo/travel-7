@@ -148,16 +148,16 @@ def _seed_demo_bookings(conn, c):
     c.execute("SELECT COUNT(*) AS total FROM Customers")
     if int(c.fetchone()["total"] or 0) == 0:
         demo_customers = [
-            ("Anele Mokoena", "anele.mokoena@example.com", "0710001001", "Polokwane, Limpopo"),
-            ("Bokang Nkosi", "bokang.nkosi@example.com", "0710001002", "Johannesburg, Gauteng"),
-            ("Dineo Molefe", "dineo.molefe@example.com", "0710001003", "Pretoria, Gauteng"),
-            ("Palesa Khumalo", "palesa.khumalo@example.com", "0710001004", "Mbombela, Mpumalanga"),
-            ("Thando Ndlovu", "thando.ndlovu@example.com", "0710001005", "Durban, KwaZulu-Natal"),
-            ("Naledi Mokoena", "naledi.mokoena@example.com", "0710001006", "Bloemfontein, Free State"),
-            ("Mpho Dlamini", "mpho.dlamini@example.com", "0710001007", "Cape Town, Western Cape"),
-            ("Lwandle Zulu", "lwandle.zulu@example.com", "0710001008", "Gqeberha, Eastern Cape"),
-            ("Rethabile Molefe", "rethabile.molefe@example.com", "0710001009", "Polokwane, Limpopo"),
-            ("Sinethemba Naidoo", "sinethemba.naidoo@example.com", "0710001010", "Durban, KwaZulu-Natal"),
+            ("Anele Mokoena", "anele.mokoena@gmail.com", "0710001001", "Polokwane, Limpopo"),
+            ("Bokang Nkosi", "bokang.nkosi@outlook.com", "0710001002", "Johannesburg, Gauteng"),
+            ("Dineo Molefe", "dineo.molefe@yahoo.com", "0710001003", "Pretoria, Gauteng"),
+            ("Palesa Khumalo", "palesa.khumalo@icloud.com", "0710001004", "Mbombela, Mpumalanga"),
+            ("Thando Ndlovu", "thando.ndlovu@hotmail.com", "0710001005", "Durban, KwaZulu-Natal"),
+            ("Naledi Mokoena", "naledi.mokoena@gmail.com", "0710001006", "Bloemfontein, Free State"),
+            ("Mpho Dlamini", "mpho.dlamini@protonmail.com", "0710001007", "Cape Town, Western Cape"),
+            ("Lwandle Zulu", "lwandle.zulu@outlook.com", "0710001008", "Gqeberha, Eastern Cape"),
+            ("Rethabile Molefe", "rethabile.molefe@gmail.com", "0710001009", "Polokwane, Limpopo"),
+            ("Sinethemba Naidoo", "sinethemba.naidoo@yahoo.co.za", "0710001010", "Durban, KwaZulu-Natal"),
         ]
         for name, email, phone, address in demo_customers:
             c.execute(
@@ -394,7 +394,22 @@ def init_db():
         )"""
     )
 
+    c.execute(
+        """CREATE TABLE IF NOT EXISTS Recommendations (
+            recommendation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            package_id INTEGER,
+            date DATE,
+            recommendation_text TEXT,
+            discount_suggested REAL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(package_id) REFERENCES Packages(package_id)
+        )"""
+    )
+    c.execute("CREATE INDEX IF NOT EXISTS idx_recommendations_date ON Recommendations(date)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_recommendations_package ON Recommendations(package_id)")
+
     _ensure_column(c, "Packages", "image_url", "TEXT")
+    _ensure_column(c, "Packages", "discount_percentage", "INTEGER DEFAULT 0")
     _ensure_column(c, "Packages", "type", "TEXT DEFAULT 'standard'")
     _ensure_column(c, "Packages", "available_spots", "INTEGER DEFAULT 10")
     _ensure_column(c, "Packages", "total_spots", "INTEGER DEFAULT 10")
@@ -452,6 +467,10 @@ def init_db():
     c.execute("CREATE INDEX IF NOT EXISTS idx_reviews_source ON Reviews(source)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_users_admin ON Users(is_admin, account_status)")
 
+    # Remove any legacy seeded demo reviews — only real Google reviews are used.
+    c.execute("DELETE FROM Reviews WHERE source='seeded'")
+    c.execute("DELETE FROM Review_Summary WHERE source='seeded'")
+
     # Multi-admin migration and bootstrap administrator.
     c.execute("UPDATE Users SET is_admin=1, user_type='admin' WHERE role='admin'")
     c.execute("SELECT user_id FROM Users WHERE LOWER(email)=? LIMIT 1", (ADMIN_EMAIL.lower(),))
@@ -485,15 +504,10 @@ def init_db():
     _seed_packages(c)
     _seed_demo_bookings(conn, c)
 
-    # NOTE: This used to top the Reviews table up with 130+ randomly
-    # generated fake reviews on every single app startup whenever the real
-    # count was below 138 (which it always was, since SerpApi sync only
-    # ever wrote back whatever it fetched). That's the actual root cause of
-    # the admin Reviews page showing fabricated reviews instead of real
-    # Google ones - real reviews were being drowned out by fake ones every
-    # time the server restarted. Nothing fake is generated anymore. The
-    # Reviews table is left exactly as the real Google Reviews sync
-    # (google_reviews_sync.py) or manual admin entry leaves it.
+    # Seeded reviews are intentionally removed. The system relies EXCLUSIVELY
+    # on real Google Reviews synced via SerpApi (google_reviews_sync.py) or
+    # manually entered by an admin. Any legacy seeded rows are deleted by the
+    # migration above on startup.
 
     c.execute("SELECT source FROM Review_Summary WHERE source='google'")
     if not c.fetchone():

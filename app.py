@@ -18,13 +18,15 @@ import secrets
 import re
 import sqlite3
 import uuid
+import csv
+import io
 from email.message import EmailMessage
 from contextlib import asynccontextmanager
 from typing import Optional
 from email.utils import parseaddr
 
 from fastapi import FastAPI, Request, HTTPException, Query, UploadFile, File
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.gzip import GZipMiddleware
@@ -40,7 +42,7 @@ from config import (
     SMTP_USE_TLS, SMTP_FROM_EMAIL,
 )
 from database import get_db_connection, init_db, backup_database, get_review_summary, upsert_review_summary
-from ai_engine import train_demand_forecasting, perform_customer_segmentation, run_anomaly_detection, get_forecast_model_metadata
+from ai_engine import train_demand_forecasting, perform_customer_segmentation, run_anomaly_detection, get_forecast_model_metadata, generate_recommendations
 from google_reviews_sync import fetch_reviews, calculate_sentiment
 
 
@@ -204,6 +206,7 @@ async def lifespan(app: FastAPI):
     # Schedule AI Models (Daily at 2:00 AM)
     scheduler.add_job(train_demand_forecasting, 'cron', hour=2, minute=0)
     scheduler.add_job(perform_customer_segmentation, 'cron', hour=2, minute=0)
+    scheduler.add_job(generate_recommendations, 'cron', hour=2, minute=10)
     
     # Schedule Anomaly Detection (Daily at 8:00 AM, 12:00 PM, 4:00 PM)
     scheduler.add_job(run_anomaly_detection, 'cron', hour=8, minute=0)
@@ -231,6 +234,33 @@ async def lifespan(app: FastAPI):
 resend.api_key = RESEND_API_KEY or os.getenv("RESEND_API_KEY", "")
 app = FastAPI(title="TravelIntel AI", lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+@app.middleware("http")
+async def no_cache_admin_and_api(request: Request, call_next):
+    """Prevent browser/intermediary caching of all admin pages and JSON API
+    responses so new bookings and Google reviews are always visible instantly.
+
+    Static files under /static are intentionally exempt — those use far-future
+    expiry via content-hashed filenames elsewhere.
+    """
+    path = request.url.path or ""
+    is_admin_html = (
+        path == "/dashboard"
+        or path.startswith("/admin/")
+    )
+    is_api = path.startswith("/api/")
+
+    response = await call_next(request)
+
+    if is_admin_html or is_api:
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+
+    return response
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOADS_DIR = os.path.join(BASE_DIR, "static", "uploads", "packages")
@@ -1160,9 +1190,9 @@ async def dashboard(request: Request):
     total_revenue = float(c.fetchone()["total"] or 0)
     c.execute("SELECT COUNT(*) AS total FROM Customers")
     total_customers = int(c.fetchone()["total"] or 0)
-    c.execute("SELECT COUNT(*) AS total FROM Reviews")
+    c.execute("SELECT COUNT(*) AS total FROM Reviews WHERE source='google'")
     review_count = int(c.fetchone()["total"] or 0)
-    c.execute("SELECT COALESCE(AVG(rating),0) AS avg_rating FROM Reviews")
+    c.execute("SELECT COALESCE(AVG(rating),0) AS avg_rating FROM Reviews WHERE source='google'")
     review_average = float(c.fetchone()["avg_rating"] or 0)
     c.execute("""SELECT b.booking_id, COALESCE(c.name, 'Guest') AS name, p.package_name,
                         b.number_of_travelers, b.total_amount, b.status, b.booking_date
@@ -1171,6 +1201,7 @@ async def dashboard(request: Request):
                  LEFT JOIN Packages p ON b.package_id = p.package_id
                  ORDER BY b.booking_id DESC LIMIT 10""")
     recent_bookings = [dict(row) for row in c.fetchall()]
+    feedback_summary = _generate_customer_feedback_summary(c, limit=10)
     conn.close()
     initial_dashboard = {
         "total_bookings": total_bookings,
@@ -1181,6 +1212,7 @@ async def dashboard(request: Request):
         "review_count": review_count,
         "review_average": review_average,
         "recent_bookings": recent_bookings,
+        "feedback_summary": feedback_summary,
     }
     return templates.TemplateResponse(request, "admin/dashboard.html", {"request": request, "initial_dashboard": initial_dashboard})
 
@@ -2035,6 +2067,7 @@ async def get_packages(sort: str = "default"):
                p.description, p.availability_status, p.season_category, p.image_url,
                COALESCE(p.available_spots,0) AS available_spots,
                COALESCE(p.total_spots,0) AS total_spots,
+               COALESCE(p.discount_percentage,0) AS discount_percentage,
                COUNT(CASE WHEN b.status != 'cancelled' THEN b.booking_id END) AS booking_count
         FROM Packages p
         LEFT JOIN Bookings b ON b.package_id = p.package_id
@@ -2056,6 +2089,7 @@ class PackageCreateRequest(BaseModel):
     season_category: str = "standard"
     image_url: str = ""
     image_file_ref: str = ""
+    discount_percentage: int = 0
     confirm_password: str = ""
 
 class PackageUpdateRequest(PackageCreateRequest):
@@ -2087,6 +2121,9 @@ async def create_package(data: PackageCreateRequest, request: Request):
         raise HTTPException(status_code=400, detail="Available seats cannot be negative.")
     if data.duration < 1:
         raise HTTPException(status_code=400, detail="Duration must be at least 1 day.")
+    discount = int(data.discount_percentage or 0)
+    if discount < 0 or discount > 100:
+        raise HTTPException(status_code=400, detail="Discount % must be between 0 and 100.")
 
     final_image = _resolve_package_image(data.image_url, data.image_file_ref)
 
@@ -2094,9 +2131,9 @@ async def create_package(data: PackageCreateRequest, request: Request):
     try:
         status = "Available" if data.available_spots > 0 else "Unavailable"
         c.execute("""INSERT INTO Packages
-            (package_name,destination,price,duration,description,availability_status,season_category,image_url,available_spots,total_spots)
-            VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (name,destination,float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),final_image,int(data.available_spots),int(data.available_spots)))
+            (package_name,destination,price,duration,description,availability_status,season_category,image_url,available_spots,total_spots,discount_percentage)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            (name,destination,float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),final_image,int(data.available_spots),int(data.available_spots),discount))
         package_id = c.lastrowid
         conn.commit()
     except sqlite3.IntegrityError as exc:
@@ -2104,7 +2141,7 @@ async def create_package(data: PackageCreateRequest, request: Request):
         raise HTTPException(status_code=409, detail="Unable to create package. A package with these details may already exist.") from exc
     finally:
         conn.close()
-    record_admin_audit(session, "Created package", "package", package_id, f"{name} | price={data.price} | seats={data.available_spots}")
+    record_admin_audit(session, "Created package", "package", package_id, f"{name} | price={data.price} | seats={data.available_spots} | discount={discount}%")
     return {"success": True, "data": {"package_id": package_id, "message": "Package created successfully."}}
 
 
@@ -2117,6 +2154,9 @@ async def update_package(package_id: int, data: PackageUpdateRequest, request: R
 
     if data.price <= 0 or data.available_spots < 0 or data.duration < 1:
         raise HTTPException(status_code=400, detail="Price, duration and available seats must be valid.")
+    discount = int(data.discount_percentage or 0)
+    if discount < 0 or discount > 100:
+        raise HTTPException(status_code=400, detail="Discount % must be between 0 and 100.")
     conn = get_db_connection(); c = conn.cursor()
     c.execute("SELECT * FROM Packages WHERE package_id=?", (package_id,))
     before_row = c.fetchone()
@@ -2125,11 +2165,11 @@ async def update_package(package_id: int, data: PackageUpdateRequest, request: R
     before = dict(before_row)
     final_image = _resolve_package_image(data.image_url, data.image_file_ref)
     status = "Available" if data.available_spots > 0 else "Unavailable"
-    c.execute("""UPDATE Packages SET package_name=?,destination=?,price=?,duration=?,description=?,availability_status=?,season_category=?,image_url=?,available_spots=?,total_spots=? WHERE package_id=?""",
-              (data.package_name.strip(),data.destination.strip(),float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),final_image,int(data.available_spots),int(data.available_spots),package_id))
+    c.execute("""UPDATE Packages SET package_name=?,destination=?,price=?,duration=?,description=?,availability_status=?,season_category=?,image_url=?,available_spots=?,total_spots=?,discount_percentage=? WHERE package_id=?""",
+              (data.package_name.strip(),data.destination.strip(),float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),final_image,int(data.available_spots),int(data.available_spots),discount,package_id))
     conn.commit(); conn.close()
-    before_snippet = f"{before.get('package_name','')} | price={before.get('price','')} | seats={before.get('available_spots','')}"
-    after_snippet = f"{data.package_name} | price={data.price} | seats={data.available_spots}"
+    before_snippet = f"{before.get('package_name','')} | price={before.get('price','')} | seats={before.get('available_spots','')} | discount={before.get('discount_percentage',0)}%"
+    after_snippet = f"{data.package_name} | price={data.price} | seats={data.available_spots} | discount={discount}%"
     record_admin_audit(
         session, "Updated package", "package", package_id,
         f"BEFORE: ({before_snippet})  AFTER: ({after_snippet})"
@@ -2180,7 +2220,7 @@ async def get_admin_packages(request: Request):
     require_admin(request)
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT package_id, package_name, destination, price, duration, description, availability_status, season_category, image_url, COALESCE(available_spots,0) as available_spots, COALESCE(total_spots,0) as total_spots FROM Packages ORDER BY package_id ASC")
+    c.execute("SELECT package_id, package_name, destination, price, duration, description, availability_status, season_category, image_url, COALESCE(available_spots,0) as available_spots, COALESCE(total_spots,0) as total_spots, COALESCE(discount_percentage,0) as discount_percentage FROM Packages ORDER BY package_id ASC")
     packages = [dict(row) for row in c.fetchall()]
     conn.close()
     return {"success": True, "data": packages}
@@ -2299,7 +2339,12 @@ async def set_package_spots(package_id: int, data: PackageSpotsRequest, request:
 async def get_package_by_id(package_id: int):
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT * FROM Packages WHERE package_id=?", (package_id,))
+    c.execute("""SELECT package_id, package_name, destination, price, duration,
+                        description, availability_status, season_category, image_url,
+                        COALESCE(available_spots,0) AS available_spots,
+                        COALESCE(total_spots,0) AS total_spots,
+                        COALESCE(discount_percentage,0) AS discount_percentage
+                 FROM Packages WHERE package_id=?""", (package_id,))
     package = c.fetchone()
     conn.close()
     if not package:
@@ -2399,7 +2444,7 @@ async def create_booking(data: BookingRequest, request: Request):
                 customer_id = c.lastrowid
 
         # 2. Package Validation
-        c.execute("SELECT package_name, destination, duration, price, availability_status, COALESCE(available_spots,0) as available_spots FROM Packages WHERE package_id=?", (data.package_id,))
+        c.execute("SELECT package_name, destination, duration, price, availability_status, COALESCE(available_spots,0) as available_spots, COALESCE(discount_percentage,0) as discount_percentage FROM Packages WHERE package_id=?", (data.package_id,))
         pkg = c.fetchone()
         if not pkg:
             raise HTTPException(status_code=404, detail="Package not found")
@@ -2408,7 +2453,11 @@ async def create_booking(data: BookingRequest, request: Request):
         if int(pkg["available_spots"] or 0) < data.number_of_travelers:
             raise HTTPException(status_code=400, detail="Not enough available spots for this package")
 
-        total_amount = pkg['price'] * data.number_of_travelers
+        discount_pct = max(0, min(100, int(pkg["discount_percentage"] or 0)))
+        unit_price = float(pkg['price'])
+        if discount_pct > 0:
+            unit_price = unit_price * (1 - discount_pct / 100.0)
+        total_amount = round(unit_price, 2) * data.number_of_travelers
 
         # 3. Create Booking
         today = datetime.date.today().isoformat()
@@ -2568,8 +2617,204 @@ async def retrain_ai_models(request: Request):
     train_demand_forecasting()
     perform_customer_segmentation()
     run_anomaly_detection()
-    record_admin_audit(session, "Retrained AI models", "ai", None, "Demand forecasting, customer segmentation and anomaly detection")
+    generate_recommendations()
+    record_admin_audit(session, "Retrained AI models", "ai", None, "Demand forecasting, customer segmentation, anomaly detection and package recommendations")
     return {"success": True, "data": get_forecast_model_metadata()}
+
+@app.post("/api/admin/ai/recommendations/generate")
+async def generate_package_recommendations(request: Request):
+    session = require_admin(request)
+    try:
+        generate_recommendations()
+        record_admin_audit(session, "Generated AI recommendations", "ai", None, "Per-package weather/news/demand recommendations")
+        return {"success": True, "message": "Recommendations generated."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+FEEDBACK_POSITIVE_WORDS = [
+    "great", "excellent", "good", "amazing", "fantastic", "seamless",
+    "loved", "beautiful", "perfect", "friendly", "helpful", "recommend",
+    "professional", "wonderful", "unforgettable", "incredible", "outstanding",
+    "brilliant", "smooth", "fun", "safe", "worth", "relaxing", "unique",
+    "magic", "delicious", "luxury", "impressive", "knowledgeable", "patient"
+]
+FEEDBACK_NEGATIVE_WORDS = [
+    "bad", "terrible", "awful", "poor", "delayed", "steep", "issue",
+    "complaint", "expensive", "late", "disappointing", "worst", "unhappy",
+    "slow", "smaller", "repetitive", "pity", "underwhelming", "intense",
+    "niggle", "crowded", "noisy", "dirty", "rude", "broke", "broken",
+    "missed", "cold", "boring", "confusing", "overpriced"
+]
+SERVICE_WORDS = [
+    "guide", "staff", "driver", "service", "helpful", "friendly",
+    "professional", "transfer", "timely", "reception", "check"
+]
+PRICE_WORDS = ["price", "expensive", "worth", "value", "cost", "rand", "overpriced", "cheap"]
+FOOD_WORDS = ["food", "breakfast", "lunch", "dinner", "buffet", "restaurant", "delicious", "meal"]
+ACCOM_WORDS = ["hotel", "room", "resort", "lodge", "riad", "bungalow", "villa", "accommodation"]
+DEST_WORDS = [
+    "hike", "beach", "safari", "tour", "monument", "museum", "temple",
+    "waterfall", "mountain", "sunset", "island", "snorkel", "dive", "cruise"
+]
+
+
+def _generate_customer_feedback_summary(cursor, limit: int = 10) -> str:
+    """Summarise the most recent `limit` reviews into 3-4 plain-English lines.
+
+    The summary reflects actual themes seen in the latest reviews (positive
+    vs. negative sentiment, mentions of service quality, food, price,
+    accommodation and destination activities) so it changes as new reviews
+    arrive.
+    """
+    cursor.execute("""
+        SELECT reviewer_name, review_text, rating, sentiment_score, review_date
+        FROM Reviews
+        WHERE source='google'
+        ORDER BY
+            CASE WHEN review_date IS NOT NULL THEN 0 ELSE 1 END,
+            review_date DESC,
+            review_id DESC
+        LIMIT ?
+    """, (limit,))
+    rows = cursor.fetchall()
+
+    if not rows:
+        return (
+            "No customer reviews have been collected yet. "
+            "After the first real review or Google Reviews sync, this card "
+            "will show a rolling short summary of recent feedback, including "
+            "sentiment and the top themes travellers are talking about."
+        )
+
+    total = len(rows)
+    total_ratings = sum(int(r["rating"] or 0) for r in rows)
+    avg_rating = round(total_ratings / total, 1) if total else 0.0
+
+    pos_cnt = 0
+    neg_cnt = 0
+    neu_cnt = 0
+    service_mentions = 0
+    price_mentions = 0
+    food_mentions = 0
+    accom_mentions = 0
+    dest_mentions = 0
+    combined_text = ""
+
+    for r in rows:
+        text = (r["review_text"] or "").lower()
+        combined_text += " " + text
+        sent = float(r["sentiment_score"] or 0.0)
+        if sent > 0.1:
+            pos_cnt += 1
+        elif sent < -0.1:
+            neg_cnt += 1
+        else:
+            neu_cnt += 1
+        if any(w in text for w in SERVICE_WORDS):
+            service_mentions += 1
+        if any(w in text for w in PRICE_WORDS):
+            price_mentions += 1
+        if any(w in text for w in FOOD_WORDS):
+            food_mentions += 1
+        if any(w in text for w in ACCOM_WORDS):
+            accom_mentions += 1
+        if any(w in text for w in DEST_WORDS):
+            dest_mentions += 1
+
+    raw_pos = sum(1 for w in FEEDBACK_POSITIVE_WORDS if w in combined_text)
+    raw_neg = sum(1 for w in FEEDBACK_NEGATIVE_WORDS if w in combined_text)
+    if raw_pos + raw_neg > 0:
+        keyword_score = (raw_pos - raw_neg) / (raw_pos + raw_neg)
+    else:
+        keyword_score = 0.0
+
+    if avg_rating >= 4.5:
+        tone = "extremely positive"
+    elif avg_rating >= 4.0:
+        tone = "largely positive"
+    elif avg_rating >= 3.2:
+        tone = "generally positive with minor criticisms"
+    elif avg_rating >= 2.5:
+        tone = "mixed"
+    else:
+        tone = "concerning and needs attention"
+
+    sentiment_line = (
+        f"Across the last {total} reviews the average rating is {avg_rating}/5 "
+        f"and the overall tone is {tone}."
+    )
+    sentiment_breakdown_parts = []
+    if pos_cnt:
+        sentiment_breakdown_parts.append(f"{pos_cnt} positive")
+    if neu_cnt:
+        sentiment_breakdown_parts.append(f"{neu_cnt} neutral")
+    if neg_cnt:
+        sentiment_breakdown_parts.append(f"{neg_cnt} negative")
+    if sentiment_breakdown_parts:
+        sentiment_line += " (" + ", ".join(sentiment_breakdown_parts) + ")."
+    else:
+        sentiment_line += "."
+
+    theme_scores = sorted([
+        ("service and staff", service_mentions),
+        ("accommodation", accom_mentions),
+        ("food and dining", food_mentions),
+        ("tour and activity experiences", dest_mentions),
+        ("value for money", price_mentions),
+    ], key=lambda x: -x[1])
+
+    top_themes = [(n, c) for n, c in theme_scores if c > 0]
+    if top_themes:
+        lead_name, lead_count = top_themes[0]
+        themes_line = f"The most discussed topic is {lead_name} (raised in {lead_count} of {total} reviews"
+        if len(top_themes) > 1:
+            next_name, next_count = top_themes[1]
+            themes_line += f"), followed by {next_name} ({next_count})."
+        else:
+            themes_line += ")."
+    else:
+        themes_line = "Recent feedback does not cluster around any single topic yet."
+
+    recency_line = ""
+    latest = rows[0]
+    latest_date = latest["review_date"] or "recently"
+    latest_name = latest["reviewer_name"] or "A guest"
+    latest_rating = int(latest["rating"] or 0)
+    latest_comment = (latest["review_text"] or "").strip()
+    if len(latest_comment) > 110:
+        latest_comment = latest_comment[:109].rstrip() + "…"
+    if latest_comment:
+        recency_line = (
+            f"The most recent feedback came from {latest_name} on {latest_date}, "
+            f"who rated their trip {latest_rating}/5 and wrote: \"{latest_comment}\""
+        )
+
+    positive_line = ""
+    if keyword_score >= 0.2:
+        positive_line = (
+            "On balance positive language clearly outweighs the negatives, "
+            "with guests frequently highlighting the quality of guides, "
+            "smooth logistics and once-in-a-lifetime moments."
+        )
+    elif keyword_score <= -0.15 or neg_cnt >= max(2, total // 3):
+        positive_line = (
+            "A few recurring complaints are visible in the latest batch, "
+            "so operations teams should review the negative items before "
+            "they trend into wider dissatisfaction."
+        )
+    else:
+        positive_line = (
+            "Sentiment is mixed - the strong praise is balanced by "
+            "isolated minor gripes that are typical of a busy travel season."
+        )
+
+    lines = [sentiment_line, themes_line]
+    if recency_line:
+        lines.append(recency_line)
+    lines.append(positive_line)
+    return " ".join(lines)
+
 
 @app.get("/api/admin/dashboard-stats")
 async def get_dashboard_stats(request: Request):
@@ -2590,7 +2835,7 @@ async def get_dashboard_stats(request: Request):
     c.execute("SELECT COALESCE(SUM(number_of_travelers), 0) as total FROM Bookings WHERE status != 'cancelled'")
     total_travelers = int(c.fetchone()["total"] or 0)
 
-    c.execute("SELECT COALESCE(AVG(rating), 0) as avg_rating, COUNT(*) as total FROM Reviews")
+    c.execute("SELECT COALESCE(AVG(rating), 0) as avg_rating, COUNT(*) as total FROM Reviews WHERE source='google'")
     review_stats = c.fetchone()
     review_average = round(float(review_stats["avg_rating"] or 0), 1)
     review_count = int(review_stats["total"] or 0)
@@ -2628,6 +2873,9 @@ async def get_dashboard_stats(request: Request):
                  JOIN Packages p ON b.package_id = p.package_id
                  ORDER BY b.booking_id DESC LIMIT 10''')
     recent_bookings = [dict(row) for row in c.fetchall()]
+
+    # 6. Customer Feedback rolling summary (last 10 reviews, 3-4 line text)
+    feedback_summary = _generate_customer_feedback_summary(c, limit=10)
     
     conn.close()
     return {
@@ -2646,7 +2894,8 @@ async def get_dashboard_stats(request: Request):
             "monthly_trends": monthly_trends,
             "destinations": destinations,
             "top_packages": top_packages,
-            "recent_bookings": recent_bookings
+            "recent_bookings": recent_bookings,
+            "feedback_summary": feedback_summary
         }
     }
 
@@ -2882,7 +3131,7 @@ async def get_ai_analysis(
 
     today = datetime.date.today()
     try:
-        start = datetime.date.fromisoformat(start_date) if start_date else today - datetime.timedelta(days=30)
+        start = datetime.date.fromisoformat(start_date) if start_date else today - datetime.timedelta(days=180)
         end = datetime.date.fromisoformat(end_date) if end_date else today
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date filter. Use YYYY-MM-DD.")
@@ -2908,17 +3157,32 @@ async def get_ai_analysis(
     total_travelers = int(c.fetchone()[0] or 0)
     avg_order_value = total_revenue / total_bookings if total_bookings > 0 else 0
 
-    # Reviews + sentiment
-    c.execute("SELECT COUNT(*) as cnt, AVG(rating) as avg_rating FROM Reviews WHERE review_date BETWEEN ? AND ?", (start_str, end_str))
-    rv = c.fetchone()
-    total_reviews = int(rv["cnt"] or 0)
-    avg_rating = round(float(rv["avg_rating"] or 0), 1)
+    # Reviews + sentiment — mirror the Reviews page exactly:
+    # use the real aggregate rating/count from Review_Summary (google),
+    # but compute sentiment + written-review counts from the stored rows
+    # WITHOUT scoping by review_date. This matches what the admin sees on
+    # the /admin/reviews.html page, not a narrow date-slice of reviews.
+    c.execute("SELECT COUNT(*) as cnt, AVG(rating) as avg_rating FROM Reviews WHERE source='google'")
+    rv_stored = c.fetchone()
+    stored_count = int(rv_stored["cnt"] or 0)
+    stored_avg = float(rv_stored["avg_rating"] or 0.0)
+    c.execute("SELECT average_rating, total_reviews FROM Review_Summary WHERE source='google'")
+    rs = c.fetchone()
+    if rs and int(rs["total_reviews"] or 0) > 0:
+        google_count = int(rs["total_reviews"])
+        google_avg = round(float(rs["average_rating"] or stored_avg), 1)
+    else:
+        google_count = stored_count
+        google_avg = round(stored_avg, 1)
+    total_reviews = google_count
+    avg_rating = google_avg
+
     c.execute("""SELECT
         SUM(CASE WHEN sentiment_score > 0.1 THEN 1 ELSE 0 END) as positive,
         SUM(CASE WHEN sentiment_score BETWEEN -0.1 AND 0.1 THEN 1 ELSE 0 END) as neutral,
         SUM(CASE WHEN sentiment_score < -0.1 THEN 1 ELSE 0 END) as negative
         FROM Reviews
-        WHERE review_date BETWEEN ? AND ?""", (start_str, end_str))
+        WHERE source='google'""")
     sent = c.fetchone()
     sentiment = {
         "positive": int(sent["positive"] or 0),
@@ -2961,7 +3225,53 @@ async def get_ai_analysis(
     c.execute("SELECT forecast_date, period_start, period_end, predicted_demand, confidence FROM Forecasts ORDER BY forecast_date DESC LIMIT 1")
     fc = c.fetchone()
     forecast = dict(fc) if fc else None
+
+    # Customer segmentation: ALL customers grouped by preferences field (K-Means output)
+    customer_segments = {"Budget Travelers": [], "Regular Travelers": [], "Luxury Seekers": [], "Unsegmented": []}
+    c.execute("""SELECT c.customer_id, c.name, c.email, c.phone,
+                        COALESCE(c.preferences, 'Unsegmented') as segment,
+                        COUNT(b.booking_id) as booking_count,
+                        COALESCE(SUM(b.total_amount), 0) as total_spend
+                 FROM Customers c
+                 LEFT JOIN Bookings b ON c.customer_id = b.customer_id AND b.status != 'cancelled'
+                 GROUP BY c.customer_id, c.name, c.email, c.phone, c.preferences
+                 ORDER BY c.name ASC""")
+    all_customers = [dict(r) for r in c.fetchall()]
+    for cust in all_customers:
+        seg = cust["segment"]
+        if seg in customer_segments:
+            customer_segments[seg].append(cust)
+        else:
+            customer_segments["Unsegmented"].append(cust)
+
+    # Latest anomaly z-score for plain-English description
+    c.execute("SELECT log_date, prediction_value, anomaly_flag FROM Analytics_Log ORDER BY log_date DESC LIMIT 1")
+    latest_anomaly = c.fetchone()
+    anomaly_z = float(latest_anomaly["prediction_value"]) if latest_anomaly and latest_anomaly["prediction_value"] is not None else 0.0
+    if anomaly_z > 3:
+        anomaly_description = "Today's bookings are much higher than usual"
+    elif anomaly_z > 1.5:
+        anomaly_description = "Today's bookings are slightly higher than usual"
+    elif anomaly_z < -3:
+        anomaly_description = "Today's bookings are much lower than usual"
+    elif anomaly_z < -1.5:
+        anomaly_description = "Today's bookings are slightly lower than usual"
+    else:
+        anomaly_description = "Today's bookings are within the normal range"
+
     conn.close()
+
+    # Forecast reliability from training metadata R²
+    training_meta = get_forecast_model_metadata()
+    r2_value = 0.0
+    if training_meta.get("trained"):
+        r2_value = float(training_meta.get("r2_training_weekly", training_meta.get("r2_training", 0.0)))
+    if r2_value > 0.7:
+        forecast_reliability = {"level": "High", "label": "High", "r2": round(r2_value, 4)}
+    elif r2_value >= 0.4:
+        forecast_reliability = {"level": "Fair", "label": "Fair", "r2": round(r2_value, 4)}
+    else:
+        forecast_reliability = {"level": "Low", "label": "Low", "r2": round(r2_value, 4)}
 
     # ---- AI-Generated Insights ----
     insights = []
@@ -3016,6 +3326,18 @@ async def get_ai_analysis(
 
     recommendations.append("Monitor real-time dashboard KPIs and AI alerts daily for proactive business decisions.")
 
+    # Recommendations table data (will be populated by generate_recommendations)
+    conn2 = get_db_connection(); c2 = conn2.cursor()
+    c2.execute("""SELECT r.recommendation_id, r.package_id, r.date, r.recommendation_text,
+                         r.discount_suggested, p.package_name, p.destination
+                  FROM Recommendations r
+                  LEFT JOIN Packages p ON r.package_id = p.package_id
+                  WHERE r.date = date('now')
+                  ORDER BY r.date DESC, r.discount_suggested DESC
+                  LIMIT 20""")
+    rec_table_rows = [dict(r) for r in c2.fetchall()]
+    conn2.close()
+
     return {
         "success": True,
         "data": {
@@ -3039,8 +3361,13 @@ async def get_ai_analysis(
             "monthly_trends": monthly,
             "recent_alerts": alerts,
             "forecast": forecast,
+            "customer_segments": customer_segments,
+            "forecast_reliability": forecast_reliability,
+            "anomaly_description": anomaly_description,
+            "anomaly_z_raw": round(anomaly_z, 4),
             "insights": insights,
             "recommendations": recommendations,
+            "package_recommendations": rec_table_rows,
             "how_it_works": {
                 "summary": "The AI analysis reads only the selected date range, aggregates bookings, revenue, travellers, customers and reviews, then combines those results with the latest demand forecast and anomaly alerts.",
                 "steps": [
@@ -3128,7 +3455,7 @@ async def generate_report(request: Request, data: ReportRequest):
     c.execute(
         """SELECT COUNT(*) as cnt, AVG(rating) as avg_rating
            FROM Reviews
-           WHERE review_date BETWEEN ? AND ?""",
+           WHERE source='google' AND review_date BETWEEN ? AND ?""",
         (start_str, end_str),
     )
     rv = c.fetchone()
@@ -3141,7 +3468,7 @@ async def generate_report(request: Request, data: ReportRequest):
                SUM(CASE WHEN sentiment_score BETWEEN -0.1 AND 0.1 THEN 1 ELSE 0 END) as neutral,
                SUM(CASE WHEN sentiment_score < -0.1 THEN 1 ELSE 0 END) as negative
            FROM Reviews
-           WHERE review_date BETWEEN ? AND ?""",
+           WHERE source='google' AND review_date BETWEEN ? AND ?""",
         (start_str, end_str),
     )
     sentiment = c.fetchone()
@@ -3239,6 +3566,122 @@ async def get_last_generated_report(request: Request):
 
 
 # ============================================================
+# BOOKING DATASET CSV EXPORT (Kaggle-style format)
+# ============================================================
+
+@app.get("/api/dataset/export-bookings.csv")
+async def export_bookings_csv(request: Request,
+                               start_date: Optional[str] = None,
+                               end_date: Optional[str] = None):
+    require_admin(request)
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    where_clauses = ["b.status != 'cancelled'"]
+    params: list = []
+    if start_date:
+        where_clauses.append("b.booking_date >= ?")
+        params.append(start_date)
+    if end_date:
+        where_clauses.append("b.booking_date <= ?")
+        params.append(end_date)
+    where_sql = " AND ".join(where_clauses)
+
+    c.execute(f"""
+        SELECT
+            b.booking_id,
+            c.customer_id,
+            COALESCE(c.name, 'Guest')                           AS customer_name,
+            COALESCE(c.email, '')                                AS customer_email,
+            COALESCE(u.contact_number, '')                       AS customer_phone,
+            p.package_id,
+            p.package_name,
+            p.destination,
+            COALESCE(p.season_category, 'standard')              AS region,
+            b.booking_date,
+            b.travel_date,
+            b.number_of_travelers,
+            p.price                                              AS price_per_person,
+            COALESCE(p.discount_percentage, 0)                   AS discount_percentage,
+            b.total_amount,
+            ROUND(
+                CAST(b.total_amount AS REAL)
+                / (CASE WHEN b.number_of_travelers > 0 THEN b.number_of_travelers ELSE 1 END)
+                * (1.0 - COALESCE(p.discount_percentage, 0) / 100.0),
+                2
+            )                                                    AS final_amount_per_traveler,
+            COALESCE(b.payment_method, 'unknown')                AS payment_method,
+            b.status
+        FROM Bookings b
+        LEFT JOIN Customers c ON b.customer_id = c.customer_id
+        LEFT JOIN Users     u ON c.user_id    = u.user_id
+        JOIN      Packages  p ON b.package_id = p.package_id
+        WHERE {where_sql}
+        ORDER BY b.booking_id ASC
+    """, params)
+    rows = c.fetchall()
+    conn.close()
+
+    buf = io.StringIO()
+    writer = csv.writer(buf, quoting=csv.QUOTE_MINIMAL, lineterminator="\n")
+    writer.writerow([
+        "Booking_ID",
+        "Customer_ID",
+        "Customer_Name",
+        "Customer_Email",
+        "Customer_Phone",
+        "Package_ID",
+        "Package_Name",
+        "Destination",
+        "Region",
+        "Booking_Date",
+        "Travel_Date",
+        "Number_of_Travelers",
+        "Price_Per_Person",
+        "Discount_Percentage",
+        "Total_Amount",
+        "Final_Amount_Per_Traveler",
+        "Payment_Method",
+        "Booking_Status",
+    ])
+    for r in rows:
+        writer.writerow([
+            r["booking_id"],
+            r["customer_id"],
+            r["customer_name"],
+            r["customer_email"],
+            r["customer_phone"],
+            r["package_id"],
+            r["package_name"],
+            r["destination"],
+            r["region"],
+            r["booking_date"],
+            r["travel_date"],
+            r["number_of_travelers"],
+            r["price_per_person"],
+            r["discount_percentage"],
+            r["total_amount"],
+            r["final_amount_per_traveler"],
+            r["payment_method"],
+            r["status"],
+        ])
+
+    csv_bytes = buf.getvalue().encode("utf-8-sig")
+    filename_suffix = ""
+    if start_date or end_date:
+        filename_suffix = f"_{start_date or 'all'}_to_{end_date or 'all'}"
+    filename = f"travelintel_bookings_dataset{filename_suffix}.csv"
+
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename=\"{filename}\"",
+        },
+    )
+
+
+# ============================================================
 # REVIEWS, DESTINATIONS, AND USERS ANALYTICS
 # ============================================================
 
@@ -3281,12 +3724,13 @@ async def get_reviews_dashboard(request: Request):
     conn = get_db_connection()
     c = conn.cursor()
 
-    c.execute("SELECT COUNT(*) as cnt, AVG(rating) as avg_rating FROM Reviews")
+    c.execute("SELECT COUNT(*) as cnt, AVG(rating) as avg_rating FROM Reviews WHERE source='google'")
     overview = c.fetchone()
 
     c.execute(
         """SELECT review_id, reviewer_name, review_text, rating, sentiment_score, review_date
            FROM Reviews
+           WHERE source='google'
            ORDER BY review_date DESC, review_id DESC"""
     )
     rows = c.fetchall()
@@ -3298,7 +3742,8 @@ async def get_reviews_dashboard(request: Request):
                SUM(CASE WHEN sentiment_score > 0.1 THEN 1 ELSE 0 END) as positive,
                SUM(CASE WHEN sentiment_score BETWEEN -0.1 AND 0.1 THEN 1 ELSE 0 END) as neutral,
                SUM(CASE WHEN sentiment_score < -0.1 THEN 1 ELSE 0 END) as negative
-           FROM Reviews"""
+           FROM Reviews
+           WHERE source='google'"""
     )
     sentiment = c.fetchone()
     

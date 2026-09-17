@@ -153,9 +153,10 @@
                 <input id="packageName" required class="glass-input" placeholder="Package name *">
                 <input id="destination" required class="glass-input" placeholder="Destination *">
                 <input id="price" required min="0.01" step="0.01" type="number" class="glass-input" placeholder="Price (R) *">
+                <input id="discount" min="0" max="100" step="1" type="number" value="0" class="glass-input" placeholder="Discount % (0-100)">
                 <input id="available" required min="0" step="1" type="number" class="glass-input" placeholder="Available seats *">
                 <input id="duration" min="1" step="1" type="number" value="1" class="glass-input" placeholder="Duration (days)">
-                <input id="season" class="glass-input" placeholder="Season / category (e.g. Africa, Asia)">
+                <input id="season" class="glass-input" placeholder="Season / category (e.g. Africa, Asia)" class="md:col-span-2">
                 <div class="lg:col-span-2">
                     <div class="flex gap-2 mb-2">
                         <button type="button" class="tab-btn active" data-imgtab="url" onclick="switchAddImageTab('url')"><i class="fas fa-link mr-1"></i> Paste URL</button>
@@ -238,11 +239,13 @@
                     <input id="epDest" class="glass-input w-full" placeholder="Destination"></div>
                 <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Price (R) *</label>
                     <input id="epPrice" type="number" min="0.01" step="0.01" class="glass-input w-full" placeholder="Price"></div>
+                <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Discount % (0–100)</label>
+                    <input id="epDiscount" type="number" min="0" max="100" step="1" class="glass-input w-full" placeholder="0"></div>
                 <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Duration (days)</label>
                     <input id="epDuration" type="number" min="1" step="1" class="glass-input w-full" placeholder="Days"></div>
                 <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Available Seats *</label>
                     <input id="epSeats" type="number" min="0" step="1" class="glass-input w-full" placeholder="Seats (0 = sold out)"></div>
-                <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Season / Category</label>
+                <div class="md:col-span-2"><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Season / Category</label>
                     <input id="epSeason" class="glass-input w-full" placeholder="e.g. Africa, Asia, Middle East"></div>
                 <div class="md:col-span-2">
                     <label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Image</label>
@@ -337,7 +340,23 @@
                             <div class="text-xs text-slate-500 mt-0.5"><i class="fas fa-clock text-[10px] mr-1"></i>${Number(p.duration || 1)} day${Number(p.duration || 1) === 1 ? '' : 's'} · ${escapeHtml(p.season_category || 'standard')}</div>
                             </div></div></td>
                         <td class="p-5 text-slate-300 font-semibold">${escapeHtml(p.destination)}</td>
-                        <td class="p-5 text-white font-black">${formatCurrency(p.price)}</td>
+                        <td class="p-5">
+                            ${(() => {
+                                const d = Number(p.discount_percentage || 0);
+                                if (d > 0) {
+                                    const orig = Number(p.price || 0);
+                                    const discounted = orig * (1 - d/100);
+                                    return `<div class="flex flex-col">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-white font-black">${formatCurrency(discounted)}</span>
+                                            <span class="bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-500/30">${d}% OFF</span>
+                                        </div>
+                                        <span class="text-slate-500 text-xs line-through decoration-slate-600/70">${formatCurrency(orig)}</span>
+                                    </div>`;
+                                }
+                                return `<span class="text-white font-black">${formatCurrency(p.price)}</span>`;
+                            })()}
+                        </td>
                         <td class="p-5">
                             <div class="flex items-center gap-3">
                                 <span class="status-pill ${available ? 'status-available' : 'status-unavailable'}">${available ? 'Available' : 'Sold Out'}</span>
@@ -403,10 +422,12 @@
         document.getElementById('packageForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const msg = document.getElementById('packageFormMsg');
+            const discountVal = parseInt(document.getElementById('discount').value || 0, 10);
             const payload = {
                 package_name: document.getElementById('packageName').value.trim(),
                 destination: document.getElementById('destination').value.trim(),
                 price: Number(document.getElementById('price').value),
+                discount_percentage: Math.max(0, Math.min(100, isNaN(discountVal) ? 0 : discountVal)),
                 available_spots: Number(document.getElementById('available').value),
                 duration: Number(document.getElementById('duration').value || 1),
                 season_category: document.getElementById('season').value.trim() || 'standard',
@@ -450,6 +471,7 @@
                     msg.className = 'text-sm font-bold text-green-400';
                     e.target.reset();
                     document.getElementById('duration').value = '1';
+                    document.getElementById('discount').value = '0';
                     addState = { imageSource: 'url', uploadedUrl: '' };
                     switchAddImageTab('url');
                     document.getElementById('addImageUploadStatus').textContent = '';
@@ -483,6 +505,7 @@
             document.getElementById('epName').value = pkg.package_name || '';
             document.getElementById('epDest').value = pkg.destination || '';
             document.getElementById('epPrice').value = pkg.price || 0;
+            document.getElementById('epDiscount').value = Number(pkg.discount_percentage || 0);
             document.getElementById('epDuration').value = pkg.duration || 1;
             document.getElementById('epSeats').value = Number(pkg.available_spots || 0);
             document.getElementById('epSeason').value = pkg.season_category || 'standard';
@@ -545,6 +568,8 @@
             const name = document.getElementById('epName').value.trim();
             const dest = document.getElementById('epDest').value.trim();
             const price = Number(document.getElementById('epPrice').value);
+            const discountVal = parseInt(document.getElementById('epDiscount').value || 0, 10);
+            const discount = Math.max(0, Math.min(100, isNaN(discountVal) ? 0 : discountVal));
             const seats = Number(document.getElementById('epSeats').value);
             const duration = Number(document.getElementById('epDuration').value || 1);
             const season = document.getElementById('epSeason').value.trim() || 'standard';
@@ -557,7 +582,7 @@
             }
             const urlVal = document.getElementById('epImageUrl').value.trim();
             const payload = {
-                package_name: name, destination: dest, price, available_spots: seats, duration,
+                package_name: name, destination: dest, price, discount_percentage: discount, available_spots: seats, duration,
                 season_category: season, description: desc,
                 image_url: (editState.imageSource === 'url' && urlVal) ? urlVal : '',
                 image_file_ref: (editState.imageSource === 'upload' && editState.uploadedUrl) ? editState.uploadedUrl : (urlVal ? '' : (editState.uploadedUrl || ''))
@@ -719,6 +744,11 @@
             loadPackages();
             // Image tab defaults
             refreshAddImagePreview();
+            // Auto-refresh package inventory every 15s — ensures available spots
+            // and new packages appear immediately after customer bookings.
+            setInterval(() => {
+                if (!document.hidden) loadPackages();
+            }, 15000);
         });
     </script>
 </body>

@@ -104,12 +104,13 @@
                         <h2 id="pkg-name" class="pkg-name font-black text-white mb-[clamp(0.25rem,1vw,0.5rem)]"></h2>
                         <p id="pkg-destination" class="text-blue-500 font-bold uppercase tracking-widest text-[clamp(0.65rem,1.3vw,0.875rem)] mb-[clamp(1rem,3vw,1.5rem)]"></p>
                         <p id="pkg-description" class="text-gray-400 text-[clamp(0.7rem,1.3vw,0.875rem)] leading-relaxed mb-[clamp(1rem,3vw,2rem)]"></p>
-                        <div class="flex items-center space-x-[clamp(0.75rem,2vw,1rem)] text-white font-bold text-[clamp(0.7rem,1.3vw,0.875rem)] flex-wrap gap-2">
+                        <div class="flex items-center space-x-[clamp(0.75rem,2vw,1rem)] text-white font-bold text-[clamp(0.7rem,1.3vw,0.875rem)] flex-wrap gap-2 mb-[clamp(1rem,3vw,1.5rem)]">
                             <div class="glass px-[clamp(0.75rem,2vw,1rem)] py-[clamp(0.4rem,1vw,0.5rem)] rounded-xl flex items-center">
                                 <i class="far fa-clock mr-2 text-blue-400"></i>
                                 <span id="pkg-duration"></span>
                             </div>
                         </div>
+                        <div id="pkg-price-block"></div>
                     </div>
                 </div>
             </div>
@@ -223,6 +224,7 @@
                 </div>
 
                 <div class="pt-6 border-t border-white/5">
+                    <div id="price-breakdown" class="mb-[clamp(1rem,3vw,2rem)] text-sm hidden"></div>
                     <div class="flex items-center justify-between mb-[clamp(1rem,3vw,2rem)] flex-col sm:flex-row gap-4 sm:gap-0">
                         <div class="text-center sm:text-left">
                             <p class="text-gray-500 text-[clamp(0.65rem,1.2vw,0.875rem)] font-bold uppercase tracking-wider">Total Price</p>
@@ -256,6 +258,8 @@
         }
         
         let basePrice = 0;
+        let originalPrice = 0;
+        let discountPct = 0;
         let maxTravelers = 10;
         
         function updateTotalPrice() {
@@ -263,6 +267,7 @@
             const travelers = parseInt(travelersInput.value) || 1;
             const display = document.getElementById('total-price-display');
             const limitMsg = document.getElementById('traveler-limit-msg');
+            const breakdownEl = document.getElementById('price-breakdown');
             
             // Validate against available spots
             if (maxTravelers > 0 && travelers > maxTravelers) {
@@ -274,7 +279,31 @@
             }
             
             if (basePrice > 0) {
-                display.textContent = 'R ' + (basePrice * (parseInt(travelersInput.value) || 1)).toLocaleString();
+                const finalTotal = basePrice * (parseInt(travelersInput.value) || 1);
+                display.textContent = 'R ' + finalTotal.toLocaleString();
+                if (discountPct > 0 && originalPrice > 0) {
+                    const origTotal = originalPrice * (parseInt(travelersInput.value) || 1);
+                    const savings = origTotal - finalTotal;
+                    breakdownEl.classList.remove('hidden');
+                    breakdownEl.innerHTML = `
+                        <div class="glass rounded-2xl p-4 border border-red-500/10 space-y-2">
+                            <div class="flex items-center justify-between text-gray-400">
+                                <span class="font-bold flex items-center gap-2"><i class="fas fa-tags text-red-400"></i> Package discount (${discountPct}% OFF)</span>
+                                <span class="line-through decoration-gray-500/60">R ${origTotal.toLocaleString()}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-green-400 font-bold">
+                                <span>Savings</span>
+                                <span>− R ${savings.toLocaleString()}</span>
+                            </div>
+                            <div class="pt-2 border-t border-white/5 flex items-center justify-between text-white font-black">
+                                <span>Final amount</span>
+                                <span class="text-blue-500">R ${finalTotal.toLocaleString()}</span>
+                            </div>
+                        </div>`;
+                } else {
+                    breakdownEl.classList.add('hidden');
+                    breakdownEl.innerHTML = '';
+                }
             }
         }
         
@@ -319,7 +348,7 @@
 
             // Load package info for display
             try {
-                const res = await fetch(`/api/packages/${packageId}`);
+                const res = await fetch(`/api/packages/${packageId}?v=${Date.now()}`);
                 const data = await res.json();
                 const pkg = data.data;
                 if (pkg) {
@@ -330,7 +359,31 @@
                     
                     document.getElementById('pkg-image').src = pkg.image_url || getPackageImage(pkg);
                     
-                    basePrice = pkg.price;
+                    originalPrice = Number(pkg.price || 0);
+                    discountPct = Math.max(0, Math.min(100, parseInt(pkg.discount_percentage || 0, 10)));
+                    basePrice = discountPct > 0 ? Math.round(originalPrice * (1 - discountPct / 100) * 100) / 100 : originalPrice;
+
+                    const priceBlock = document.getElementById('pkg-price-block');
+                    if (discountPct > 0 && originalPrice > 0) {
+                        priceBlock.innerHTML = `
+                            <div class="glass section-padding-sm rounded-2xl border border-red-500/10">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-gray-500 text-[11px] font-black uppercase tracking-widest">Per-person price</span>
+                                    <span class="bg-gradient-to-br from-red-500 to-rose-600 text-white px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow shadow-red-600/20 border border-red-400/30">${discountPct}% OFF</span>
+                                </div>
+                                <div class="flex items-baseline gap-3">
+                                    <div class="text-3xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${basePrice.toLocaleString()}</div>
+                                    <div class="text-gray-500 line-through decoration-gray-500/60 font-bold text-base" style="font-family: 'Inter', sans-serif;">R ${originalPrice.toLocaleString()}</div>
+                                </div>
+                                <p class="mt-2 text-green-400 text-xs font-bold flex items-center gap-1"><i class="fas fa-badge-check"></i> You save R ${(originalPrice - basePrice).toLocaleString()} per traveler</p>
+                            </div>`;
+                    } else {
+                        priceBlock.innerHTML = `
+                            <div class="glass section-padding-sm rounded-2xl">
+                                <span class="text-gray-500 text-[11px] font-black uppercase tracking-widest">Per-person price</span>
+                                <div class="text-3xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${originalPrice.toLocaleString()}</div>
+                            </div>`;
+                    }
                     updateTotalPrice();
                     
                     const statusEl = document.getElementById('pkg-status');

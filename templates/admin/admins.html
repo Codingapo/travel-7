@@ -254,7 +254,7 @@ let debounceTimers = { username: null, email: null };
 async function runRemoteCheck(field, value) {
     try {
         const query = field === 'username' ? `username=${encodeURIComponent(value)}` : `email=${encodeURIComponent(value)}`;
-        const r = await fetch(`/api/admin/admins/check?${query}`);
+        const r = await fetch(`/api/admin/admins/check?${query}&v=${Date.now()}`);
         if (r.status === 401 || r.status === 403) { window.location.href = '/auth/login'; return null; }
         const p = await r.json();
         if (!p.success) return null;
@@ -347,7 +347,7 @@ emailInput.addEventListener('input', async () => {
 async function loadAudit() {
     const body=document.getElementById('auditBody');
     try {
-        const r=await fetch('/api/admin/audit-log?limit=50'); const p=await r.json();
+        const r=await fetch('/api/admin/audit-log?limit=50&v='+Date.now()); const p=await r.json();
         if (!p.success) throw new Error(p.error||'Unable to load activity');
         body.innerHTML=(p.data||[]).map(x=>`<tr class="border-b border-white/5"><td class="py-3 pr-4 text-xs text-slate-500">${escapeHtml(x.created_at)}</td><td class="py-3 pr-4 font-bold">${escapeHtml(x.actor_name)}</td><td class="py-3 pr-4 text-teal-400">${escapeHtml(x.action)}</td><td class="py-3 text-slate-400 text-sm">${escapeHtml(x.details)}</td></tr>`).join('') || '<tr><td colspan="4" class="py-8 text-center text-slate-500">No admin activity yet.</td></tr>';
     } catch(e) { body.innerHTML='<tr><td colspan="4" class="py-8 text-center text-red-400">Unable to load activity.</td></tr>'; }
@@ -459,6 +459,16 @@ document.getElementById('createAdminForm').addEventListener('submit', async e =>
 loadAdmins();
 loadAudit();
 refreshSubmitState();
+
+// Auto-refresh administrators list and audit log every 20s — ensures
+// status changes (disable/reactivate) from other admins appear live
+// and new audit entries surface without a manual refresh.
+setInterval(() => {
+    if (!document.hidden) {
+        loadAdmins();
+        loadAudit();
+    }
+}, 20000);
 </script>
 </body>
 </html>

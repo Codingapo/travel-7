@@ -1427,3 +1427,307 @@ resend.exceptions.ResendError: Request failed: HTTPSConnectionPool(host='api.res
 2026-09-15 23:27:54,068 INFO Email sent successfully via Resend. to=ajayiabel858@gmail.com subject=✈️ Booking Confirmed — Zanzibar | TI-00077 resend_id={'id': '7ebb9507-593a-4048-a934-bded60cfcf89', 'http_headers': {'Date': 'Tue, 15 Sep 2026 21:27:53 GMT', 'Content-Type':
 2026-09-15 23:29:01,953 INFO Email sent successfully via Resend. to=ajayiabel858@gmail.com subject=✈️ Booking Confirmed — Zanzibar | TI-00077 resend_id={'id': 'c48f0bdb-586e-42e7-b340-753f445391cb', 'http_headers': {'Date': 'Tue, 15 Sep 2026 21:29:01 GMT', 'Content-Type':
 2026-09-15 23:29:59,093 INFO Email sent successfully via Resend. to=ajayiabel858@gmail.com subject=✈️ Booking Confirmed — Namibia | TI-00078 resend_id={'id': '07a62419-aa06-401a-abe7-7e7e63c8795a', 'http_headers': {'Date': 'Tue, 15 Sep 2026 21:29:58 GMT', 'Content-Type':
+2026-09-15 23:43:22,582 INFO Email sent successfully via Resend. to=ajayiabel858@gmail.com subject=Your TravelIntel AI password reset code resend_id={'id': 'ca0dec73-25a2-4acf-8c2c-eabd0117fd6d', 'http_headers': {'Date': 'Tue, 15 Sep 2026 21:43:22 GMT', 'Content-Type':
+2026-09-15 23:43:22,582 INFO Password reset OTP dispatched to ajayiabel858@gmail.com (is_admin=False)
+2026-09-16 23:03:01,151 INFO Background review sync merged 0 new review(s).
+2026-09-16 23:23:19,986 ERROR Unhandled exception on path=/api/admin/ai-analysis
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 3065, in get_ai_analysis
+    c2.execute("""SELECT r.recommendation_id, r.package_id, r.date, r.recommendation_text,
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                         r.discount_suggested, p.package_name, p.destination
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+                  ORDER BY r.date DESC, r.discount_suggested DESC
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                  LIMIT 20""")
+                  ^^^^^^^^^^^^
+sqlite3.OperationalError: no such table: Recommendations
+2026-09-16 23:24:19,975 ERROR Unhandled exception on path=/api/admin/ai-analysis
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 3065, in get_ai_analysis
+    c2.execute("""SELECT r.recommendation_id, r.package_id, r.date, r.recommendation_text,
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                         r.discount_suggested, p.package_name, p.destination
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+                  ORDER BY r.date DESC, r.discount_suggested DESC
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                  LIMIT 20""")
+                  ^^^^^^^^^^^^
+sqlite3.OperationalError: no such table: Recommendations
+2026-09-16 23:25:19,960 ERROR Unhandled exception on path=/api/admin/ai-analysis
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 3065, in get_ai_analysis
+    c2.execute("""SELECT r.recommendation_id, r.package_id, r.date, r.recommendation_text,
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                         r.discount_suggested, p.package_name, p.destination
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+                  ORDER BY r.date DESC, r.discount_suggested DESC
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                  LIMIT 20""")
+                  ^^^^^^^^^^^^
+sqlite3.OperationalError: no such table: Recommendations
+2026-09-16 23:54:12,274 INFO Background review sync merged 0 new review(s).
+2026-09-17 00:34:00,011 ERROR Unhandled exception on path=/api/admin/ai/retrain
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 2643, in retrain_ai_models
+    generate_recommendations()
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\ai_engine.py", line 475, in generate_recommendations
+    pkg_reviews = {int(r["package_id"]): {"n": int(r["n"] or 0), "avg": float(r["avg_r"] or 0)}
+                   ~~~^^^^^^^^^^^^^^^^^
+TypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+2026-09-17 04:26:26,659 INFO Background review sync merged 0 new review(s).
+2026-09-17 04:31:52,102 INFO Email sent successfully via Resend. to=ajayiabel858@gmail.com subject=✈️ Booking Confirmed — Zanzibar | TI-00074 resend_id={'id': '01a0ad34-c102-7570-9482-fca7fc5c051d', 'http_headers': {'Date': 'Thu, 17 Sep 2026 02:31:50 GMT', 'Content-Type':
+2026-09-17 04:49:19,948 ERROR Unhandled exception on path=/api/admin/dashboard-stats
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 2791, in get_dashboard_stats
+    require_admin(request)
+    ~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 470, in require_admin
+    session = get_session_from_request(request)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 431, in get_session_from_request
+    c.execute("SELECT user_id, role, last_activity FROM Sessions WHERE session_id = ?", (session_id,))
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such table: Sessions
+2026-09-17 04:49:19,969 ERROR Unhandled exception on path=/api/admin/audit-log
+Traceback (most recent call last):
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\venv\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 2894, in get_admin_audit_log
+    require_admin(request)
+    ~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 470, in require_admin
+    session = get_session_from_request(request)
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 431, in get_session_from_request
+    c.execute("SELECT user_id, role, last_activity FROM Sessions WHERE session_id = ?", (session_id,))
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such table: Sessions
+2026-09-17 04:55:20,372 INFO Email sent successfully via Resend. to=skalahante@gmail.com subject=Your TravelIntel AI administrator account resend_id={'id': '01a0ad4a-3df2-777d-89f0-f20f353ce777', 'http_headers': {'Date': 'Thu, 17 Sep 2026 02:55:19 GMT', 'Content-Type':
+2026-09-17 04:58:13,022 INFO Admin login success username=skalahante ip=127.0.0.1
+2026-09-17 04:59:00,209 INFO Admin login success username=skalahante ip=127.0.0.1
+2026-09-17 05:00:22,180 INFO Admin login success username=skalahante ip=127.0.0.1
+2026-09-17 08:35:18,067 INFO Background review sync merged 124 new review(s).
+2026-09-17 09:11:44,211 INFO Background review sync merged 0 new review(s).
+2026-09-17 09:15:40,369 INFO Background review sync merged 0 new review(s).
+2026-09-17 09:32:39,904 INFO Background review sync merged 0 new review(s).
+2026-09-17 11:26:14,516 INFO Background review sync merged 0 new review(s).
+2026-09-17 11:38:12,598 INFO Background review sync merged 0 new review(s).
+2026-09-17 12:07:17,794 INFO Background review sync merged 0 new review(s).
+2026-09-17 12:25:25,269 INFO Background review sync merged 0 new review(s).

@@ -137,7 +137,7 @@
                 if (syncText) syncText.textContent = 'LOADING CACHE...';
                 if (syncStatus) syncStatus.classList.add('border-teal-500/50');
 
-                const r = await fetch('/api/reviews');
+                const r = await fetch('/api/reviews?v=' + Date.now());
                 if (r.status === 401 || r.status === 403) { window.location.href = '/auth/login'; return; }
                 const payload = await r.json();
                 if (!payload.success) return;
@@ -197,7 +197,10 @@
             // reviews instantly and triggers a background SerpApi sync that
             // merges any new Google reviews into the cache, so the page
             // stays up to date without ever blocking on the API call.
-            setInterval(loadReviews, 5000);
+            // Skip polling when the tab is backgrounded to save CPU / SerpApi quota.
+            setInterval(() => {
+                if (!document.hidden) loadReviews();
+            }, 5000);
         });
     </script>
 </body>

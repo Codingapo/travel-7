@@ -21,14 +21,28 @@
         .nav-link:hover { background: rgba(255,255,255,0.05); color: #fff; }
         .nav-link.active { background: var(--accent); color: #0f172a; font-weight: 700; box-shadow: 0 10px 15px -3px rgba(45, 212, 191, 0.2); }
         .card { background: var(--card-bg); border-radius: 24px; padding: 24px; border: 1px solid var(--border-color); backdrop-filter: blur(20px); transition: all 0.3s ease; }
-        .card:hover { transform: translateY(-4px); border-color: rgba(45, 212, 191, 0.3); }
+        .card:hover { transform: translateY(-2px); border-color: rgba(45, 212, 191, 0.2); }
         .glass { background: var(--card-bg); border: 1px solid var(--border-color); backdrop-filter: blur(20px); border-radius: 24px; }
         .insight-item { border-left: 3px solid var(--accent); }
         .reco-item { border-left: 3px solid #60a5fa; }
+        .pulse-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .pulse-green { background: #22c55e; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); animation: pulse-green 2s infinite; }
+        .pulse-amber { background: #f59e0b; box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); animation: pulse-amber 2s infinite; }
+        .pulse-red { background: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); animation: pulse-red 2s infinite; }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.7); } 70% { box-shadow: 0 0 0 8px rgba(34,197,94,0); } 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
+        @keyframes pulse-amber { 0% { box-shadow: 0 0 0 0 rgba(245,158,11,0.7); } 70% { box-shadow: 0 0 0 8px rgba(245,158,11,0); } 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); } }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 70% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+        .empty-state { padding: 40px 20px; text-align: center; }
+        .empty-icon { font-size: 42px; opacity: 0.3; margin-bottom: 12px; }
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+            .sidebar.open { transform: translateX(0); }
+            .main { margin-left: 0; padding: 24px 16px; }
+        }
     </style>
 </head>
 <body class="selection:bg-teal-500 selection:text-white">
-    <aside class="sidebar flex flex-col">
+    <aside class="sidebar flex flex-col" id="sidebar">
         <div class="flex items-center gap-3 mb-12 px-2">
             <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20">
                 <i class="fas fa-robot text-slate-900 text-xl"></i>
@@ -40,127 +54,217 @@
             <a href="/admin/packages.html" class="nav-link"><i class="fas fa-box-open w-5"></i><span>Packages</span></a>
             <a href="/admin/ai-analysis.html" class="nav-link active"><i class="fas fa-brain w-5"></i><span>AI Analysis</span></a>
             <a href="/admin/reports.html" class="nav-link"><i class="fas fa-file-alt w-5"></i><span>Reports</span></a>
-            <a href="/admin/reviews.html" class="nav-link"><i class="fas fa-star w-5"></i><span>Reviews</span></a> <a href="/admin/admins.html" class="nav-link"><i class="fas fa-user-shield w-5"></i><span>Administrators</span></a>
+            <a href="/admin/reviews.html" class="nav-link"><i class="fas fa-star w-5"></i><span>Reviews</span></a>
+            <a href="/admin/admins.html" class="nav-link"><i class="fas fa-user-shield w-5"></i><span>Administrators</span></a>
         </nav>
         <button onclick="logout()" class="w-full text-left nav-link hover:text-red-400"><i class="fas fa-sign-out-alt w-5"></i><span>Logout</span></button>
     </aside>
 
     <main class="main">
-        <div class="flex justify-between items-center mb-10">
+        <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
             <div>
                 <h2 class="text-3xl font-black text-white mb-1">AI Business Analysis</h2>
-                <p class="text-slate-400 text-sm">A comprehensive, AI-engine-generated analysis of the entire business based on dashboard KPIs and customer reviews.</p>
+                <p class="text-slate-400 text-sm">Key insights, customer segments and pricing recommendations.</p>
             </div>
-            <div class="flex items-center gap-4">
-                <div id="generatedAt" class="bg-slate-900/50 border border-slate-800 text-slate-400 px-4 py-2 rounded-xl text-xs font-bold">Last generated: --</div>
+            <div class="flex items-center gap-3 flex-wrap">
+                <div id="generatedAt" class="bg-slate-900/50 border border-slate-800 text-slate-400 px-4 py-2 rounded-xl text-xs font-bold">Last updated: --</div>
                 <button onclick="loadAnalysis()" class="glass px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-white/5">
                     <i class="fas fa-sync-alt text-teal-400"></i> Refresh
+                </button>
+                <button onclick="retrainModels()" class="glass px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-white/5">
+                    <i class="fas fa-rotate text-blue-400"></i> Retrain AI
                 </button>
             </div>
         </div>
 
         <div class="card mb-8 flex flex-col md:flex-row md:items-end gap-4">
-            <div>
+            <div class="flex-1 min-w-[140px]">
                 <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">From</label>
-                <input id="aiStartDate" type="date" class="bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 outline-none">
+                <input id="aiStartDate" type="date" class="bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 outline-none w-full">
             </div>
-            <div>
+            <div class="flex-1 min-w-[140px]">
                 <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">To</label>
-                <input id="aiEndDate" type="date" class="bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 outline-none">
+                <input id="aiEndDate" type="date" class="bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 outline-none w-full">
             </div>
-            <button onclick="loadAnalysis()" class="bg-teal-500 hover:bg-teal-400 text-slate-950 px-6 py-3 rounded-xl font-black">Apply Date Filter</button>
-            <span id="aiDateRange" class="text-xs text-slate-500 pb-2"></span>
+            <button onclick="loadAnalysis()" class="bg-teal-500 hover:bg-teal-400 text-slate-950 px-6 py-3 rounded-xl font-black whitespace-nowrap">Apply Filter</button>
+            <span id="aiDateRange" class="text-xs text-slate-500 pb-2 md:ml-2"></span>
         </div>
 
-        <!-- Overview KPI Grid -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10" id="overviewGrid">
-            <div class="card text-center"><p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Bookings</p><h3 class="text-2xl font-black text-white" data-kpi="total_bookings">-</h3></div>
-            <div class="card text-center"><p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Revenue</p><h3 class="text-2xl font-black text-teal-400" data-kpi="total_revenue">-</h3></div>
-            <div class="card text-center"><p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Customers</p><h3 class="text-2xl font-black text-white" data-kpi="total_customers">-</h3></div>
-            <div class="card text-center"><p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Avg Order</p><h3 class="text-2xl font-black text-white" data-kpi="avg_order_value">-</h3></div>
-            <div class="card text-center"><p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Reviews</p><h3 class="text-2xl font-black text-white" data-kpi="total_reviews">-</h3></div>
-            <div class="card text-center"><p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Rating</p><h3 class="text-2xl font-black text-amber-400" data-kpi="average_rating">-</h3></div>
+        <!-- 4 Key KPIs -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" id="kpiGrid">
+            <div class="card text-center">
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Bookings</p>
+                <h3 class="text-3xl font-black text-white" data-kpi="total_bookings">-</h3>
+                <p class="text-slate-500 text-[11px] mt-1" id="kpiBookingsSub">in selected period</p>
+            </div>
+            <div class="card text-center">
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Revenue</p>
+                <h3 class="text-3xl font-black text-teal-400" data-kpi="total_revenue">-</h3>
+                <p class="text-slate-500 text-[11px] mt-1" id="kpiRevenueSub">in selected period</p>
+            </div>
+            <div class="card text-center">
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Customers</p>
+                <h3 class="text-3xl font-black text-white" data-kpi="total_customers">-</h3>
+                <p class="text-slate-500 text-[11px] mt-1" id="kpiCustomersSub">new in period</p>
+            </div>
+            <div class="card text-center">
+                <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Avg Rating</p>
+                <h3 class="text-3xl font-black text-amber-400" data-kpi="average_rating">-</h3>
+                <p class="text-slate-500 text-[11px] mt-1" id="kpiRatingSub">from reviews</p>
+            </div>
         </div>
 
-        <!-- Text-based Monthly Revenue Trend -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+        <!-- Business Health Summary (3 status cards in 1 row) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div class="card">
-                <h4 class="text-lg font-black text-white mb-6">Monthly Revenue Trend</h4>
-                <div id="monthlyTrendList" class="space-y-3">
-                    <p class="text-slate-500 text-sm p-6 text-center">Loading revenue trend...</p>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400 border border-emerald-500/20"><i class="fas fa-chart-line"></i></div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Forecast Reliability</p>
+                        <h5 class="font-black text-white text-sm">Demand Prediction</h5>
+                    </div>
                 </div>
-            </div>
-            <div class="card">
-                <h4 class="text-lg font-black text-white mb-6">Customer Sentiment</h4>
-                <div id="sentimentList" class="space-y-3">
-                    <p class="text-slate-500 text-sm p-6 text-center">Loading sentiment...</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="card mb-10">
-            <div class="flex items-center justify-between gap-4 mb-4">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/20"><i class="fas fa-microchip"></i></div>
-                    <div><h4 class="text-lg font-black text-white">Model Training & Transparency</h4><p class="text-sm text-slate-400">See exactly what data trains the demand model and when it was last retrained.</p></div>
+                    <span id="forecastDot" class="pulse-dot pulse-amber"></span>
+                    <p id="forecastReliabilityText" class="font-bold text-amber-400 text-lg">Loading...</p>
                 </div>
-                <button onclick="retrainModels()" class="glass px-4 py-2 rounded-xl text-xs font-black hover:bg-white/5"><i class="fas fa-rotate mr-2 text-blue-400"></i>Retrain Models</button>
+                <p id="forecastDetailText" class="text-slate-500 text-xs mt-2">Checks how far booking history goes back.</p>
             </div>
-            <div id="trainingInfo" class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div class="glass p-4"><p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Status</p><p id="trainStatus" class="text-sm font-black text-white mt-1">Loading...</p></div>
-                <div class="glass p-4"><p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Algorithm</p><p id="trainModel" class="text-sm font-black text-white mt-1">--</p></div>
-                <div class="glass p-4"><p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Samples</p><p id="trainSamples" class="text-sm font-black text-white mt-1">--</p></div>
-                <div class="glass p-4"><p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">MAE / R²</p><p id="trainMetrics" class="text-sm font-black text-white mt-1">--</p></div>
+            <div class="card">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-sky-500/10 rounded-xl flex items-center justify-center text-sky-400 border border-sky-500/20"><i class="fas fa-wave-square"></i></div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Booking Trend</p>
+                        <h5 class="font-black text-white text-sm">Today vs Usual</h5>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="anomalyDot" class="pulse-dot pulse-amber"></span>
+                    <p id="anomalyDescriptionText" class="font-bold text-amber-400 text-lg">Loading...</p>
+                </div>
+                <p id="anomalyDetailText" class="text-slate-500 text-xs mt-2">Z-score compares today to the last 180 days.</p>
             </div>
-            <div id="trainingExplanation" class="mt-4 text-sm text-slate-400 leading-relaxed"></div>
+            <div class="card">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-rose-500/10 rounded-xl flex items-center justify-center text-rose-400 border border-rose-500/20"><i class="fas fa-comments"></i></div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Customer Sentiment</p>
+                        <h5 class="font-black text-white text-sm">Review Mood</h5>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="sentimentDot" class="pulse-dot pulse-amber"></span>
+                    <p id="sentimentSummaryText" class="font-bold text-amber-400 text-lg">Loading...</p>
+                </div>
+                <p id="sentimentDetailText" class="text-slate-500 text-xs mt-2">Based on reviews in the selected date range.</p>
+            </div>
         </div>
 
-        <div class="card mb-10">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-400 border border-purple-500/20"><i class="fas fa-gears"></i></div>
-                <div><h4 class="text-lg font-black text-white">How the AI Analysis Works</h4><p id="aiHowSummary" class="text-sm text-slate-400"></p></div>
+        <!-- Customer Segments (compact summary + counts, list under toggle) -->
+        <div class="card mb-8">
+            <div class="flex items-center justify-between gap-4 mb-6 flex-wrap">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-violet-500/10 rounded-xl flex items-center justify-center text-violet-400 border border-violet-500/20"><i class="fas fa-users"></i></div>
+                    <div>
+                        <h4 class="text-lg font-black text-white">Customer Segments</h4>
+                        <p class="text-sm text-slate-400">Grouped by spending and booking frequency.</p>
+                    </div>
+                </div>
+                <span id="segmentsTotalBadge" class="text-xs font-bold bg-slate-800/60 text-slate-400 px-3 py-1 rounded-full">0 customers</span>
             </div>
-            <ol id="aiHowSteps" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-300"></ol>
+            <div id="segmentSummary" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"></div>
+            <div class="flex gap-2 mb-4">
+                <button onclick="toggleSegments()" class="text-xs font-bold text-slate-400 hover:text-teal-400 px-3 py-1.5 rounded-lg hover:bg-white/5 transition flex items-center gap-2">
+                    <i id="segmentsToggleIcon" class="fas fa-chevron-down transition-transform"></i>
+                    <span id="segmentsToggleLabel">Show customer lists</span>
+                </button>
+            </div>
+            <div id="segmentsContainer" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="glass p-5 rounded-2xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <h5 class="font-black text-emerald-400 flex items-center gap-2"><i class="fas fa-leaf"></i> Budget Travelers</h5>
+                        <span id="budgetCount" class="text-xs font-bold bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full">0</span>
+                    </div>
+                    <div id="budgetList" class="space-y-2 max-h-[360px] overflow-y-auto pr-1"></div>
+                </div>
+                <div class="glass p-5 rounded-2xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <h5 class="font-black text-sky-400 flex items-center gap-2"><i class="fas fa-plane"></i> Regular Travelers</h5>
+                        <span id="regularCount" class="text-xs font-bold bg-sky-500/10 text-sky-400 px-3 py-1 rounded-full">0</span>
+                    </div>
+                    <div id="regularList" class="space-y-2 max-h-[360px] overflow-y-auto pr-1"></div>
+                </div>
+                <div class="glass p-5 rounded-2xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <h5 class="font-black text-amber-400 flex items-center gap-2"><i class="fas fa-crown"></i> Luxury Seekers</h5>
+                        <span id="luxuryCount" class="text-xs font-bold bg-amber-500/10 text-amber-400 px-3 py-1 rounded-full">0</span>
+                    </div>
+                    <div id="luxuryList" class="space-y-2 max-h-[360px] overflow-y-auto pr-1"></div>
+                </div>
+            </div>
         </div>
 
-        <!-- AI Insights -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+        <!-- Two column: Insights + Recommendations -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <div class="card">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-10 h-10 bg-teal-500/10 rounded-xl flex items-center justify-center text-teal-400 border border-teal-500/20"><i class="fas fa-lightbulb"></i></div>
-                    <h4 class="text-lg font-black text-white">AI Insights</h4>
+                    <h4 class="text-lg font-black text-white">Key Insights</h4>
                 </div>
-                <div id="insightsList" class="space-y-4">
-                    <p class="text-slate-500 text-sm p-6 text-center">Loading insights...</p>
+                <div id="insightsList" class="space-y-3">
+                    <div class="empty-state text-slate-500 text-sm">
+                        <div class="empty-icon"><i class="fas fa-chart-bar"></i></div>
+                        <p>Loading insights...</p>
+                    </div>
                 </div>
             </div>
             <div class="card">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/20"><i class="fas fa-robot"></i></div>
-                    <h4 class="text-lg font-black text-white">AI Recommendations</h4>
+                    <h4 class="text-lg font-black text-white">Actionable Recommendations</h4>
                 </div>
-                <div id="recommendationsList" class="space-y-4">
-                    <p class="text-slate-500 text-sm p-6 text-center">Loading recommendations...</p>
+                <div id="recommendationsList" class="space-y-3">
+                    <div class="empty-state text-slate-500 text-sm">
+                        <div class="empty-icon"><i class="fas fa-list-check"></i></div>
+                        <p>Loading recommendations...</p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Top destinations and packages -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-            <div class="card">
-                <h4 class="text-lg font-black text-white mb-6">Top Destinations</h4>
-                <div id="destinationsList" class="space-y-4"></div>
+        <!-- Package Pricing Suggestions -->
+        <div class="card mb-8">
+            <div class="flex items-center justify-between gap-4 mb-6 flex-wrap">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400 border border-indigo-500/20"><i class="fas fa-bullseye"></i></div>
+                    <div>
+                        <h4 class="text-lg font-black text-white">Package Pricing Suggestions</h4>
+                        <p class="text-sm text-slate-400">Weather, news and demand combined.</p>
+                    </div>
+                </div>
+                <button onclick="refreshRecommendations()" class="glass px-4 py-2 rounded-xl text-xs font-black hover:bg-white/5 whitespace-nowrap"><i class="fas fa-sparkles mr-2 text-indigo-400"></i>Regenerate</button>
             </div>
-            <div class="card">
-                <h4 class="text-lg font-black text-white mb-6">Top Packages</h4>
-                <div id="packagesList" class="space-y-4"></div>
+            <div id="packageRecosList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="empty-state text-slate-500 text-sm col-span-2">
+                    <div class="empty-icon"><i class="fas fa-tags"></i></div>
+                    <p>Loading pricing suggestions... Click "Regenerate" if nothing appears.</p>
+                </div>
             </div>
         </div>
 
-        <!-- Recent Alerts -->
-        <div class="card mb-10">
-            <h4 class="text-lg font-black text-white mb-6">Recent AI Alerts</h4>
-            <div id="alertsList" class="space-y-3"></div>
+        <!-- Recent Alerts (compact) -->
+        <div class="card">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center text-yellow-400 border border-yellow-500/20"><i class="fas fa-bell"></i></div>
+                <h4 class="text-lg font-black text-white">Recent AI Alerts</h4>
+                <span id="alertsCountBadge" class="text-xs font-bold bg-slate-800/60 text-slate-400 px-3 py-1 rounded-full ml-auto">0 active</span>
+            </div>
+            <div id="alertsList" class="space-y-3">
+                <div class="empty-state text-slate-500 text-sm">
+                    <div class="empty-icon"><i class="fas fa-shield-heart"></i></div>
+                    <p>No alerts detected in this period. Everything is running normally.</p>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -170,25 +274,171 @@
             window.location.href = '/auth/login';
         }
 
+        function reliabilityColor(level) {
+            if (level === 'High') return 'text-emerald-400';
+            if (level === 'Fair') return 'text-amber-400';
+            return 'text-red-400';
+        }
+        function reliabilityDotClass(level) {
+            if (level === 'High') return 'pulse-green';
+            if (level === 'Fair') return 'pulse-amber';
+            return 'pulse-red';
+        }
+        function anomalyDotClass(z) {
+            const abs = Math.abs(Number(z || 0));
+            if (abs > 3) return 'pulse-red';
+            if (abs > 1.5) return 'pulse-amber';
+            return 'pulse-green';
+        }
+        function anomalyTextClass(z) {
+            const abs = Math.abs(Number(z || 0));
+            if (abs > 3) return 'text-red-400';
+            if (abs > 1.5) return 'text-amber-400';
+            return 'text-emerald-400';
+        }
+
         async function loadTrainingInfo() {
             try {
                 const r = await fetch('/api/admin/ai/training?v=' + Date.now());
                 const p = await r.json();
                 const d = p.data || {};
-                document.getElementById('trainStatus').textContent = d.trained ? `Trained ${d.trained_at || ''}` : 'Not trained';
-                document.getElementById('trainModel').textContent = d.model || 'LinearRegression';
-                document.getElementById('trainSamples').textContent = d.training_samples ?? '--';
-                document.getElementById('trainMetrics').textContent = d.trained ? `${d.mae_training ?? '--'} / ${d.r2_training ?? '--'}` : '--';
-                document.getElementById('trainingExplanation').textContent = d.trained
-                    ? `Training uses the previous ${d.training_window_days} days of daily booking counts. The feature is day_index and the target is daily_demand. The model is retrained automatically each day when at least ${d.minimum_samples} days of history exist, then forecasts the next ${d.forecast_horizon_days} days. MAE and R² are shown as training-set diagnostics.`
-                    : (d.message || 'The model needs at least five days of booking history before it can be trained.');
+                const el = document.getElementById('forecastReliabilityText');
+                const dot = document.getElementById('forecastDot');
+                const det = document.getElementById('forecastDetailText');
+                if (d.trained) {
+                    const r2 = parseFloat(d.r2_training || 0);
+                    let level = 'Low';
+                    if (r2 > 0.7) level = 'High';
+                    else if (r2 >= 0.4) level = 'Fair';
+                    el.textContent = level + ' Confidence';
+                    el.className = 'font-bold text-lg ' + reliabilityColor(level);
+                    dot.className = 'pulse-dot ' + reliabilityDotClass(level);
+                    const samples = d.training_samples ?? 0;
+                    det.textContent = `Trained on ${samples} days of bookings. R² = ${r2.toFixed(2)}`;
+                } else {
+                    el.textContent = 'Needs More Data';
+                    el.className = 'font-bold text-lg text-slate-500';
+                    dot.className = 'pulse-dot pulse-amber';
+                    det.textContent = d.message || 'Collect 5+ days of bookings first.';
+                }
             } catch (e) {
-                document.getElementById('trainingExplanation').textContent = 'Training information is temporarily unavailable.';
+                document.getElementById('forecastDetailText').textContent = 'Training info unavailable.';
             }
         }
 
+        function renderCustomerSegments(segments) {
+            segments = segments || {};
+            const budget = segments['Budget Travelers'] || [];
+            const regular = segments['Regular Travelers'] || [];
+            const luxury = segments['Luxury Seekers'] || [];
+            const unseg = segments['Unsegmented'] || [];
+            const total = budget.length + regular.length + luxury.length + unseg.length;
+
+            document.getElementById('segmentsTotalBadge').textContent = `${total} customer${total === 1 ? '' : 's'}`;
+            document.getElementById('budgetCount').textContent = budget.length;
+            document.getElementById('regularCount').textContent = regular.length;
+            document.getElementById('luxuryCount').textContent = luxury.length;
+
+            const customerCard = (c, color) => `
+                <div class="bg-white/5 rounded-xl p-3 border border-white/5 hover:border-${color}-500/30 transition">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="font-bold text-white text-sm truncate">${c.name || 'Unknown'}</p>
+                            <p class="text-slate-400 text-xs truncate">${c.email || ''}</p>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <p class="font-black text-xs text-${color}-400">${c.booking_count || 0} bookings</p>
+                            <p class="text-slate-400 text-[10px]">R ${Number(c.total_spend||0).toLocaleString()}</p>
+                        </div>
+                    </div>
+                </div>`;
+
+            const emptyMsg = '<p class="text-slate-500 text-xs text-center py-6">No customers in this segment yet.</p>';
+            document.getElementById('budgetList').innerHTML = budget.length ? budget.map(c => customerCard(c, 'emerald')).join('') : emptyMsg;
+            document.getElementById('regularList').innerHTML = regular.length ? regular.map(c => customerCard(c, 'sky')).join('') : emptyMsg;
+            document.getElementById('luxuryList').innerHTML = luxury.length ? luxury.map(c => customerCard(c, 'amber')).join('') : emptyMsg;
+
+            const segColors = { 'Budget Travelers': 'emerald', 'Regular Travelers': 'sky', 'Luxury Seekers': 'amber' };
+            const summary = ['Budget Travelers', 'Regular Travelers', 'Luxury Seekers'].map(label => {
+                const list = segments[label] || [];
+                const spend = list.reduce((s, c) => s + Number(c.total_spend || 0), 0);
+                const bookings = list.reduce((s, c) => s + Number(c.booking_count || 0), 0);
+                const color = segColors[label];
+                const icon = label === 'Budget Travelers' ? 'fa-leaf' : label === 'Regular Travelers' ? 'fa-plane' : 'fa-crown';
+                return `
+                <div class="glass p-4 rounded-xl">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="font-black text-${color}-400 text-sm flex items-center gap-2"><i class="fas ${icon}"></i> ${label}</p>
+                        <span class="text-[10px] font-bold text-slate-400">${list.length} / ${total || 0}</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-2 mb-3">
+                        <div class="bg-${color}-500 h-2 rounded-full transition-all duration-500" style="width:${total ? Math.round(list.length/total*100) : 0}%"></div>
+                    </div>
+                    <div class="flex justify-between text-[11px]">
+                        <span class="text-slate-400">Bookings</span><span class="text-white font-bold">${bookings}</span>
+                    </div>
+                    <div class="flex justify-between text-[11px] mt-1">
+                        <span class="text-slate-400">Total Spend</span><span class="text-${color}-400 font-bold">R ${spend.toLocaleString()}</span>
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('segmentSummary').innerHTML = summary || `
+                <div class="md:col-span-3 empty-state text-slate-500 text-sm">
+                    <div class="empty-icon"><i class="fas fa-users"></i></div>
+                    <p>Not enough customers to segment yet. Need 5+ customers with bookings.</p>
+                </div>`;
+        }
+
+        function renderPackageRecommendations(recs) {
+            recs = recs || [];
+            const container = document.getElementById('packageRecosList');
+            if (!recs.length) {
+                container.innerHTML = `
+                    <div class="empty-state text-slate-500 text-sm col-span-2">
+                        <div class="empty-icon"><i class="fas fa-tags"></i></div>
+                        <p class="mb-2">No pricing suggestions yet.</p>
+                        <p class="text-xs">Click the "Regenerate" button above to run weather, news and demand analysis for each destination.</p>
+                    </div>`;
+                return;
+            }
+            container.innerHTML = recs.map(r => {
+                const disc = Number(r.discount_suggested || 0);
+                const discColor = disc >= 15 ? 'text-red-400' : disc >= 5 ? 'text-amber-400' : disc > 0 ? 'text-sky-400' : 'text-emerald-400';
+                const discBg = disc >= 15 ? 'bg-red-500/10 border-red-500/20' : disc >= 5 ? 'bg-amber-500/10 border-amber-500/20' : disc > 0 ? 'bg-sky-500/10 border-sky-500/20' : 'bg-emerald-500/10 border-emerald-500/20';
+                const discIcon = disc > 0 ? 'fa-tags' : 'fa-chart-line';
+                const discLabel = disc > 0 ? `${disc.toFixed(0)}% OFF suggested` : 'Hold — premium chance';
+                return `
+                <div class="glass p-4 rounded-xl border border-white/5 hover:border-indigo-500/30 transition">
+                    <div class="flex items-start justify-between gap-3 mb-2">
+                        <div class="min-w-0 flex-1">
+                            <p class="font-black text-white text-sm truncate">${r.package_name || ('Package #' + (r.package_id || '?'))}</p>
+                            <p class="text-slate-400 text-xs truncate"><i class="fas fa-map-marker-alt mr-1"></i>${r.destination || 'Unknown destination'}</p>
+                        </div>
+                        <div class="flex-shrink-0 text-right">
+                            <span class="${discBg} border ${discColor} px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1">
+                                <i class="fas ${discIcon}"></i> ${discLabel}
+                            </span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-slate-300 leading-relaxed">${r.recommendation_text || ''}</p>
+                    <p class="text-[10px] text-slate-500 mt-2">Generated ${r.date || ''}</p>
+                </div>`;
+            }).join('');
+        }
+
+        async function refreshRecommendations() {
+            if (!confirm('Run weather, news and demand analysis to regenerate pricing suggestions?')) return;
+            try {
+                const r = await fetch('/api/admin/ai/recommendations/generate', { method: 'POST' });
+                const p = await r.json();
+                if (!p.success) throw new Error(p.error || 'Generation failed');
+                await loadAnalysis();
+                alert('Pricing suggestions regenerated.');
+            } catch (e) { alert(e.message || 'Unable to regenerate.'); }
+        }
+
         async function retrainModels() {
-            if (!confirm('Retrain the AI models using the latest booking and customer data?')) return;
+            if (!confirm('Retrain all AI models using the latest booking and customer data?')) return;
             try {
                 const r = await fetch('/api/admin/ai/retrain', { method: 'POST' });
                 const p = await r.json();
@@ -196,13 +446,29 @@
                 await loadTrainingInfo();
                 await loadAnalysis();
                 alert('AI models retrained successfully.');
-            } catch (e) { alert(e.message || 'Unable to retrain the AI models.'); }
+            } catch (e) { alert(e.message || 'Unable to retrain.'); }
+        }
+
+        function toggleSegments() {
+            const cont = document.getElementById('segmentsContainer');
+            const icon = document.getElementById('segmentsToggleIcon');
+            const label = document.getElementById('segmentsToggleLabel');
+            const open = cont.classList.contains('hidden');
+            if (open) {
+                cont.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+                label.textContent = 'Hide customer lists';
+            } else {
+                cont.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+                label.textContent = 'Show customer lists';
+            }
         }
 
         async function loadAnalysis() {
             const genEl = document.getElementById('generatedAt');
             try {
-                genEl.textContent = 'Last generated: SYNCING...';
+                genEl.textContent = 'Last updated: SYNCING...';
                 const startDate = document.getElementById('aiStartDate').value;
                 const endDate = document.getElementById('aiEndDate').value;
                 const params = new URLSearchParams();
@@ -211,117 +477,120 @@
                 const res = await fetch('/api/admin/ai-analysis?' + params.toString() + '&v=' + Date.now());
                 if (res.status === 401 || res.status === 403) { window.location.href = '/auth/login'; return; }
                 const payload = await res.json();
-                if (!payload.success) { genEl.textContent = 'Last generated: ERROR'; return; }
+                if (!payload.success) { genEl.textContent = 'Last updated: ERROR'; return; }
 
                 const d = payload.data;
-                genEl.textContent = `Last generated: ${d.generated_at || '--'}`;
+                genEl.textContent = `Last updated: ${d.generated_at || '--'}`;
                 if (d.date_range) {
-                    document.getElementById('aiDateRange').textContent = `Analysing ${d.date_range.start} → ${d.date_range.end}`;
+                    document.getElementById('aiDateRange').textContent = `Range: ${d.date_range.start} → ${d.date_range.end}`;
                 }
 
-                // Overview KPIs
                 const ov = d.overview || {};
-                document.querySelector('[data-kpi="total_bookings"]').textContent = (ov.total_bookings || 0).toLocaleString();
-                document.querySelector('[data-kpi="total_revenue"]').textContent = 'R ' + (ov.total_revenue || 0).toLocaleString();
-                document.querySelector('[data-kpi="total_customers"]').textContent = (ov.total_customers || 0).toLocaleString();
-                document.querySelector('[data-kpi="avg_order_value"]').textContent = 'R ' + (ov.avg_order_value || 0).toLocaleString();
-                document.querySelector('[data-kpi="total_reviews"]').textContent = (ov.total_reviews || 0).toLocaleString();
-                document.querySelector('[data-kpi="average_rating"]').textContent = (ov.average_rating || 0).toFixed(1);
+                const bookings = Number(ov.total_bookings || 0);
+                const revenue = Number(ov.total_revenue || 0);
+                const customers = Number(ov.total_customers || 0);
+                const reviews = Number(ov.total_reviews || 0);
+                const rating = Number(ov.average_rating || 0);
 
-                // Monthly revenue trend (text-based)
-                const monthly = d.monthly_trends || [];
-                document.getElementById('monthlyTrendList').innerHTML = monthly.length
-                    ? monthly.map(m => `
-                        <div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                            <span class="font-bold text-white text-sm">${m.month || ''}</span>
-                            <span class="text-teal-400 font-black text-sm">R ${Number(m.revenue || 0).toLocaleString()}</span>
-                        </div>`).join('')
-                    : '<p class="text-slate-500 text-sm py-6 text-center">No monthly revenue data.</p>';
+                document.querySelector('[data-kpi="total_bookings"]').textContent = bookings.toLocaleString();
+                document.querySelector('[data-kpi="total_revenue"]').textContent = 'R ' + revenue.toLocaleString();
+                document.querySelector('[data-kpi="total_customers"]').textContent = customers.toLocaleString();
+                document.querySelector('[data-kpi="average_rating"]').textContent = rating ? rating.toFixed(1) : '—';
 
-                // Customer sentiment (text-based)
+                document.getElementById('kpiBookingsSub').textContent = bookings ? 'confirmed bookings' : 'no bookings yet';
+                document.getElementById('kpiRevenueSub').textContent = revenue ? 'total generated' : 'no revenue yet';
+                document.getElementById('kpiCustomersSub').textContent = customers ? 'new sign-ups' : 'no new customers';
+                document.getElementById('kpiRatingSub').textContent = reviews ? `from ${reviews} review${reviews === 1 ? '' : 's'}` : 'no reviews in range';
+
+                // Forecast reliability (from R² metadata if loaded, fallback to data)
+                if (d.forecast_reliability) {
+                    const fr = d.forecast_reliability;
+                    const el = document.getElementById('forecastReliabilityText');
+                    const dot = document.getElementById('forecastDot');
+                    const det = document.getElementById('forecastDetailText');
+                    el.textContent = fr.level + ' Confidence';
+                    el.className = 'font-bold text-lg ' + reliabilityColor(fr.level);
+                    dot.className = 'pulse-dot ' + reliabilityDotClass(fr.level);
+                    det.textContent = `R² = ${Number(fr.r2 || 0).toFixed(2)} — ${fr.level === 'High' ? 'Trend is captured well.' : fr.level === 'Fair' ? 'Trend is somewhat captured.' : 'History is too noisy or short.'}`;
+                }
+
+                // Anomaly / Booking trend
+                const anomalyEl = document.getElementById('anomalyDescriptionText');
+                const anomalyDot = document.getElementById('anomalyDot');
+                const anomalyDet = document.getElementById('anomalyDetailText');
+                if (d.anomaly_description) {
+                    anomalyEl.textContent = d.anomaly_description;
+                    const z = Number(d.anomaly_z_raw || 0);
+                    anomalyEl.className = 'font-bold text-lg ' + anomalyTextClass(z);
+                    anomalyDot.className = 'pulse-dot ' + anomalyDotClass(z);
+                    anomalyDet.textContent = `Z-score = ${z.toFixed(2)} relative to 180-day average.`;
+                }
+
+                // Sentiment summary
                 const sent = d.sentiment || {};
                 const totalSent = (sent.positive || 0) + (sent.neutral || 0) + (sent.negative || 0);
-                document.getElementById('sentimentList').innerHTML = totalSent > 0
-                    ? `
-                        <div class="flex items-center justify-between py-2 border-b border-white/5">
-                            <span class="font-bold text-white text-sm"><i class="fas fa-smile text-teal-400 mr-2"></i>Positive</span>
-                            <span class="text-teal-400 font-black text-sm">${sent.positive || 0}</span>
-                        </div>
-                        <div class="flex items-center justify-between py-2 border-b border-white/5">
-                            <span class="font-bold text-white text-sm"><i class="fas fa-meh text-amber-400 mr-2"></i>Neutral</span>
-                            <span class="text-amber-400 font-black text-sm">${sent.neutral || 0}</span>
-                        </div>
-                        <div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                            <span class="font-bold text-white text-sm"><i class="fas fa-frown text-red-400 mr-2"></i>Negative</span>
-                            <span class="text-red-400 font-black text-sm">${sent.negative || 0}</span>
-                        </div>`
-                    : '<p class="text-slate-500 text-sm py-6 text-center">No sentiment data available.</p>';
+                const sSumEl = document.getElementById('sentimentSummaryText');
+                const sDot = document.getElementById('sentimentDot');
+                const sDet = document.getElementById('sentimentDetailText');
+                if (totalSent > 0) {
+                    const pos = Number(sent.positive || 0);
+                    const neg = Number(sent.negative || 0);
+                    const pct = totalSent ? (pos / totalSent * 100) : 0;
+                    let label, cls, dotCls;
+                    if (pct >= 60) { label = 'Mostly Positive'; cls = 'text-emerald-400'; dotCls = 'pulse-green'; }
+                    else if (neg > pos) { label = 'Some Negative'; cls = 'text-red-400'; dotCls = 'pulse-red'; }
+                    else { label = 'Mixed Feedback'; cls = 'text-amber-400'; dotCls = 'pulse-amber'; }
+                    sSumEl.textContent = label;
+                    sSumEl.className = 'font-bold text-lg ' + cls;
+                    sDot.className = 'pulse-dot ' + dotCls;
+                    sDet.textContent = `${pos} good, ${sent.neutral || 0} neutral, ${neg} poor review${neg === 1 ? '' : 's'}.`;
+                } else {
+                    sSumEl.textContent = 'No Review Data';
+                    sSumEl.className = 'font-bold text-lg text-slate-500';
+                    sDot.className = 'pulse-dot pulse-amber';
+                    sDet.textContent = 'Sync reviews on the Reviews page, or add some manually.';
+                }
 
-                const how = d.how_it_works || {};
-                document.getElementById('aiHowSummary').textContent = how.summary || 'Analysis is calculated from the selected date range and the latest AI models and alerts.';
-                document.getElementById('aiHowSteps').innerHTML = (how.steps || []).map((step, i) => `<li class="glass p-3 rounded-xl"><span class="text-teal-400 font-black mr-2">${i + 1}.</span>${step}</li>`).join('');
+                renderCustomerSegments(d.customer_segments || {});
+                renderPackageRecommendations(d.package_recommendations || []);
 
-                // Insights
                 const insights = d.insights || [];
                 document.getElementById('insightsList').innerHTML = insights.length
                     ? insights.map(i => `<div class="insight-item glass p-4 rounded-xl text-sm text-slate-300 leading-relaxed">${i}</div>`).join('')
-                    : '<p class="text-slate-500 text-sm p-6 text-center">No insights available yet.</p>';
+                    : `<div class="empty-state text-slate-500 text-sm">
+                        <div class="empty-icon"><i class="fas fa-chart-bar"></i></div>
+                        <p>No insights yet. Add bookings or reviews to start analysing.</p>
+                       </div>`;
 
-                // Recommendations
                 const recos = d.recommendations || [];
                 document.getElementById('recommendationsList').innerHTML = recos.length
                     ? recos.map(r => `<div class="reco-item glass p-4 rounded-xl text-sm text-slate-300 leading-relaxed"><i class="fas fa-arrow-right text-blue-400 mr-2"></i>${r}</div>`).join('')
-                    : '<p class="text-slate-500 text-sm p-6 text-center">No recommendations available yet.</p>';
+                    : `<div class="empty-state text-slate-500 text-sm">
+                        <div class="empty-icon"><i class="fas fa-list-check"></i></div>
+                        <p>No recommendations yet. Collect data for actionable tips.</p>
+                       </div>`;
 
-                // Destinations
-                const dests = d.destinations || [];
-                document.getElementById('destinationsList').innerHTML = dests.length
-                    ? dests.map((x, i) => `
-                        <div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                            <div class="flex items-center gap-3">
-                                <span class="text-lg font-black text-slate-700 w-6">${i+1}</span>
-                                <span class="font-bold text-white">${x.destination}</span>
-                            </div>
-                            <div class="text-right">
-                                <span class="text-teal-400 font-black text-sm">${x.bookings} bookings</span>
-                                <span class="text-slate-500 text-xs block">R ${Number(x.revenue||0).toLocaleString()}</span>
-                            </div>
-                        </div>`).join('')
-                    : '<p class="text-slate-500 text-sm py-6 text-center">No destination data.</p>';
-
-                // Packages
-                const pkgs = d.packages || [];
-                document.getElementById('packagesList').innerHTML = pkgs.length
-                    ? pkgs.map((x, i) => `
-                        <div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                            <div class="flex items-center gap-3">
-                                <span class="text-lg font-black text-slate-700 w-6">${i+1}</span>
-                                <span class="font-bold text-white">${x.package_name}</span>
-                            </div>
-                            <div class="text-right">
-                                <span class="text-blue-400 font-black text-sm">${x.bookings} bookings</span>
-                                <span class="text-slate-500 text-xs block">R ${Number(x.revenue||0).toLocaleString()}</span>
-                            </div>
-                        </div>`).join('')
-                    : '<p class="text-slate-500 text-sm py-6 text-center">No package data.</p>';
-
-                // Alerts
                 const alerts = d.recent_alerts || [];
+                document.getElementById('alertsCountBadge').textContent = `${alerts.length} recent`;
                 document.getElementById('alertsList').innerHTML = alerts.length
                     ? alerts.map(a => `
-                        <div class="glass p-4 rounded-xl flex items-start justify-between">
+                        <div class="glass p-4 rounded-xl flex items-start justify-between gap-4">
                             <div class="flex items-start gap-3">
-                                <div class="w-8 h-8 rounded-lg ${a.severity === 'red' ? 'bg-red-500/10 text-red-400' : a.severity === 'orange' ? 'bg-amber-500/10 text-amber-400' : 'bg-yellow-500/10 text-yellow-400'} flex items-center justify-center"><i class="fas fa-exclamation-triangle"></i></div>
+                                <div class="w-8 h-8 rounded-lg ${a.severity === 'red' ? 'bg-red-500/10 text-red-400' : a.severity === 'orange' ? 'bg-amber-500/10 text-amber-400' : 'bg-yellow-500/10 text-yellow-400'} flex items-center justify-center flex-shrink-0"><i class="fas fa-exclamation-triangle"></i></div>
                                 <div>
                                     <p class="font-bold text-white text-sm">${a.alert_type || 'Alert'}</p>
                                     <p class="text-slate-400 text-xs mt-1">${a.description || ''}</p>
                                 </div>
                             </div>
-                            <span class="text-[10px] text-slate-500 font-bold whitespace-nowrap ml-4">${a.detected_at || ''}</span>
+                            <span class="text-[10px] text-slate-500 font-bold whitespace-nowrap flex-shrink-0">${a.detected_at || ''}</span>
                         </div>`).join('')
-                    : '<p class="text-slate-500 text-sm py-6 text-center">No alerts detected.</p>';
+                    : `<div class="empty-state text-slate-500 text-sm">
+                        <div class="empty-icon"><i class="fas fa-check-circle text-emerald-400/50"></i></div>
+                        <p>No alerts in this period. System is healthy.</p>
+                       </div>`;
             } catch (e) {
-                genEl.textContent = 'Last generated: ERROR';
+                genEl.textContent = 'Last updated: ERROR';
+                console.error(e);
             }
         }
 
@@ -329,11 +598,14 @@
             loadTrainingInfo();
             const end = new Date();
             const start = new Date();
-            start.setDate(end.getDate() - 30);
+            start.setDate(end.getDate() - 180);
             document.getElementById('aiStartDate').value = start.toISOString().slice(0,10);
             document.getElementById('aiEndDate').value = end.toISOString().slice(0,10);
             loadAnalysis();
-            setInterval(loadAnalysis, 15000);
+            // Poll every 30s — skip when the tab is backgrounded to save CPU/DB.
+            setInterval(() => {
+                if (!document.hidden) loadAnalysis();
+            }, 30000);
         });
     </script>
 </body>

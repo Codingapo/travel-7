@@ -210,8 +210,8 @@
                 </div>
             </div>
             <div class="card">
-                <div class="flex items-center gap-3 mb-4"><div class="w-10 h-10 rounded-xl bg-amber-400/10 text-amber-400 flex items-center justify-center"><i class="fas fa-star"></i></div><div><h4 class="font-black text-white">Customer Feedback</h4><p class="text-xs text-slate-500">Feeds the AI analysis.</p></div></div>
-                <p class="text-sm text-slate-400 leading-relaxed">Reviews are stored locally after SerpApi sync, scored for sentiment, and included in the AI insights and recommendations.</p>
+                <div class="flex items-center gap-3 mb-4"><div class="w-10 h-10 rounded-xl bg-amber-400/10 text-amber-400 flex items-center justify-center"><i class="fas fa-star"></i></div><div><h4 class="font-black text-white">Customer Feedback</h4><p class="text-xs text-slate-500">Rolling summary of the last 10 reviews.</p></div></div>
+                <p id="dashboardFeedbackSummary" class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{% if initial_dashboard is defined and initial_dashboard.feedback_summary %}{{ initial_dashboard.feedback_summary }}{% else %}Loading the latest customer feedback summary…{% endif %}</p>
             </div>
         </div>
 
@@ -377,7 +377,7 @@
         async function fetchAuditLog() {
             const tb = document.getElementById('adminAuditTable');
             try {
-                const r = await fetch('/api/admin/audit-log?limit=25');
+                const r = await fetch('/api/admin/audit-log?limit=25&v=' + Date.now());
                 const p = await r.json();
                 if (!p.success) throw new Error(p.error || 'Unable to load audit log');
                 tb.innerHTML = (p.data || []).map(a => `<tr><td class="text-xs text-slate-500">${a.created_at || '-'}</td><td class="font-bold text-white">${a.actor_name || 'Admin'}</td><td class="text-teal-400 font-bold">${a.action || '-'}</td><td class="text-slate-400">${a.details || '-'}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center text-slate-500 py-8">No administrator changes yet.</td></tr>';
@@ -463,6 +463,19 @@
                 if (reviewCount) reviewCount.textContent = Number(stats.kpis.review_count || 0).toLocaleString();
                 if (reviewRating) reviewRating.textContent = Number(stats.kpis.review_average || 0).toFixed(1) + '/5';
 
+                // 5b. Customer Feedback rolling summary (last 10 reviews)
+                const feedbackEl = document.getElementById('dashboardFeedbackSummary');
+                if (feedbackEl) {
+                    const text = (stats.feedback_summary || '').trim();
+                    if (text) {
+                        feedbackEl.textContent = text;
+                        feedbackEl.classList.remove('text-slate-400');
+                        feedbackEl.classList.add('text-slate-300');
+                    } else {
+                        feedbackEl.textContent = 'No customer feedback to summarise yet. After the next Google Reviews sync or manual review entry, a rolling summary will appear here.';
+                    }
+                }
+
                 // 6. Update Top Packages
                 const pkgList = document.getElementById('topPackagesList');
                 if (pkgList && stats.top_packages) {
@@ -514,9 +527,14 @@
             initCharts();
             fetchDashboardData();
             fetchAuditLog();
-            // Update every 5 seconds for almost immediate updates
-            setInterval(fetchDashboardData, 5000);
-            setInterval(fetchAuditLog, 10000);
+            // Update every 5 seconds for almost immediate updates.
+            // Skip polling when the tab is backgrounded to save CPU/DB load.
+            setInterval(() => {
+                if (!document.hidden) fetchDashboardData();
+            }, 5000);
+            setInterval(() => {
+                if (!document.hidden) fetchAuditLog();
+            }, 10000);
         });
     </script>
 </body>

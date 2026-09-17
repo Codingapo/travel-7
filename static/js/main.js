@@ -445,6 +445,25 @@ async function loadPackages(sort = 'default') {
                 const statusColor = isAvailable ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
                 
                 const imageUrl = pkg.image_url || getPackageImage(pkg);
+
+                const discountPct = Math.max(0, Math.min(100, parseInt(pkg.discount_percentage || 0, 10)));
+                const origPrice = Number(pkg.price || 0);
+                const discountedPrice = discountPct > 0 ? origPrice * (1 - discountPct / 100) : origPrice;
+                const priceBlock = discountPct > 0
+                    ? `<div class="flex flex-col">
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <span class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">From</span>
+                                <span class="bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-500/30">${discountPct}% OFF</span>
+                            </div>
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-2xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${discountedPrice.toLocaleString()}</span>
+                                <span class="text-sm text-gray-500 line-through decoration-gray-500/60" style="font-family: 'Inter', sans-serif;">R ${origPrice.toLocaleString()}</span>
+                            </div>
+                       </div>`
+                    : `<div class="flex flex-col">
+                            <span class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">From</span>
+                            <span class="text-2xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${origPrice.toLocaleString()}</span>
+                       </div>`;
                 
                 const card = `
                     <div class="glass rounded-[2.5rem] overflow-hidden card-hover group ${!isAvailable ? 'opacity-75 grayscale-[0.2]' : ''}">
@@ -459,8 +478,11 @@ async function loadPackages(sort = 'default') {
                             <div class="absolute top-6 left-6 ${statusColor} px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-current">
                                 ${statusText}
                             </div>
-                            <div class="absolute top-6 right-6 glass px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest text-white">
-                                ${pkg.duration} Days
+                            <div class="absolute top-6 right-6 flex flex-col items-end gap-2">
+                                <div class="glass px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest text-white">
+                                    ${pkg.duration} Days
+                                </div>
+                                ${discountPct > 0 ? `<div class="bg-gradient-to-br from-red-500 to-rose-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-600/30 border border-red-400/30">Save ${discountPct}%</div>` : ''}
                             </div>
                         </div>
                         <div class="p-8">
@@ -472,12 +494,7 @@ async function loadPackages(sort = 'default') {
                             </div>
                             <p class="text-gray-400 mb-8 line-clamp-3 text-sm leading-relaxed">${pkg.description}</p>
                             <div class="flex items-center justify-between pt-6 border-t border-white/5">
-                                <div class="flex flex-col">
-                                    <span class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">From</span>
-                                    <span class="text-2xl font-black text-white" style="font-family: 'Inter', sans-serif;">
-                                        R ${pkg.price.toLocaleString()}
-                                    </span>
-                                </div>
+                                ${priceBlock}
                                 <button onclick="handleBooking(${pkg.package_id}, ${!isAvailable})" 
                                     class="${isAvailable ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-800 hover:bg-slate-700'} text-white px-8 py-3 rounded-2xl font-black transition shadow-lg shadow-blue-600/20">
                                     ${isAvailable ? 'Book Now' : 'View Details'}
