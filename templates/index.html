@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <style>
         :root {
             --bg-dark: #0f172a;
@@ -53,6 +55,30 @@
         .section-title { font-size: clamp(1.5rem, 4vw, 2.5rem); }
         .card-padding { padding: clamp(0.75rem, 2vw, 1rem); }
         .gap-section { gap: clamp(1.25rem, 3vw, 2.5rem); }
+
+        /* Intersection Observer animation helpers */
+        .io-animate {
+            opacity: 0;
+            will-change: opacity, transform;
+        }
+        .io-animate.is-visible {
+            opacity: 1;
+        }
+        /* Softer / shorter animations on small screens + reduced motion */
+        @media (max-width: 767px) {
+            .animate__animated {
+                --animate-duration: 0.55s;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .io-animate,
+            .animate__animated {
+                opacity: 1 !important;
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
         @media (max-width: 767px) {
             .mobile-menu {
                 display: none;
@@ -99,7 +125,7 @@
                     <i class="fas fa-bars text-lg"></i>
                 </button>
                 <div id="nav-menu" class="mobile-menu ml-0 md:ml-10 md:items-center space-x-0 md:space-x-8">
-<a href="/home" class="text-gray-300 hover:text-white transition font-medium">Home</a>
+                    <a href="/home" class="text-gray-300 hover:text-white transition font-medium">Home</a>
                     <a href="#packages" class="text-gray-300 hover:text-white transition font-medium" onclick="closeMobileMenu()">Explore</a>
                     <div id="auth-links" class="flex items-center justify-center space-x-4 md:space-x-4 flex-col md:flex-row gap-3 md:gap-0">
                         <a href="/auth/login" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full font-bold transition shadow-lg shadow-blue-600/20" onclick="closeMobileMenu()">Sign In</a>
@@ -120,18 +146,18 @@
         </div>
     </nav>
 
-    <!-- Hero Section -->
+    <!-- Hero Section (gentle on-load only – already in view) -->
     <header class="hero-gradient section-pt section-pb relative overflow-hidden">
         <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
         <div class="max-w-7xl mx-auto px-4 relative z-10 text-center">
-            <h1 class="hero-title font-black mb-[clamp(1.5rem,5vw,3rem)] leading-tight">
+            <h1 class="hero-title font-black mb-[clamp(1.5rem,5vw,3rem)] leading-tight animate__animated animate__fadeInDown">
                 Your Intelligent <br>
                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">Gateway to the World</span>
             </h1>
-            <p class="hero-subtitle mb-[clamp(1.5rem,6vw,3rem)] text-gray-400 max-w-3xl mx-auto leading-relaxed">
+            <p class="hero-subtitle mb-[clamp(1.5rem,6vw,3rem)] text-gray-400 max-w-3xl mx-auto leading-relaxed animate__animated animate__fadeInUp animate__delay-1s">
                 Experience AI-driven travel curation. From Cape Town's peaks to Bali's serene beaches, discover packages tailored just for you.
             </p>
-            <div class="flex flex-col sm:flex-row justify-center items-center gap-[clamp(0.75rem,2vw,1.5rem)]">
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-[clamp(0.75rem,2vw,1.5rem)] animate__animated animate__fadeInUp animate__delay-1s">
                 <a href="#packages" class="w-full sm:w-auto bg-blue-600 text-white btn-px btn-py rounded-full font-black text-[clamp(0.875rem,1.5vw,1.125rem)] hover:bg-blue-700 transition shadow-2xl shadow-blue-600/40" onclick="closeMobileMenu()">Browse Packages</a>
                 <a href="/profile.html#bookings" id="hero-bookings-btn" class="hidden w-full sm:w-auto glass text-white btn-px btn-py rounded-full font-black text-[clamp(0.875rem,1.5vw,1.125rem)] hover:bg-white/10 transition">My Bookings</a>
             </div>
@@ -143,9 +169,9 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col md:flex-row md:items-end justify-between mb-[clamp(2rem,6vw,4rem)] space-y-4 md:space-y-0 gap-4">
                 <div>
-                    <h2 class="section-title font-black text-white mb-[clamp(0.5rem,2vw,1rem)]">Travel Packages</h2>
+                    <h2 class="section-title font-black text-white mb-[clamp(0.5rem,2vw,1rem)] io-animate" data-animate="animate__fadeInLeft">Travel Packages</h2>
                 </div>
-                <div class="flex items-center gap-3 flex-wrap">
+                <div class="flex items-center gap-3 flex-wrap io-animate" data-animate="animate__fadeInRight">
                     <label for="package-sort" class="text-[clamp(0.6rem,1.2vw,0.75rem)] font-bold uppercase tracking-widest text-gray-500">Sort by</label>
                     <select id="package-sort" class="bg-slate-900 border border-white/10 text-white rounded-xl input-px input-py text-[clamp(0.75rem,1.3vw,0.875rem)] font-bold outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="default">Recommended</option>
@@ -157,8 +183,8 @@
             </div>
             
             <div id="packages-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-section">
-                <!-- Loading State -->
-                <div class="glass card-padding card-round animate-pulse">
+                <!-- Loading State (will also get IO treatment once real cards are injected) -->
+                <div class="glass card-padding card-round animate-pulse io-animate" data-animate="animate__fadeInUp">
                     <div class="bg-white/5 h-[clamp(12rem,30vw,16rem)] card-round mb-[clamp(0.75rem,2vw,1.5rem)]"></div>
                     <div class="h-[clamp(1rem,2vw,2rem)] bg-white/5 rounded-full w-3/4 mb-[clamp(0.5rem,1.5vw,1rem)]"></div>
                     <div class="h-[clamp(0.6rem,1.2vw,1rem)] bg-white/5 rounded-full w-1/2 mb-[clamp(1rem,3vw,2rem)]"></div>
@@ -175,7 +201,7 @@
     <footer class="glass border-t-0 border-b-0 border-x-0 pt-[clamp(2rem,8vw,5rem)] pb-[clamp(1.5rem,4vw,2.5rem)]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-[clamp(1.5rem,5vw,3rem)] mb-[clamp(2rem,6vw,4rem)]">
-                <div class="col-span-1 md:col-span-2">
+                <div class="col-span-1 md:col-span-2 io-animate" data-animate="animate__fadeInUp">
                     <div class="flex items-center space-x-2 mb-[clamp(1rem,3vw,1.5rem)]">
                         <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
                             <i class="fas fa-robot text-white"></i>
@@ -186,7 +212,7 @@
                         Redefining travel planning through artificial intelligence. We combine human expertise from Dalani Trip Planners with smart technology to create unforgettable journeys.
                     </p>
                 </div>
-                <div>
+                <div class="io-animate" data-animate="animate__fadeInUp" data-delay="100">
                     <h4 class="text-white font-bold mb-[clamp(0.75rem,2vw,1.5rem)] uppercase text-[clamp(0.65rem,1.2vw,0.875rem)] tracking-widest">Quick Links</h4>
                     <ul class="space-y-[clamp(0.5rem,1.5vw,1rem)] text-gray-500 text-[clamp(0.75rem,1.3vw,0.9rem)]">
                         <li><a href="#" class="hover:text-blue-400 transition">About Us</a></li>
@@ -194,7 +220,7 @@
                         <li><a href="#" class="hover:text-blue-400 transition">Contact</a></li>
                     </ul>
                 </div>
-                <div>
+                <div class="io-animate" data-animate="animate__fadeInUp" data-delay="200">
                     <h4 class="text-white font-bold mb-[clamp(0.75rem,2vw,1.5rem)] uppercase text-[clamp(0.65rem,1.2vw,0.875rem)] tracking-widest">Connect</h4>
                     <div class="flex space-x-4 mb-[clamp(1rem,3vw,2rem)]">
                         <a href="https://www.facebook.com/Dalanitriplanners?_rdc=1&_rdr#" target="_blank" rel="noopener noreferrer" title="Facebook" class="glass w-10 h-10 flex items-center justify-center rounded-lg hover:bg-blue-600 transition"><i class="fab fa-facebook-f"></i></a>
@@ -223,7 +249,7 @@
         </div>
     </footer>
 
-    <!-- Booking Modal (Prompt to sign in) -->
+    <!-- Booking Modal -->
     <div id="booking-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[100] px-4">
         <div class="glass section-padding rounded-[clamp(1.5rem,4vw,2.5rem)] max-w-md w-full text-center">
             <div class="w-[clamp(3.5rem,8vw,5rem)] h-[clamp(3.5rem,8vw,5rem)] bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-[clamp(1.25rem,4vw,2rem)]">
@@ -254,6 +280,59 @@
             localStorage.clear();
             window.location.reload();
         }
+
+        /* ---------- Intersection Observer animations (mobile-friendly) ---------- */
+        (function () {
+            // Skip everything if user prefers reduced motion
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelectorAll('.io-animate').forEach(el => {
+                    el.classList.add('is-visible');
+                    el.style.opacity = '1';
+                });
+                return;
+            }
+
+            const isMobile = window.matchMedia('(max-width: 767px)').matches;
+
+            const observer = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+
+                    const el = entry.target;
+                    const anim = el.dataset.animate || 'animate__fadeInUp';
+                    const delay = parseInt(el.dataset.delay || '0', 10);
+
+                    // Small staggered delay (kept short on mobile)
+                    const actualDelay = isMobile ? Math.min(delay, 80) : delay;
+
+                    setTimeout(() => {
+                        el.classList.add('is-visible', 'animate__animated', anim);
+                        // Clean up will-change after animation ends to free GPU
+                        el.addEventListener('animationend', () => {
+                            el.style.willChange = 'auto';
+                        }, { once: true });
+                    }, actualDelay);
+
+                    obs.unobserve(el); // animate only once
+                });
+            }, {
+                // Start a bit earlier so it feels responsive, especially on small screens
+                root: null,
+                rootMargin: isMobile ? '0px 0px -8% 0px' : '0px 0px -12% 0px',
+                threshold: isMobile ? 0.08 : 0.12
+            });
+
+            // Observe all static elements
+            document.querySelectorAll('.io-animate').forEach(el => observer.observe(el));
+
+            // Public helper: call this after you dynamically inject package cards
+            window.observeNewCards = function (container = document.getElementById('packages-container')) {
+                if (!container) return;
+                container.querySelectorAll('.io-animate:not(.is-visible)').forEach(el => {
+                    observer.observe(el);
+                });
+            };
+        })();
     </script>
 </body>
 </html>
