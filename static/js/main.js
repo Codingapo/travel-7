@@ -435,7 +435,7 @@ async function loadPackages(sort = 'default') {
         
         if (data.success) {
             container.innerHTML = '';
-            data.data.forEach(pkg => {
+            data.data.forEach((pkg, index) => {          // ← 1. add index
                 const status = (pkg.availability_status || '').trim();
                 const isAvailable = status === 'Available';
                 const availableSpots = parseInt(pkg.available_spots || 0, 10);
@@ -465,8 +465,11 @@ async function loadPackages(sort = 'default') {
                             <span class="text-2xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${origPrice.toLocaleString()}</span>
                        </div>`;
                 
+                // ← 2. add io-animate + data-animate + data-delay on the card root
                 const card = `
-                    <div class="glass rounded-[2.5rem] overflow-hidden card-hover group ${!isAvailable ? 'opacity-75 grayscale-[0.2]' : ''}">
+                    <div class="glass rounded-[2.5rem] overflow-hidden card-hover group io-animate ${!isAvailable ? 'opacity-75 grayscale-[0.2]' : ''}"
+                         data-animate="animate__fadeInUp"
+                         data-delay="${index * 60}">
                         <div class="h-64 relative overflow-hidden">
                             <img src="${imageUrl}" alt="${pkg.package_name}" class="w-full h-full object-cover group-hover:scale-110 transition duration-700">
                             <div class="absolute inset-0 bg-gradient-to-t from-[#0a0f1d] to-transparent opacity-60"></div>
@@ -505,6 +508,11 @@ async function loadPackages(sort = 'default') {
                 `;
                 container.innerHTML += card;
             });
+
+            // ← 3. tell the Intersection Observer about the new cards
+            if (typeof window.observeNewCards === 'function') {
+                window.observeNewCards(container);
+            }
         }
     } catch (error) {
         console.error('Error loading packages:', error);
