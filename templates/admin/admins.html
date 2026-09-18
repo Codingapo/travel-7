@@ -1,474 +1,2206 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administrators - TravelIntel AI</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
     <style>
-        body { background:#070b14; color:#f8fafc; }
-        .glass { background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08); backdrop-filter:blur(16px); }
-        .input { width:100%; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); color:white; border-radius:14px; padding:13px 15px; outline:none; }
-        .input:focus { border-color:#14b8a6; box-shadow:0 0 0 3px rgba(20,184,166,.12); }
-        .input.invalid { border-color:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.12); }
-        .field-error { margin-top:8px; font-size:12px; font-weight:800; color:#f87171; }
-        .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(4px); z-index:50; display:flex; align-items:center; justify-content:center; padding:20px; }
-        .modal-card { width:100%; max-width:460px; background:#0f172a; border:1px solid rgba(255,255,255,.1); border-radius:24px; padding:28px; }
-        .btn-primary { background:#14b8a6; color:#042f2e; font-weight:800; padding:12px 20px; border-radius:12px; transition:all .2s ease; }
-        .btn-primary:hover { background:#0ea59b; transform:translateY(-1px); }
-        .btn-secondary { background:rgba(255,255,255,.06); color:#f8fafc; font-weight:700; padding:12px 20px; border-radius:12px; border:1px solid rgba(255,255,255,.1); transition:all .2s ease; }
-        .btn-secondary:hover { background:rgba(255,255,255,.1); }
-        .btn-danger { background:#dc2626; color:white; font-weight:800; padding:12px 20px; border-radius:12px; transition:all .2s ease; }
-        .btn-danger:hover { background:#ef4444; transform:translateY(-1px); }
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: rgba(255,255,255,0.03);
+            --border-color: rgba(255,255,255,0.08);
+            --accent: #2dd4bf;
+        }
+
+        html {
+            font-size: clamp(14px, 1vw, 18px);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        /* =========================================================
+           SIDEBAR
+        ========================================================= */
+
+        .hamburger-btn {
+            display: none;
+            position: fixed;
+            top: clamp(0.6rem, 2vw, 1rem);
+            right: clamp(0.6rem, 2vw, 1rem);
+            z-index: 60;
+            width: clamp(2.25rem, 5vw, 2.75rem);
+            height: clamp(2.25rem, 5vw, 2.75rem);
+            border-radius: 0.5rem;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar {
+            width: clamp(15rem, 22vw, 16.25rem);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border-color);
+            padding: clamp(1.25rem, 3vw, 2rem)
+                     clamp(0.75rem, 2vw, 1.25rem);
+            z-index: 55;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-logo-wrap {
+            margin-bottom: clamp(1.5rem, 5vw, 3rem);
+            gap: clamp(0.6rem, 1.8vw, 1rem);
+        }
+
+        .sidebar-logo-box {
+            width: clamp(2rem, 4.5vw, 2.5rem);
+            height: clamp(2rem, 4.5vw, 2.5rem);
+            border-radius: clamp(0.5rem, 1.5vw, 0.875rem);
+        }
+
+        .sidebar-logo-box i {
+            font-size: clamp(0.9rem, 2vw, 1.25rem);
+        }
+
+        .sidebar-title {
+            font-size: clamp(0.95rem, 2vw, 1.35rem);
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: clamp(0.5rem, 1.5vw, 0.875rem);
+            padding: clamp(0.6rem, 1.5vw, 0.75rem)
+                     clamp(0.9rem, 2.2vw, 1.25rem);
+            border-radius: clamp(0.5rem, 1.5vw, 0.875rem);
+            color: #94a3b8;
+            font-weight: 500;
+            transition: all 0.3s;
+            margin-bottom: clamp(0.2rem, 0.8vw, 0.5rem);
+        }
+
+        .nav-link:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+
+        .nav-link.active {
+            background: var(--accent);
+            color: #0f172a;
+            font-weight: 700;
+            box-shadow: 0 10px 15px -3px rgba(45,212,191,0.2);
+        }
+
+        /* =========================================================
+           MAIN CONTENT
+        ========================================================= */
+
+        .main-content {
+            margin-left: clamp(15rem, 22vw, 16.25rem);
+            padding: clamp(1.25rem, 4vw, 2.5rem);
+        }
+
+        .page-header {
+            margin-bottom: clamp(1.25rem, 4vw, 2.5rem);
+        }
+
+        .page-title {
+            font-size: clamp(1.3rem, 3.5vw, 2rem);
+        }
+
+        .page-subtitle {
+            font-size: clamp(0.7rem, 1.3vw, 0.9rem);
+        }
+
+        /* =========================================================
+           CARDS
+        ========================================================= */
+
+        .card {
+            background: var(--card-bg);
+            border-radius: clamp(0.9rem, 2.5vw, 1.5rem);
+            padding: clamp(0.9rem, 2.5vw, 1.5rem);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(45,212,191,0.3);
+        }
+
+        .card-title {
+            font-size: clamp(0.85rem, 2vw, 1.15rem);
+        }
+
+        /* =========================================================
+           BUTTONS
+        ========================================================= */
+
+        .glass-btn {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: clamp(0.45rem, 1.2vw, 0.65rem)
+                     clamp(0.8rem, 2vw, 1.25rem);
+            border-radius: clamp(0.45rem, 1.2vw, 0.75rem);
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: clamp(0.55rem, 1.05vw, 0.8rem);
+        }
+
+        .glass-btn:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .btn-primary {
+            background: #14b8a6;
+            color: #042f2e;
+            font-weight: 800;
+            padding: 12px 20px;
+            border-radius: 12px;
+            transition: all .2s ease;
+        }
+
+        .btn-primary:hover {
+            background: #0ea59b;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,.06);
+            color: #f8fafc;
+            font-weight: 700;
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,.1);
+            transition: all .2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,.1);
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+            font-weight: 800;
+            padding: 12px 20px;
+            border-radius: 12px;
+            transition: all .2s ease;
+        }
+
+        .btn-danger:hover {
+            background: #ef4444;
+            transform: translateY(-1px);
+        }
+
+        /* =========================================================
+           FORM
+        ========================================================= */
+
+        .input {
+            width: 100%;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.1);
+            color: white;
+            border-radius: 14px;
+            padding: 13px 15px;
+            outline: none;
+            transition: all .2s ease;
+        }
+
+        .input::placeholder {
+            color: #64748b;
+        }
+
+        .input:focus {
+            border-color: #14b8a6;
+            box-shadow: 0 0 0 3px rgba(20,184,166,.12);
+        }
+
+        .input.invalid {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 3px rgba(239,68,68,.12);
+        }
+
+        .field-error {
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 800;
+            color: #f87171;
+        }
+
+        /* =========================================================
+           TABLE
+        ========================================================= */
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table-th {
+            text-align: left;
+            padding: clamp(0.6rem, 2vw, 1rem)
+                     clamp(0.75rem, 2.5vw, 1.25rem);
+            border-bottom: 1px solid var(--border-color);
+            color: #64748b;
+            font-weight: 700;
+            font-size: clamp(0.45rem, 0.95vw, 0.7rem);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .table-td {
+            padding: clamp(0.6rem, 2vw, 1rem)
+                     clamp(0.75rem, 2.5vw, 1.25rem);
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            color: #cbd5e1;
+            font-size: clamp(0.6rem, 1.1vw, 0.85rem);
+        }
+
+        .status-pill {
+            padding: clamp(0.15rem, 0.5vw, 0.3rem)
+                     clamp(0.5rem, 1.5vw, 0.75rem);
+            border-radius: 9999px;
+            font-size: clamp(0.45rem, 0.9vw, 0.65rem);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-active {
+            background: rgba(45,212,191,0.1);
+            color: #2dd4bf;
+        }
+
+        .status-disabled {
+            background: rgba(239,68,68,0.1);
+            color: #f87171;
+        }
+
+        /* =========================================================
+           MODAL
+        ========================================================= */
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.7);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-card {
+            width: 100%;
+            max-width: 460px;
+            background: #0f172a;
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 30px 80px rgba(0,0,0,.5);
+        }
+
+        /* =========================================================
+           MOBILE SIDEBAR
+        ========================================================= */
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 54;
+            backdrop-filter: blur(2px);
+        }
+
+        @media (max-width: 1023px) {
+
+            .hamburger-btn {
+                display: flex;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                width: clamp(16rem, 80vw, 18rem);
+                z-index: 55;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+                box-shadow: 20px 0 60px rgba(0,0,0,0.6);
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                padding-top: clamp(3.75rem, 9vw, 5rem);
+                padding-inline: clamp(0.75rem, 2.5vw, 1.25rem);
+            }
+
+            .sidebar-overlay.open {
+                display: block;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .hamburger-btn,
+            .sidebar-overlay {
+                display: none !important;
+            }
+        }
     </style>
 </head>
-<body class="min-h-screen">
-    <div class="max-w-7xl mx-auto px-4 py-8">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+
+<body class="selection:bg-teal-500 selection:text-white">
+
+    <!-- =========================================================
+         MOBILE MENU BUTTON
+    ========================================================== -->
+    <button
+        id="hamburgerBtn"
+        class="hamburger-btn"
+        type="button"
+        aria-label="Open navigation"
+        onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- =========================================================
+         SIDEBAR OVERLAY
+    ========================================================== -->
+    <div
+        id="sidebarOverlay"
+        class="sidebar-overlay"
+        onclick="closeSidebar()">
+    </div>
+
+    <!-- =========================================================
+         SIDEBAR
+    ========================================================== -->
+    <div id="sidebar" class="sidebar">
+
+        <div class="flex items-center sidebar-logo-wrap px-2">
+            <div class="sidebar-logo-box bg-teal-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                <i class="fas fa-robot text-slate-900"></i>
+            </div>
+
+            <h1 class="sidebar-title text-white font-black tracking-tight">
+                TravelIntel AI
+            </h1>
+        </div>
+
+        <nav class="flex-grow">
+
+            <a href="/dashboard" class="nav-link">
+                <i class="fas fa-th-large w-5"></i>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="/admin/packages" class="nav-link">
+                <i class="fas fa-box-open w-5"></i>
+                <span>Packages</span>
+            </a>
+
+            <a href="/admin/ai-analysis" class="nav-link">
+                <i class="fas fa-brain w-5"></i>
+                <span>AI Analysis</span>
+            </a>
+
+            <a href="/admin/reports" class="nav-link">
+                <i class="fas fa-file-alt w-5"></i>
+                <span>Reports</span>
+            </a>
+
+            <a href="/admin/reviews" class="nav-link">
+                <i class="fas fa-star w-5"></i>
+                <span>Reviews</span>
+            </a>
+
+            <!-- CURRENT PAGE -->
+            <a href="/admin/admins" class="nav-link active">
+                <i class="fas fa-user-shield w-5"></i>
+                <span>Administrators</span>
+            </a>
+
+        </nav>
+
+        <button
+            onclick="logout()"
+            class="w-full text-left nav-link hover:text-red-400 transition">
+            <i class="fas fa-sign-out-alt w-5"></i>
+            <span>Logout</span>
+        </button>
+
+    </div>
+
+    <!-- =========================================================
+         MAIN CONTENT
+    ========================================================== -->
+    <main class="main-content">
+
+        <!-- PAGE HEADER -->
+        <div class="page-header">
+
             <div>
-                <p class="text-teal-400 text-xs font-black uppercase tracking-[.25em]">System Access</p>
-                <h1 class="text-3xl font-black mt-2">Administrator Accounts</h1>
-                <p class="text-slate-500 mt-2">Multiple admins are supported. Disabled admins immediately lose dashboard access. All sensitive actions require the current admin password.</p>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-teal-400 text-xs font-black uppercase tracking-[0.2em]">
+                        System Access
+                    </span>
+
+                    <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+
+                    <span class="text-slate-500 text-xs font-bold">
+                        Administration
+                    </span>
+                </div>
+
+                <h2 class="page-title font-black text-white mb-2">
+                    Administrator Accounts
+                </h2>
+
+                <p class="page-subtitle text-slate-400 max-w-3xl">
+                    Manage administrator accounts and dashboard access. Each
+                    administrator has their own password. Disabled administrators
+                    immediately lose dashboard access.
+                </p>
             </div>
-            <div class="flex gap-3">
-                <a href="/dashboard" class="glass px-5 py-3 rounded-xl font-bold hover:bg-white/5">Dashboard</a>
-                <button onclick="logout()" class="bg-red-500/10 text-red-400 border border-red-500/20 px-5 py-3 rounded-xl font-bold">Logout</button>
-            </div>
+
         </div>
 
-        <div class="grid lg:grid-cols-[380px_1fr] gap-6">
-            <section class="glass rounded-3xl p-6">
-                <h2 class="text-xl font-black mb-5">Add Administrator</h2>
-                <form id="createAdminForm" class="space-y-4" novalidate>
-                    <div>
-                        <input id="username" class="input" placeholder="Username" minlength="3" autocomplete="off" required>
-                        <div id="usernameError" class="field-error hidden" aria-live="polite"></div>
+        <!-- =====================================================
+             ADMIN MANAGEMENT GRID
+        ====================================================== -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+            <!-- ADD ADMIN -->
+            <section class="card lg:col-span-1">
+
+                <div class="flex items-center gap-3 mb-6">
+
+                    <div class="w-11 h-11 rounded-2xl bg-teal-500/10
+                                text-teal-400 border border-teal-500/20
+                                flex items-center justify-center">
+                        <i class="fas fa-user-plus"></i>
                     </div>
+
                     <div>
-                        <input id="email" class="input" type="email" placeholder="Admin email" autocomplete="off" required>
-                        <div id="emailError" class="field-error hidden" aria-live="polite"></div>
+                        <h2 class="card-title font-black text-white">
+                            Add Administrator
+                        </h2>
+
+                        <p class="text-xs text-slate-500 mt-1">
+                            Create a new admin account
+                        </p>
                     </div>
-                    <input id="fullName" class="input" placeholder="Full name (optional)">
-                    <p class="text-xs text-slate-500">The new administrator automatically receives the current universal admin password shared by all admins. All password changes propagate to every administrator account.</p>
-                    <button id="createAdminSubmit" type="submit" class="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 py-3.5 rounded-xl font-black" disabled>Create Admin</button>
+
+                </div>
+
+                <form
+                    id="createAdminForm"
+                    class="space-y-4"
+                    novalidate>
+
+                    <!-- USERNAME -->
+                    <div>
+                        <label
+                            for="username"
+                            class="block text-xs uppercase tracking-widest
+                                   text-slate-500 font-black mb-2">
+                            Username
+                        </label>
+
+                        <input
+                            id="username"
+                            class="input"
+                            placeholder="Enter username"
+                            minlength="3"
+                            autocomplete="off"
+                            required>
+
+                        <div
+                            id="usernameError"
+                            class="field-error hidden"
+                            aria-live="polite">
+                        </div>
+                    </div>
+
+                    <!-- EMAIL -->
+                    <div>
+                        <label
+                            for="email"
+                            class="block text-xs uppercase tracking-widest
+                                   text-slate-500 font-black mb-2">
+                            Email
+                        </label>
+
+                        <input
+                            id="email"
+                            class="input"
+                            type="email"
+                            placeholder="admin@example.com"
+                            autocomplete="off"
+                            required>
+
+                        <div
+                            id="emailError"
+                            class="field-error hidden"
+                            aria-live="polite">
+                        </div>
+                    </div>
+
+                    <!-- FULL NAME -->
+                    <div>
+                        <label
+                            for="fullName"
+                            class="block text-xs uppercase tracking-widest
+                                   text-slate-500 font-black mb-2">
+                            Full Name
+                        </label>
+
+                        <input
+                            id="fullName"
+                            class="input"
+                            placeholder="Full name (optional)"
+                            autocomplete="off">
+                    </div>
+
+                    <div class="rounded-xl bg-blue-500/5 border border-blue-500/10 p-4">
+                        <div class="flex gap-3">
+                            <i class="fas fa-circle-info text-blue-400 mt-0.5"></i>
+
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                The system generates a strong temporary password
+                                (including a special character) and emails it to the
+                                new administrator. They must change it on first login.
+                                Your own password is only used to confirm this action.
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        id="createAdminSubmit"
+                        type="submit"
+                        class="w-full bg-teal-500 hover:bg-teal-400
+                               text-slate-950 py-3.5 rounded-xl
+                               font-black transition-all disabled:opacity-40
+                               disabled:cursor-not-allowed"
+                        disabled>
+                        <i class="fas fa-user-plus mr-2"></i>
+                        Create Administrator
+                    </button>
+
                 </form>
-                <div id="msg" class="hidden mt-4 text-sm font-bold"></div>
+
+                <div
+                    id="msg"
+                    class="hidden mt-4 text-sm font-bold">
+                </div>
+
             </section>
 
-            <section class="glass rounded-3xl p-6 overflow-hidden">
-                <div class="flex justify-between items-center mb-5">
-                    <h2 class="text-xl font-black">Registered Administrators</h2>
-                    <button onclick="loadAdmins()" class="text-teal-400 font-bold text-sm"><i class="fas fa-sync mr-1"></i> Refresh</button>
+            <!-- REGISTERED ADMINISTRATORS -->
+            <section class="card lg:col-span-2 overflow-hidden">
+
+                <div class="flex flex-col sm:flex-row
+                            sm:justify-between sm:items-center
+                            gap-3 mb-6">
+
+                    <div>
+                        <div class="flex items-center gap-3">
+
+                            <div class="w-11 h-11 rounded-2xl bg-purple-500/10
+                                        text-purple-400 border border-purple-500/20
+                                        flex items-center justify-center">
+                                <i class="fas fa-users-cog"></i>
+                            </div>
+
+                            <div>
+                                <h2 class="card-title font-black text-white">
+                                    Registered Administrators
+                                </h2>
+
+                                <p class="text-xs text-slate-500 mt-1">
+                                    Current administrator accounts
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <button
+                        onclick="loadAdmins()"
+                        class="glass-btn flex items-center justify-center gap-2">
+                        <i class="fas fa-sync text-teal-400"></i>
+                        Refresh
+                    </button>
+
                 </div>
+
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead><tr class="text-xs uppercase tracking-widest text-slate-500 border-b border-white/10">
-                            <th class="py-4 pr-4">Admin</th><th class="py-4 pr-4">Email</th><th class="py-4 pr-4">Status</th><th class="py-4 text-right">Actions</th>
-                        </tr></thead>
-                        <tbody id="adminsBody"></tbody>
+
+                    <table>
+
+                        <thead>
+                            <tr>
+                                <th class="table-th">
+                                    Admin
+                                </th>
+
+                                <th class="table-th">
+                                    Email
+                                </th>
+
+                                <th class="table-th">
+                                    Status
+                                </th>
+
+                                <th class="table-th text-right">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="adminsBody">
+                        </tbody>
+
                     </table>
+
                 </div>
+
             </section>
+
         </div>
-    </div>
 
-    <div class="max-w-7xl mx-auto px-4 pb-10">
-        <section class="glass rounded-3xl p-6">
-            <div class="flex justify-between items-center mb-5">
-                <div><h2 class="text-xl font-black">Admin Activity</h2><p class="text-slate-500 text-sm mt-1">Every administrator sees who changed packages or administrator access.</p></div>
-                <button onclick="loadAudit()" class="text-teal-400 font-bold text-sm">Refresh</button>
-            </div>
-            <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="text-xs uppercase tracking-widest text-slate-500 border-b border-white/10"><th class="py-3 pr-4">Time</th><th class="py-3 pr-4">Admin</th><th class="py-3 pr-4">Action</th><th class="py-3">Details</th></tr></thead><tbody id="auditBody"></tbody></table></div>
-        </section>
-    </div>
+        <!-- =====================================================
+             ADMIN ACTIVITY
+        ====================================================== -->
+        <section class="card">
 
-    <!-- Confirmation Modal -->
-    <div id="confirmModal" class="modal-backdrop hidden">
-        <div class="modal-card">
-            <div class="flex items-start gap-4 mb-5">
-                <div id="confirmIcon" class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"></div>
-                <div class="flex-1">
-                    <h3 id="confirmTitle" class="text-xl font-black mb-1"></h3>
-                    <p id="confirmMessage" class="text-slate-300 text-base leading-relaxed"></p>
+            <div class="flex flex-col sm:flex-row
+                        sm:justify-between sm:items-center
+                        gap-4 mb-6">
+
+                <div>
+
+                    <div class="flex items-center gap-3">
+
+                        <div class="w-11 h-11 rounded-2xl bg-amber-500/10
+                                    text-amber-400 border border-amber-500/20
+                                    flex items-center justify-center">
+                            <i class="fas fa-clock-rotate-left"></i>
+                        </div>
+
+                        <div>
+                            <h2 class="card-title font-black text-white">
+                                Administrator Activity
+                            </h2>
+
+                            <p class="text-xs text-slate-500 mt-1">
+                                Shared audit trail of administrator changes.
+                            </p>
+                        </div>
+
+                    </div>
+
                 </div>
+
+                <button
+                    onclick="loadAudit()"
+                    class="glass-btn flex items-center justify-center gap-2">
+                    <i class="fas fa-sync text-teal-400"></i>
+                    Refresh
+                </button>
+
             </div>
+
+            <div class="overflow-x-auto">
+
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th class="table-th">
+                                Time
+                            </th>
+
+                            <th class="table-th">
+                                Administrator
+                            </th>
+
+                            <th class="table-th">
+                                Action
+                            </th>
+
+                            <th class="table-th">
+                                Details
+                            </th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="auditBody">
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- =========================================================
+         CONFIRMATION MODAL
+    ========================================================== -->
+    <div
+        id="confirmModal"
+        class="modal-backdrop hidden">
+
+        <div class="modal-card">
+
+            <div class="flex items-start gap-4 mb-5">
+
+                <div
+                    id="confirmIcon"
+                    class="w-12 h-12 rounded-xl
+                           flex items-center justify-center shrink-0">
+                </div>
+
+                <div class="flex-1">
+
+                    <h3
+                        id="confirmTitle"
+                        class="text-xl font-black mb-1">
+                    </h3>
+
+                    <p
+                        id="confirmMessage"
+                        class="text-slate-300 text-base leading-relaxed">
+                    </p>
+
+                </div>
+
+            </div>
+
             <div class="mb-5">
-                <label class="block text-xs uppercase tracking-widest text-slate-500 font-black mb-2">Confirm with current admin password</label>
-                <input type="password" id="confirmPassword" class="input" placeholder="Enter current admin password" autocomplete="current-password">
-                <p id="confirmPasswordError" class="hidden mt-2 text-xs font-bold text-red-400"></p>
+
+                <label
+                    class="block text-xs uppercase tracking-widest
+                           text-slate-500 font-black mb-2">
+                    Confirm with current admin password
+                </label>
+
+                <input
+                    type="password"
+                    id="confirmPassword"
+                    class="input"
+                    placeholder="Enter current admin password"
+                    autocomplete="current-password">
+
+                <p
+                    id="confirmPasswordError"
+                    class="hidden mt-2 text-xs font-bold text-red-400">
+                </p>
+
             </div>
+
             <div class="flex gap-3 justify-end">
-                <button id="confirmCancelBtn" class="btn-secondary" type="button">Cancel</button>
-                <button id="confirmYesBtn" class="btn-primary" type="button">Yes</button>
+
+                <button
+                    id="confirmCancelBtn"
+                    class="btn-secondary"
+                    type="button">
+                    Cancel
+                </button>
+
+                <button
+                    id="confirmYesBtn"
+                    class="btn-primary"
+                    type="button">
+                    Yes
+                </button>
+
             </div>
+
         </div>
+
     </div>
 
-<script src="/static/js/main.js"></script>
-<script>
-// ------------------------------------------------------------
-// Global state for sensitive-action confirmation modal
-// ------------------------------------------------------------
-let pendingAction = null;
-const confirmModal = document.getElementById('confirmModal');
-const confirmTitle = document.getElementById('confirmTitle');
-const confirmMessage = document.getElementById('confirmMessage');
-const confirmIcon = document.getElementById('confirmIcon');
-const confirmPasswordInput = document.getElementById('confirmPassword');
-const confirmPasswordError = document.getElementById('confirmPasswordError');
-const confirmYesBtn = document.getElementById('confirmYesBtn');
-const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+    <script src="/static/js/main.js"></script>
 
-function openConfirmModal({ action, verb, targetDescription, danger }) {
-    pendingAction = action;
-    confirmTitle.textContent = `Confirm ${verb}`;
-    // Exact wording per requirements: "Are you sure you want to [create/disable/delete] this user?"
-    const safeVerb = escapeHtml(verb.toLowerCase());
-    const verbClass = danger ? 'text-red-400 font-black' : 'text-white font-black';
-    let detailLine = '';
-    if (targetDescription) {
-        detailLine = `<br><span class="text-slate-500 text-sm">${escapeHtml(targetDescription)}</span>`;
-    }
-    confirmMessage.innerHTML = `Are you sure you want to <strong class="${verbClass}">${safeVerb}</strong> this user?${detailLine}`;
-    if (danger) {
-        confirmIcon.className = 'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-red-500/10 text-red-400';
-        confirmIcon.innerHTML = '<i class="fas fa-trash-can text-xl"></i>';
-        confirmYesBtn.className = 'btn-danger';
-        confirmYesBtn.textContent = 'Yes';
-    } else if (verb === 'Disable') {
-        confirmIcon.className = 'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/10 text-amber-400';
-        confirmIcon.innerHTML = '<i class="fas fa-user-slash text-xl"></i>';
-        confirmYesBtn.className = 'btn-primary';
-        confirmYesBtn.textContent = 'Yes';
-    } else if (verb === 'Reactivate') {
-        confirmIcon.className = 'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-teal-500/10 text-teal-400';
-        confirmIcon.innerHTML = '<i class="fas fa-user-check text-xl"></i>';
-        confirmYesBtn.className = 'btn-primary';
-        confirmYesBtn.textContent = 'Yes';
-    } else {
-        confirmIcon.className = 'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-400';
-        confirmIcon.innerHTML = '<i class="fas fa-user-plus text-xl"></i>';
-        confirmYesBtn.className = 'btn-primary';
-        confirmYesBtn.textContent = 'Yes';
-    }
-    confirmPasswordInput.value = '';
-    confirmPasswordError.classList.add('hidden');
-    confirmPasswordError.textContent = '';
-    confirmModal.classList.remove('hidden');
-    setTimeout(() => confirmPasswordInput.focus(), 50);
-}
+    <script>
+        /* =========================================================
+           SIDEBAR
+        ========================================================== */
 
-function closeConfirmModal() {
-    pendingAction = null;
-    confirmModal.classList.add('hidden');
-}
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
 
-confirmCancelBtn.addEventListener('click', closeConfirmModal);
-confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) closeConfirmModal(); });
-
-confirmYesBtn.addEventListener('click', async () => {
-    const pw = confirmPasswordInput.value;
-    if (!pw) {
-        confirmPasswordError.textContent = 'Please enter the current admin password to proceed.';
-        confirmPasswordError.classList.remove('hidden');
-        return;
-    }
-    confirmPasswordError.classList.add('hidden');
-    const action = pendingAction;
-    if (!action) { closeConfirmModal(); return; }
-    try {
-        const result = await action(pw);
-        closeConfirmModal();
-        if (result && typeof result === 'function') result();
-    } catch (err) {
-        confirmPasswordError.textContent = err.message || 'Action failed. Please try again.';
-        confirmPasswordError.classList.remove('hidden');
-    }
-});
-
-confirmPasswordInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); confirmYesBtn.click(); }
-    if (e.key === 'Escape') { closeConfirmModal(); }
-});
-
-// ------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------
-async function logout() {
-    try { await fetch('/admin/logout', {method:'POST'}); } catch(e) {}
-    window.location.href='/auth/login';
-}
-
-function escapeHtml(value) {
-    return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function showMsg(text, ok=false) {
-    const el=document.getElementById('msg');
-    el.textContent=text;
-    el.className='mt-4 text-sm font-bold '+(ok?'text-teal-400':'text-red-400');
-    if (!text) el.classList.add('hidden'); else el.classList.remove('hidden');
-}
-
-// ------------------------------------------------------------
-// Real-time inline username/email validation while typing
-// ------------------------------------------------------------
-const usernameInput = document.getElementById('username');
-const emailInput = document.getElementById('email');
-const usernameError = document.getElementById('usernameError');
-const emailError = document.getElementById('emailError');
-const createAdminSubmit = document.getElementById('createAdminSubmit');
-
-const VALID = { ok: true, message: '' };
-function INVALID(message) { return { ok: false, message }; }
-
-function isValidEmailFormat(value) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || ''));
-}
-
-let validationState = {
-    username: VALID,
-    email: VALID
-};
-function refreshSubmitState() {
-    const formValid = validationState.username.ok && validationState.email.ok &&
-        usernameInput.value.trim().length >= 3 && isValidEmailFormat(emailInput.value.trim());
-    createAdminSubmit.disabled = !formValid;
-}
-
-function applyFieldError(inputEl, errorEl, result) {
-    if (result.ok) {
-        inputEl.classList.remove('invalid');
-        errorEl.classList.add('hidden');
-        errorEl.textContent = '';
-    } else {
-        inputEl.classList.add('invalid');
-        errorEl.classList.remove('hidden');
-        errorEl.textContent = result.message;
-    }
-}
-
-let debounceTimers = { username: null, email: null };
-
-async function runRemoteCheck(field, value) {
-    try {
-        const query = field === 'username' ? `username=${encodeURIComponent(value)}` : `email=${encodeURIComponent(value)}`;
-        const r = await fetch(`/api/admin/admins/check?${query}&v=${Date.now()}`);
-        if (r.status === 401 || r.status === 403) { window.location.href = '/auth/login'; return null; }
-        const p = await r.json();
-        if (!p.success) return null;
-        return p.data[field];
-    } catch(e) { return null; }
-}
-
-function validateUsernameLocal(value) {
-    const v = value.trim();
-    if (!v) return VALID;
-    if (v.length < 3) return INVALID('Username must be at least 3 characters.');
-    return VALID;
-}
-
-function validateEmailLocal(value) {
-    const v = value.trim();
-    if (!v) return VALID;
-    if (!isValidEmailFormat(v)) return INVALID('Enter a valid email address.');
-    return VALID;
-}
-
-usernameInput.addEventListener('input', async () => {
-    const value = usernameInput.value;
-    const local = validateUsernameLocal(value);
-    if (!local.ok) {
-        validationState.username = local;
-        applyFieldError(usernameInput, usernameError, local);
-        refreshSubmitState();
-        return;
-    }
-    // If input still too short (e.g. empty), clear and skip remote
-    if (value.trim().length < 3) {
-        validationState.username = VALID;
-        applyFieldError(usernameInput, usernameError, VALID);
-        refreshSubmitState();
-        return;
-    }
-    if (debounceTimers.username) clearTimeout(debounceTimers.username);
-    debounceTimers.username = setTimeout(async () => {
-        const remote = await runRemoteCheck('username', value);
-        if (remote === null) return;
-        if (!remote.available) {
-            const res = INVALID(remote.message || 'This username has already been taken');
-            validationState.username = res;
-            applyFieldError(usernameInput, usernameError, res);
-        } else {
-            validationState.username = VALID;
-            applyFieldError(usernameInput, usernameError, VALID);
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('open');
         }
-        refreshSubmitState();
-    }, 250);
-    refreshSubmitState();
-});
 
-emailInput.addEventListener('input', async () => {
-    const value = emailInput.value;
-    const local = validateEmailLocal(value);
-    if (!local.ok) {
-        validationState.email = local;
-        applyFieldError(emailInput, emailError, local);
-        refreshSubmitState();
-        return;
-    }
-    if (!value.trim()) {
-        validationState.email = VALID;
-        applyFieldError(emailInput, emailError, VALID);
-        refreshSubmitState();
-        return;
-    }
-    if (debounceTimers.email) clearTimeout(debounceTimers.email);
-    debounceTimers.email = setTimeout(async () => {
-        const remote = await runRemoteCheck('email', value);
-        if (remote === null) return;
-        if (!remote.available) {
-            const res = INVALID(remote.message || 'An admin account with this email already exists');
-            validationState.email = res;
-            applyFieldError(emailInput, emailError, res);
-        } else {
-            validationState.email = VALID;
-            applyFieldError(emailInput, emailError, VALID);
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+
+            sidebar.classList.remove('open');
+            overlay.classList.remove('open');
         }
-        refreshSubmitState();
-    }, 300);
-    refreshSubmitState();
-});
 
-// ------------------------------------------------------------
-// Admin list and audit log rendering
-// ------------------------------------------------------------
-async function loadAudit() {
-    const body=document.getElementById('auditBody');
-    try {
-        const r=await fetch('/api/admin/audit-log?limit=50&v='+Date.now()); const p=await r.json();
-        if (!p.success) throw new Error(p.error||'Unable to load activity');
-        body.innerHTML=(p.data||[]).map(x=>`<tr class="border-b border-white/5"><td class="py-3 pr-4 text-xs text-slate-500">${escapeHtml(x.created_at)}</td><td class="py-3 pr-4 font-bold">${escapeHtml(x.actor_name)}</td><td class="py-3 pr-4 text-teal-400">${escapeHtml(x.action)}</td><td class="py-3 text-slate-400 text-sm">${escapeHtml(x.details)}</td></tr>`).join('') || '<tr><td colspan="4" class="py-8 text-center text-slate-500">No admin activity yet.</td></tr>';
-    } catch(e) { body.innerHTML='<tr><td colspan="4" class="py-8 text-center text-red-400">Unable to load activity.</td></tr>'; }
-}
-
-async function loadAdmins() {
-    const body=document.getElementById('adminsBody');
-    try {
-        const r=await fetch('/api/admin/admins?v='+Date.now());
-        if (r.status===401 || r.status===403) { window.location.href='/auth/login'; return; }
-        const p=await r.json();
-        if (!p.success) throw new Error(p.error||'Unable to load admins');
-        body.innerHTML=(p.data||[]).map(a => {
-            const active=a.account_status==='active';
-            const toggleLabel = active?'Disable':'Reactivate';
-            const label = escapeHtml((a.full_name||a.username) + ' (' + a.email + ')');
-            return `<tr class="border-b border-white/5">
-                <td class="py-4 pr-4"><div class="font-bold">${escapeHtml(a.full_name||a.username)}</div><div class="text-xs text-slate-500">@${escapeHtml(a.username)}</div></td>
-                <td class="py-4 pr-4 text-slate-300">${escapeHtml(a.email)}</td>
-                <td class="py-4 pr-4"><span class="px-3 py-1 rounded-full text-xs font-black ${active?'bg-teal-500/10 text-teal-400':'bg-red-500/10 text-red-400'}">${active?'Active':'Disabled'}</span></td>
-                <td class="py-4 text-right"><div class="flex items-center justify-end gap-3">
-                    <button onclick='toggleAdmin(${a.user_id}, "${active?'disabled':'active'}", ${JSON.stringify(label)})' class="text-xs font-black ${active?'text-amber-400 hover:text-amber-300':'text-teal-400 hover:text-teal-300'}">${toggleLabel}</button>
-                    <button onclick='deleteAdmin(${a.user_id}, ${JSON.stringify(label + " — this action is permanent and cannot be undone.")})' class="text-xs font-black text-red-400 hover:text-red-300">Delete</button>
-                </div></td>
-            </tr>`;
-        }).join('') || '<tr><td colspan="4" class="py-10 text-center text-slate-500">No administrators found.</td></tr>';
-    } catch(e) {
-        body.innerHTML='<tr><td colspan="4" class="py-10 text-center text-red-400">Unable to load administrators.</td></tr>';
-    }
-}
-
-// ------------------------------------------------------------
-// Admin action handlers (create / disable / delete)
-// ------------------------------------------------------------
-function toggleAdmin(id, status, targetLabel) {
-    const verb = status === 'disabled' ? 'Disable' : 'Reactivate';
-    openConfirmModal({
-        action: async (confirmPassword) => {
-            const r=await fetch('/api/admin/admins/'+id+'/status',{
-                method:'PATCH', headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({account_status:status, confirm_password:confirmPassword})
+        /* Close mobile sidebar after navigation */
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 1024) {
+                    closeSidebar();
+                }
             });
-            const p=await r.json();
-            if (r.status === 403) throw new Error(p.error || 'Invalid admin password. Action rejected.');
-            if (!p.success) throw new Error(p.error||'Unable to update administrator.');
-            loadAdmins();
-            loadAudit();
-        },
-        verb,
-        targetDescription: targetLabel,
-        danger: false
-    });
-}
+        });
 
-function deleteAdmin(id, targetLabel) {
-    openConfirmModal({
-        action: async (confirmPassword) => {
-            const r=await fetch('/api/admin/admins/'+id,{
-                method:'DELETE', headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({confirm_password: confirmPassword})
+        /* =========================================================
+           GLOBAL STATE FOR CONFIRMATION MODAL
+        ========================================================== */
+
+        let pendingAction = null;
+
+        const confirmModal =
+            document.getElementById('confirmModal');
+
+        const confirmTitle =
+            document.getElementById('confirmTitle');
+
+        const confirmMessage =
+            document.getElementById('confirmMessage');
+
+        const confirmIcon =
+            document.getElementById('confirmIcon');
+
+        const confirmPasswordInput =
+            document.getElementById('confirmPassword');
+
+        const confirmPasswordError =
+            document.getElementById('confirmPasswordError');
+
+        const confirmYesBtn =
+            document.getElementById('confirmYesBtn');
+
+        const confirmCancelBtn =
+            document.getElementById('confirmCancelBtn');
+
+
+        function openConfirmModal({
+            action,
+            verb,
+            targetDescription,
+            danger
+        }) {
+
+            pendingAction = action;
+
+            confirmTitle.textContent = `Confirm ${verb}`;
+
+            const safeVerb =
+                escapeHtml(verb.toLowerCase());
+
+            const verbClass =
+                danger
+                    ? 'text-red-400 font-black'
+                    : 'text-white font-black';
+
+            let detailLine = '';
+
+            if (targetDescription) {
+                detailLine =
+                    `<br>
+                     <span class="text-slate-500 text-sm">
+                        ${escapeHtml(targetDescription)}
+                     </span>`;
+            }
+
+            confirmMessage.innerHTML =
+                `Are you sure you want to
+                 <strong class="${verbClass}">
+                    ${safeVerb}
+                 </strong>
+                 this user?
+                 ${detailLine}`;
+
+            if (danger) {
+
+                confirmIcon.className =
+                    'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-red-500/10 text-red-400';
+
+                confirmIcon.innerHTML =
+                    '<i class="fas fa-trash-can text-xl"></i>';
+
+                confirmYesBtn.className =
+                    'btn-danger';
+
+                confirmYesBtn.textContent =
+                    'Yes';
+
+            } else if (verb === 'Disable') {
+
+                confirmIcon.className =
+                    'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/10 text-amber-400';
+
+                confirmIcon.innerHTML =
+                    '<i class="fas fa-user-slash text-xl"></i>';
+
+                confirmYesBtn.className =
+                    'btn-primary';
+
+                confirmYesBtn.textContent =
+                    'Yes';
+
+            } else if (verb === 'Reactivate') {
+
+                confirmIcon.className =
+                    'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-teal-500/10 text-teal-400';
+
+                confirmIcon.innerHTML =
+                    '<i class="fas fa-user-check text-xl"></i>';
+
+                confirmYesBtn.className =
+                    'btn-primary';
+
+                confirmYesBtn.textContent =
+                    'Yes';
+
+            } else {
+
+                confirmIcon.className =
+                    'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-400';
+
+                confirmIcon.innerHTML =
+                    '<i class="fas fa-user-plus text-xl"></i>';
+
+                confirmYesBtn.className =
+                    'btn-primary';
+
+                confirmYesBtn.textContent =
+                    'Yes';
+            }
+
+            confirmPasswordInput.value = '';
+
+            confirmPasswordError.classList.add('hidden');
+
+            confirmPasswordError.textContent = '';
+
+            confirmModal.classList.remove('hidden');
+
+            setTimeout(() => {
+                confirmPasswordInput.focus();
+            }, 50);
+        }
+
+
+        function closeConfirmModal() {
+            pendingAction = null;
+            confirmModal.classList.add('hidden');
+        }
+
+
+        confirmCancelBtn.addEventListener(
+            'click',
+            closeConfirmModal
+        );
+
+
+        confirmModal.addEventListener(
+            'click',
+            (e) => {
+                if (e.target === confirmModal) {
+                    closeConfirmModal();
+                }
+            }
+        );
+
+
+        confirmYesBtn.addEventListener(
+            'click',
+            async () => {
+
+                const pw =
+                    confirmPasswordInput.value;
+
+                if (!pw) {
+
+                    confirmPasswordError.textContent =
+                        'Please enter the current admin password to proceed.';
+
+                    confirmPasswordError.classList.remove(
+                        'hidden'
+                    );
+
+                    return;
+                }
+
+                confirmPasswordError.classList.add(
+                    'hidden'
+                );
+
+                const action =
+                    pendingAction;
+
+                if (!action) {
+                    closeConfirmModal();
+                    return;
+                }
+
+                try {
+
+                    const result =
+                        await action(pw);
+
+                    closeConfirmModal();
+
+                    if (
+                        result &&
+                        typeof result === 'function'
+                    ) {
+                        result();
+                    }
+
+                } catch (err) {
+
+                    confirmPasswordError.textContent =
+                        err.message ||
+                        'Action failed. Please try again.';
+
+                    confirmPasswordError.classList.remove(
+                        'hidden'
+                    );
+                }
+            }
+        );
+
+
+        confirmPasswordInput.addEventListener(
+            'keydown',
+            (e) => {
+
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    confirmYesBtn.click();
+                }
+
+                if (e.key === 'Escape') {
+                    closeConfirmModal();
+                }
+            }
+        );
+
+
+        /* =========================================================
+           HELPERS
+        ========================================================== */
+
+        async function logout() {
+
+            try {
+                await fetch('/admin/logout', {
+                    method: 'POST'
+                });
+            } catch (e) {}
+
+            localStorage.clear();
+
+            window.location.href =
+                '/auth/login';
+        }
+
+
+        function escapeHtml(value) {
+
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+
+        function showMsg(text, ok = false) {
+
+            const el =
+                document.getElementById('msg');
+
+            el.textContent = text;
+
+            el.className =
+                'mt-4 text-sm font-bold ' +
+                (ok
+                    ? 'text-teal-400'
+                    : 'text-red-400');
+
+            if (!text) {
+                el.classList.add('hidden');
+            } else {
+                el.classList.remove('hidden');
+            }
+        }
+
+
+        /* =========================================================
+           REAL-TIME USERNAME / EMAIL VALIDATION
+        ========================================================== */
+
+        const usernameInput =
+            document.getElementById('username');
+
+        const emailInput =
+            document.getElementById('email');
+
+        const usernameError =
+            document.getElementById('usernameError');
+
+        const emailError =
+            document.getElementById('emailError');
+
+        const createAdminSubmit =
+            document.getElementById(
+                'createAdminSubmit'
+            );
+
+
+        const VALID = {
+            ok: true,
+            message: ''
+        };
+
+
+        function INVALID(message) {
+            return {
+                ok: false,
+                message
+            };
+        }
+
+
+        function isValidEmailFormat(value) {
+
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+                .test(String(value || ''));
+        }
+
+
+        let validationState = {
+            username: VALID,
+            email: VALID
+        };
+
+
+        function refreshSubmitState() {
+
+            const formValid =
+                validationState.username.ok &&
+                validationState.email.ok &&
+                usernameInput.value.trim().length >= 3 &&
+                isValidEmailFormat(
+                    emailInput.value.trim()
+                );
+
+            createAdminSubmit.disabled =
+                !formValid;
+        }
+
+
+        function applyFieldError(
+            inputEl,
+            errorEl,
+            result
+        ) {
+
+            if (result.ok) {
+
+                inputEl.classList.remove(
+                    'invalid'
+                );
+
+                errorEl.classList.add(
+                    'hidden'
+                );
+
+                errorEl.textContent = '';
+
+            } else {
+
+                inputEl.classList.add(
+                    'invalid'
+                );
+
+                errorEl.classList.remove(
+                    'hidden'
+                );
+
+                errorEl.textContent =
+                    result.message;
+            }
+        }
+
+
+        let debounceTimers = {
+            username: null,
+            email: null
+        };
+
+
+        async function runRemoteCheck(
+            field,
+            value
+        ) {
+
+            try {
+
+                const query =
+                    field === 'username'
+                        ? `username=${encodeURIComponent(value)}`
+                        : `email=${encodeURIComponent(value)}`;
+
+                const r =
+                    await fetch(
+                        `/api/admin/admins/check?${query}&v=${Date.now()}`
+                    );
+
+                if (
+                    r.status === 401 ||
+                    r.status === 403
+                ) {
+
+                    window.location.href =
+                        '/auth/login';
+
+                    return null;
+                }
+
+                const p =
+                    await r.json();
+
+                if (!p.success) {
+                    return null;
+                }
+
+                return p.data[field];
+
+            } catch (e) {
+
+                return null;
+            }
+        }
+
+
+        function validateUsernameLocal(value) {
+
+            const v =
+                value.trim();
+
+            if (!v) {
+                return VALID;
+            }
+
+            if (v.length < 3) {
+                return INVALID(
+                    'Username must be at least 3 characters.'
+                );
+            }
+
+            return VALID;
+        }
+
+
+        function validateEmailLocal(value) {
+
+            const v =
+                value.trim();
+
+            if (!v) {
+                return VALID;
+            }
+
+            if (!isValidEmailFormat(v)) {
+                return INVALID(
+                    'Enter a valid email address.'
+                );
+            }
+
+            return VALID;
+        }
+
+
+        usernameInput.addEventListener(
+            'input',
+            async () => {
+
+                const value =
+                    usernameInput.value;
+
+                const local =
+                    validateUsernameLocal(value);
+
+                if (!local.ok) {
+
+                    validationState.username =
+                        local;
+
+                    applyFieldError(
+                        usernameInput,
+                        usernameError,
+                        local
+                    );
+
+                    refreshSubmitState();
+
+                    return;
+                }
+
+                if (
+                    value.trim().length < 3
+                ) {
+
+                    validationState.username =
+                        VALID;
+
+                    applyFieldError(
+                        usernameInput,
+                        usernameError,
+                        VALID
+                    );
+
+                    refreshSubmitState();
+
+                    return;
+                }
+
+                if (debounceTimers.username) {
+                    clearTimeout(
+                        debounceTimers.username
+                    );
+                }
+
+                debounceTimers.username =
+                    setTimeout(
+                        async () => {
+
+                            const remote =
+                                await runRemoteCheck(
+                                    'username',
+                                    value
+                                );
+
+                            if (remote === null) {
+                                return;
+                            }
+
+                            if (!remote.available) {
+
+                                const res =
+                                    INVALID(
+                                        remote.message ||
+                                        'This username has already been taken'
+                                    );
+
+                                validationState.username =
+                                    res;
+
+                                applyFieldError(
+                                    usernameInput,
+                                    usernameError,
+                                    res
+                                );
+
+                            } else {
+
+                                validationState.username =
+                                    VALID;
+
+                                applyFieldError(
+                                    usernameInput,
+                                    usernameError,
+                                    VALID
+                                );
+                            }
+
+                            refreshSubmitState();
+
+                        },
+                        250
+                    );
+
+                refreshSubmitState();
+            }
+        );
+
+
+        emailInput.addEventListener(
+            'input',
+            async () => {
+
+                const value =
+                    emailInput.value;
+
+                const local =
+                    validateEmailLocal(value);
+
+                if (!local.ok) {
+
+                    validationState.email =
+                        local;
+
+                    applyFieldError(
+                        emailInput,
+                        emailError,
+                        local
+                    );
+
+                    refreshSubmitState();
+
+                    return;
+                }
+
+                if (!value.trim()) {
+
+                    validationState.email =
+                        VALID;
+
+                    applyFieldError(
+                        emailInput,
+                        emailError,
+                        VALID
+                    );
+
+                    refreshSubmitState();
+
+                    return;
+                }
+
+                if (debounceTimers.email) {
+                    clearTimeout(
+                        debounceTimers.email
+                    );
+                }
+
+                debounceTimers.email =
+                    setTimeout(
+                        async () => {
+
+                            const remote =
+                                await runRemoteCheck(
+                                    'email',
+                                    value
+                                );
+
+                            if (remote === null) {
+                                return;
+                            }
+
+                            if (!remote.available) {
+
+                                const res =
+                                    INVALID(
+                                        remote.message ||
+                                        'An admin account with this email already exists'
+                                    );
+
+                                validationState.email =
+                                    res;
+
+                                applyFieldError(
+                                    emailInput,
+                                    emailError,
+                                    res
+                                );
+
+                            } else {
+
+                                validationState.email =
+                                    VALID;
+
+                                applyFieldError(
+                                    emailInput,
+                                    emailError,
+                                    VALID
+                                );
+                            }
+
+                            refreshSubmitState();
+
+                        },
+                        300
+                    );
+
+                refreshSubmitState();
+            }
+        );
+
+
+        /* =========================================================
+           ADMIN LIST
+        ========================================================== */
+
+        async function loadAdmins() {
+
+            const body =
+                document.getElementById(
+                    'adminsBody'
+                );
+
+            try {
+
+                const r =
+                    await fetch(
+                        '/api/admin/admins?v=' +
+                        Date.now()
+                    );
+
+                if (
+                    r.status === 401 ||
+                    r.status === 403
+                ) {
+
+                    window.location.href =
+                        '/auth/login';
+
+                    return;
+                }
+
+                const p =
+                    await r.json();
+
+                if (!p.success) {
+                    throw new Error(
+                        p.error ||
+                        'Unable to load admins'
+                    );
+                }
+
+                body.innerHTML =
+                    (p.data || [])
+                    .map(a => {
+
+                        const active =
+                            a.account_status === 'active';
+
+                        const toggleLabel =
+                            active
+                                ? 'Disable'
+                                : 'Reactivate';
+
+                        const label =
+                            escapeHtml(
+                                (a.full_name ||
+                                    a.username) +
+                                ' (' +
+                                a.email +
+                                ')'
+                            );
+
+                        return `
+                            <tr class="border-b border-white/5">
+
+                                <td class="table-td">
+                                    <div class="font-bold text-white">
+                                        ${escapeHtml(
+                                            a.full_name ||
+                                            a.username
+                                        )}
+                                    </div>
+
+                                    <div class="text-xs text-slate-500 mt-1">
+                                        @${escapeHtml(
+                                            a.username
+                                        )}
+                                    </div>
+                                </td>
+
+                                <td class="table-td">
+                                    ${escapeHtml(
+                                        a.email
+                                    )}
+                                </td>
+
+                                <td class="table-td">
+
+                                    <span class="status-pill ${
+                                        active
+                                            ? 'status-active'
+                                            : 'status-disabled'
+                                    }">
+
+                                        <i class="fas ${
+                                            active
+                                                ? 'fa-circle-check'
+                                                : 'fa-circle-xmark'
+                                        } mr-1"></i>
+
+                                        ${
+                                            active
+                                                ? 'Active'
+                                                : 'Disabled'
+                                        }
+
+                                    </span>
+
+                                </td>
+
+                                <td class="table-td text-right">
+
+                                    <div class="flex items-center justify-end gap-4">
+
+                                        <button
+                                            onclick='toggleAdmin(
+                                                ${a.user_id},
+                                                "${active ? 'disabled' : 'active'}",
+                                                ${JSON.stringify(label)}
+                                            )'
+                                            class="text-xs font-black ${
+                                                active
+                                                    ? 'text-amber-400 hover:text-amber-300'
+                                                    : 'text-teal-400 hover:text-teal-300'
+                                            }">
+
+                                            <i class="fas ${
+                                                active
+                                                    ? 'fa-user-slash'
+                                                    : 'fa-user-check'
+                                            } mr-1"></i>
+
+                                            ${toggleLabel}
+
+                                        </button>
+
+                                        <button
+                                            onclick='deleteAdmin(
+                                                ${a.user_id},
+                                                ${JSON.stringify(
+                                                    label +
+                                                    " — this action is permanent and cannot be undone."
+                                                )}
+                                            )'
+                                            class="text-xs font-black text-red-400 hover:text-red-300">
+
+                                            <i class="fas fa-trash-can mr-1"></i>
+                                            Delete
+
+                                        </button>
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+                        `;
+                    })
+                    .join('') ||
+
+                    `
+                        <tr>
+                            <td
+                                colspan="4"
+                                class="text-center text-slate-500 py-12">
+                                <i class="fas fa-users-slash text-2xl mb-3 block opacity-50"></i>
+                                No administrators found.
+                            </td>
+                        </tr>
+                    `;
+
+            } catch (e) {
+
+                body.innerHTML =
+                    `
+                    <tr>
+                        <td
+                            colspan="4"
+                            class="text-center text-red-400 py-12">
+                            <i class="fas fa-triangle-exclamation text-xl mb-2 block"></i>
+                            Unable to load administrators.
+                        </td>
+                    </tr>
+                    `;
+            }
+        }
+
+
+        /* =========================================================
+           AUDIT LOG
+        ========================================================== */
+
+        async function loadAudit() {
+
+            const body =
+                document.getElementById(
+                    'auditBody'
+                );
+
+            try {
+
+                const r =
+                    await fetch(
+                        '/api/admin/audit-log?limit=50&v=' +
+                        Date.now()
+                    );
+
+                const p =
+                    await r.json();
+
+                if (!p.success) {
+                    throw new Error(
+                        p.error ||
+                        'Unable to load activity'
+                    );
+                }
+
+                body.innerHTML =
+                    (p.data || [])
+                    .map(x => {
+
+                        return `
+                            <tr class="border-b border-white/5">
+
+                                <td class="table-td text-xs text-slate-500">
+                                    ${escapeHtml(
+                                        x.created_at
+                                    )}
+                                </td>
+
+                                <td class="table-td font-bold text-white">
+                                    ${escapeHtml(
+                                        x.actor_name
+                                    )}
+                                </td>
+
+                                <td class="table-td">
+
+                                    <span class="text-teal-400 font-bold">
+                                        ${escapeHtml(
+                                            x.action
+                                        )}
+                                    </span>
+
+                                </td>
+
+                                <td class="table-td text-slate-400">
+                                    ${escapeHtml(
+                                        x.details
+                                    )}
+                                </td>
+
+                            </tr>
+                        `;
+                    })
+                    .join('') ||
+
+                    `
+                    <tr>
+                        <td
+                            colspan="4"
+                            class="py-12 text-center text-slate-500">
+                            <i class="fas fa-clock-rotate-left text-2xl mb-3 block opacity-50"></i>
+                            No administrator activity yet.
+                        </td>
+                    </tr>
+                    `;
+
+            } catch (e) {
+
+                body.innerHTML =
+                    `
+                    <tr>
+                        <td
+                            colspan="4"
+                            class="py-12 text-center text-red-400">
+                            <i class="fas fa-triangle-exclamation text-xl mb-2 block"></i>
+                            Unable to load activity.
+                        </td>
+                    </tr>
+                    `;
+            }
+        }
+
+
+        /* =========================================================
+           TOGGLE ADMIN
+        ========================================================== */
+
+        function toggleAdmin(
+            id,
+            status,
+            targetLabel
+        ) {
+
+            const verb =
+                status === 'disabled'
+                    ? 'Disable'
+                    : 'Reactivate';
+
+            openConfirmModal({
+
+                action: async (
+                    confirmPassword
+                ) => {
+
+                    const r =
+                        await fetch(
+                            '/api/admin/admins/' +
+                            id +
+                            '/status',
+                            {
+                                method: 'PATCH',
+
+                                headers: {
+                                    'Content-Type':
+                                        'application/json'
+                                },
+
+                                body:
+                                    JSON.stringify({
+                                        account_status:
+                                            status,
+
+                                        confirm_password:
+                                            confirmPassword
+                                    })
+                            }
+                        );
+
+                    const p =
+                        await r.json();
+
+                    if (r.status === 403) {
+
+                        throw new Error(
+                            p.error ||
+                            'Invalid admin password. Action rejected.'
+                        );
+                    }
+
+                    if (!p.success) {
+
+                        throw new Error(
+                            p.error ||
+                            'Unable to update administrator.'
+                        );
+                    }
+
+                    loadAdmins();
+                    loadAudit();
+                },
+
+                verb,
+
+                targetDescription:
+                    targetLabel,
+
+                danger: false
             });
-            const p=await r.json();
-            if (r.status === 403) throw new Error(p.error || 'Invalid admin password. Action rejected.');
-            if (!p.success) throw new Error(p.error||'Unable to delete administrator.');
-            loadAdmins();
-            loadAudit();
-        },
-        verb: 'Delete',
-        targetDescription: targetLabel,
-        danger: true
-    });
-}
+        }
 
-document.getElementById('createAdminForm').addEventListener('submit', async e => {
-    e.preventDefault();
-    const username = usernameInput.value.trim();
-    const email = emailInput.value.trim();
-    const fullName = document.getElementById('fullName').value.trim();
-    if (!username || !email) { showMsg('Username and email are required.'); return; }
-    // Final local + remote state guard
-    if (!validationState.username.ok) { showMsg(validationState.username.message); return; }
-    if (!validationState.email.ok) { showMsg(validationState.email.message); return; }
 
-    openConfirmModal({
-        action: async (confirmPassword) => {
-            const r=await fetch('/api/admin/admins',{
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({ username, email, full_name: fullName, confirm_password: confirmPassword })
+        /* =========================================================
+           DELETE ADMIN
+        ========================================================== */
+
+        function deleteAdmin(
+            id,
+            targetLabel
+        ) {
+
+            openConfirmModal({
+
+                action: async (
+                    confirmPassword
+                ) => {
+
+                    const r =
+                        await fetch(
+                            '/api/admin/admins/' +
+                            id,
+                            {
+                                method: 'DELETE',
+
+                                headers: {
+                                    'Content-Type':
+                                        'application/json'
+                                },
+
+                                body:
+                                    JSON.stringify({
+                                        confirm_password:
+                                            confirmPassword
+                                    })
+                            }
+                        );
+
+                    const p =
+                        await r.json();
+
+                    if (r.status === 403) {
+
+                        throw new Error(
+                            p.error ||
+                            'Invalid admin password. Action rejected.'
+                        );
+                    }
+
+                    if (!p.success) {
+
+                        throw new Error(
+                            p.error ||
+                            'Unable to delete administrator.'
+                        );
+                    }
+
+                    loadAdmins();
+                    loadAudit();
+                },
+
+                verb: 'Delete',
+
+                targetDescription:
+                    targetLabel,
+
+                danger: true
             });
-            const p=await r.json();
-            if (r.status === 403) throw new Error(p.error || 'Invalid admin password. Action rejected.');
-            if (r.status === 409) throw new Error(p.error || 'Username or email already in use.');
-            if (!p.success) throw new Error(p.error||'Unable to create administrator.');
-            showMsg('Administrator created successfully.',true);
-            e.target.reset();
-            validationState = { username: VALID, email: VALID };
-            applyFieldError(usernameInput, usernameError, VALID);
-            applyFieldError(emailInput, emailError, VALID);
-            refreshSubmitState();
-            loadAdmins();
-            loadAudit();
-        },
-        verb: 'Create',
-        targetDescription: `New admin: ${username} (${email})`,
-        danger: false
-    });
-});
+        }
 
-loadAdmins();
-loadAudit();
-refreshSubmitState();
 
-// Auto-refresh administrators list and audit log every 20s — ensures
-// status changes (disable/reactivate) from other admins appear live
-// and new audit entries surface without a manual refresh.
-setInterval(() => {
-    if (!document.hidden) {
+        /* =========================================================
+           CREATE ADMIN
+        ========================================================== */
+
+        document
+            .getElementById('createAdminForm')
+            .addEventListener(
+                'submit',
+                async e => {
+
+                    e.preventDefault();
+
+                    const username =
+                        usernameInput.value.trim();
+
+                    const email =
+                        emailInput.value.trim();
+
+                    const fullName =
+                        document
+                            .getElementById(
+                                'fullName'
+                            )
+                            .value
+                            .trim();
+
+                    if (!username || !email) {
+
+                        showMsg(
+                            'Username and email are required.'
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        !validationState
+                            .username
+                            .ok
+                    ) {
+
+                        showMsg(
+                            validationState
+                                .username
+                                .message
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        !validationState
+                            .email
+                            .ok
+                    ) {
+
+                        showMsg(
+                            validationState
+                                .email
+                                .message
+                        );
+
+                        return;
+                    }
+
+                    openConfirmModal({
+
+                        action: async (
+                            confirmPassword
+                        ) => {
+
+                            const r =
+                                await fetch(
+                                    '/api/admin/admins',
+                                    {
+                                        method: 'POST',
+
+                                        headers: {
+                                            'Content-Type':
+                                                'application/json'
+                                        },
+
+                                        body:
+                                            JSON.stringify({
+                                                username,
+                                                email,
+                                                full_name:
+                                                    fullName,
+                                                confirm_password:
+                                                    confirmPassword
+                                            })
+                                    }
+                                );
+
+                            const p =
+                                await r.json();
+
+                            if (r.status === 403) {
+
+                                throw new Error(
+                                    p.error ||
+                                    'Invalid admin password. Action rejected.'
+                                );
+                            }
+
+                            if (r.status === 409) {
+
+                                throw new Error(
+                                    p.error ||
+                                    'Username or email already in use.'
+                                );
+                            }
+
+                            if (!p.success) {
+
+                                throw new Error(
+                                    p.error ||
+                                    'Unable to create administrator.'
+                                );
+                            }
+
+                            const emailed =
+                                p.data && p.data.email_sent;
+                            showMsg(
+                                emailed
+                                    ? 'Administrator created. A system-generated temporary password was emailed — they must change it on first login.'
+                                    : 'Administrator created, but the temporary password email could not be sent. Check the server outbox or contact support.',
+                                true
+                            );
+
+                            e.target.reset();
+
+                            validationState = {
+                                username: VALID,
+                                email: VALID
+                            };
+
+                            applyFieldError(
+                                usernameInput,
+                                usernameError,
+                                VALID
+                            );
+
+                            applyFieldError(
+                                emailInput,
+                                emailError,
+                                VALID
+                            );
+
+                            refreshSubmitState();
+
+                            loadAdmins();
+                            loadAudit();
+                        },
+
+                        verb: 'Create',
+
+                        targetDescription:
+                            `New admin: ${username} (${email})`,
+
+                        danger: false
+                    });
+                }
+            );
+
+
+        /* =========================================================
+           INITIAL LOAD
+        ========================================================== */
+
         loadAdmins();
         loadAudit();
-    }
-}, 20000);
-</script>
+        refreshSubmitState();
+
+
+        /* =========================================================
+           AUTO REFRESH
+        ========================================================== */
+
+        setInterval(
+            () => {
+
+                if (!document.hidden) {
+
+                    loadAdmins();
+                    loadAudit();
+                }
+
+            },
+            20000
+        );
+
+
+        /* =========================================================
+           CLOSE SIDEBAR IF WINDOW IS RESIZED TO DESKTOP
+        ========================================================== */
+
+        window.addEventListener(
+            'resize',
+            () => {
+
+                if (window.innerWidth >= 1024) {
+                    closeSidebar();
+                }
+
+            }
+        );
+    </script>
+
 </body>
 </html>
+
