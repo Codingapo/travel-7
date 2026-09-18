@@ -59,6 +59,36 @@ PASSWORD_REQUIREMENTS_DESC = (
 _SPECIAL_CHARS = set(r"!@#$%^&*()_+-=[]{}|;:,.<>?/~`")
 
 
+def generate_temporary_password(length: int = 16) -> str:
+    """Generate a strong temporary password that always meets policy.
+
+    Guarantees: uppercase, lowercase, digit, and special character.
+    Uses the secrets module (cryptographically secure).
+    """
+    if length < PASSWORD_MIN_LENGTH:
+        length = PASSWORD_MIN_LENGTH
+
+    upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"      # exclude I/O for readability
+    lower = "abcdefghijkmnopqrstuvwxyz"    # exclude l
+    digits = "23456789"                    # exclude 0/1
+    special = "!@#$%^&*-_=+"
+
+    # Ensure at least one of each required class
+    chars = [
+        secrets.choice(upper),
+        secrets.choice(lower),
+        secrets.choice(digits),
+        secrets.choice(special),
+    ]
+    pool = upper + lower + digits + special
+    chars.extend(secrets.choice(pool) for _ in range(length - 4))
+    # Shuffle so the required characters are not always at the front
+    for i in range(len(chars) - 1, 0, -1):
+        j = secrets.randbelow(i + 1)
+        chars[i], chars[j] = chars[j], chars[i]
+    return "".join(chars)
+
+
 def validate_password_strength(password: str, forbidden_substrings: Optional[list] = None) -> None:
     """Validate a password against standard security requirements.
 
@@ -146,7 +176,7 @@ class AdminCreateRequest(BaseModel):
     username: str
     email: str
     full_name: str = ""
-    confirm_password: str = ""
+    confirm_password: str = ""         # current admin's password (for confirmation)
 
 class AdminStatusRequest(BaseModel):
     account_status: str
@@ -503,6 +533,39 @@ def require_admin(request: Request):
     if not admin:
         raise HTTPException(status_code=403, detail="Administrator account is inactive or no longer authorised")
     return {**session, "admin": admin}
+
+
+def get_logged_in_redirect(session: dict) -> Optional[str]:
+    """If the session belongs to an active user, return where they should go.
+
+    - must_change_password → /auth/change-password
+    - active admin         → /dashboard
+    - active customer      → /home
+    - inactive / missing   → None (treat as not logged in)
+    """
+    if not session or not session.get("user_id"):
+        return None
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute(
+        "SELECT is_admin, role, user_type, must_change_password, account_status "
+        "FROM Users WHERE user_id=? LIMIT 1",
+        (session["user_id"],),
+    )
+    user = c.fetchone()
+    conn.close()
+    if not user or user["account_status"] != "active":
+        return None
+    if bool(user["must_change_password"] if "must_change_password" in user.keys() else 0):
+        return "/auth/change-password"
+    is_admin = (
+        int(user["is_admin"] or 0) == 1
+        or user["role"] == "admin"
+        or user["user_type"] == "admin"
+    )
+    if is_admin and get_active_admin(session["user_id"]):
+        return "/dashboard"
+    return "/home"
 
 
 def normalize_email(raw: str) -> str:
@@ -1153,10 +1216,22 @@ async def home(request: Request):
 
 @app.get("/auth/login")
 async def auth_login_page(request: Request):
+    # Already logged in → skip the login form and go straight to the app
+    session = get_session_from_request(request)
+    if session:
+        dest = get_logged_in_redirect(session)
+        if dest:
+            return RedirectResponse(url=dest, status_code=302)
     return templates.TemplateResponse(request, "auth.html")
 
 @app.get("/auth/register")
 async def auth_register_page(request: Request):
+    # Already logged in → no need to register again
+    session = get_session_from_request(request)
+    if session:
+        dest = get_logged_in_redirect(session)
+        if dest:
+            return RedirectResponse(url=dest, status_code=302)
     return templates.TemplateResponse(request, "auth.html")
 
 @app.get("/auth/change-password")
@@ -1168,10 +1243,31 @@ async def auth_change_password_page(request: Request):
 
 @app.get("/admin/login")
 async def admin_login_page(request: Request):
+    # Honour existing session the same way /auth/login does
+    session = get_session_from_request(request)
+    if session:
+        dest = get_logged_in_redirect(session)
+        if dest:
+            return RedirectResponse(url=dest, status_code=302)
     return RedirectResponse(url="/auth/login", status_code=302)
 
 @app.get("/admin/forgot-password")
 async def admin_forgot_password_page(request: Request):
+    session = get_session_from_request(request)
+    if session:
+        dest = get_logged_in_redirect(session)
+        if dest:
+            return RedirectResponse(url=dest, status_code=302)
+    return templates.TemplateResponse(request, "forgot-password.html")
+
+@app.get("/forgot-password")
+async def forgot_password_page(request: Request):
+    # Shared customer/admin forgot-password page — redirect if already logged in
+    session = get_session_from_request(request)
+    if session:
+        dest = get_logged_in_redirect(session)
+        if dest:
+            return RedirectResponse(url=dest, status_code=302)
     return templates.TemplateResponse(request, "forgot-password.html")
 
 @app.get("/dashboard")
@@ -1216,31 +1312,52 @@ async def dashboard(request: Request):
     }
     return templates.TemplateResponse(request, "admin/dashboard.html", {"request": request, "initial_dashboard": initial_dashboard})
 
-@app.get("/admin/{page}.html")
+
+# ---- Clean page URLs (no .html in the address bar) ----
+# Reserved path segments that must NOT be treated as HTML page names
+_RESERVED_PAGE_NAMES = frozenset({
+    "api", "static", "admin", "auth", "dashboard", "home", "packages",
+    "bookings", "docs", "openapi.json", "redoc",
+})
+
+
+@app.get("/admin/{page}")
 async def render_admin_page(request: Request, page: str):
-    if page == "login":
-        return templates.TemplateResponse(request, "admin/login.html")
-    
-    # Block removed interfaces
-    if page in ["users", "destinations"]:
+    """Serve admin/*.html templates at clean URLs like /admin/packages."""
+    # Dedicated handlers already cover these
+    if page in {"login", "logout", "forgot-password"}:
+        if page == "login":
+            return RedirectResponse(url="/auth/login", status_code=302)
+        if page == "forgot-password":
+            return RedirectResponse(url="/admin/forgot-password", status_code=302)
         raise HTTPException(status_code=404, detail="Page not found")
-        
+
+    # Block removed interfaces
+    if page in {"users", "destinations"}:
+        raise HTTPException(status_code=404, detail="Page not found")
+
     session = get_session_from_request(request)
     if not session or not get_active_admin(session["user_id"]):
-        return RedirectResponse(url="/admin/login", status_code=302)
+        return RedirectResponse(url="/auth/login", status_code=302)
     try:
         return templates.TemplateResponse(request, f"admin/{page}.html")
     except Exception:
         raise HTTPException(status_code=404, detail="Page not found")
 
+
+# ---- Backward-compatible redirects: old .html URLs → clean URLs ----
+@app.get("/admin/{page}.html")
+async def redirect_admin_html(page: str):
+    return RedirectResponse(url=f"/admin/{page}", status_code=301)
+
+
 @app.get("/{page}.html")
-async def render_page(request: Request, page: str):
+async def redirect_page_html(page: str):
     if page == "auth":
-        return RedirectResponse(url="/auth/login", status_code=302)
-    try:
-        return templates.TemplateResponse(request, f"{page}.html")
-    except Exception:
-        raise HTTPException(status_code=404, detail="Page not found")
+        return RedirectResponse(url="/auth/login", status_code=301)
+    if page == "forgot-password":
+        return RedirectResponse(url="/forgot-password", status_code=301)
+    return RedirectResponse(url=f"/{page}", status_code=301)
 
 # ============================================================
 # CUSTOMER AUTH API ROUTES (NEW — were missing entirely)
@@ -1655,18 +1772,22 @@ def verify_admin_password(user_id: int, password: str) -> bool:
         return False
     return check_password_hash(row["password_hash"], password)
 
-
 @app.post("/api/auth/change-password")
 async def change_password(data: ChangePasswordRequest, request: Request):
     session = get_session_from_request(request)
     if not session:
         raise HTTPException(status_code=401, detail="Please login first")
-    conn = get_db_connection(); c = conn.cursor()
+
+    conn = get_db_connection()
+    c = conn.cursor()
     c.execute("SELECT * FROM Users WHERE user_id=?", (session["user_id"],))
     user_row = c.fetchone()
     user = dict(user_row) if user_row else None
+
     if not user or not check_password_hash(user["password_hash"], data.current_password):
-        conn.close(); raise HTTPException(status_code=400, detail="Current password is incorrect.")
+        conn.close()
+        raise HTTPException(status_code=400, detail="Current password is incorrect.")
+
     username_val = user.get("username") or ""
     email_val = user.get("email") or ""
     email_local_val = email_val.split("@")[0] if "@" in email_val else email_val
@@ -1674,26 +1795,37 @@ async def change_password(data: ChangePasswordRequest, request: Request):
         data.new_password,
         forbidden_substrings=[username_val, email_val, email_local_val]
     )
+
     new_hash = generate_password_hash(data.new_password)
-    is_admin = int(user.get("is_admin") or 0) == 1 or user.get("role") == "admin" or user.get("user_type") == "admin"
+    is_admin = (
+        int(user.get("is_admin") or 0) == 1
+        or user.get("role") == "admin"
+        or user.get("user_type") == "admin"
+    )
+
+    c.execute(
+        "UPDATE Users SET password_hash=?, must_change_password=0, password_changed_at=CURRENT_TIMESTAMP WHERE user_id=?",
+        (new_hash, session["user_id"])
+    )
+    conn.commit()
+    conn.close()
+
     if is_admin:
-        c.execute("UPDATE Users SET password_hash=?, must_change_password=0, password_changed_at=CURRENT_TIMESTAMP WHERE user_id=?", (new_hash, session["user_id"]))
-        conn.commit()
-        conn.close()
-        admins_updated_count = sync_admin_password_to_all(new_hash, exclude_user_id=session["user_id"])
-        total_admins_affected = admins_updated_count + 1
         record_admin_audit(
             session,
-            "Changed universal admin password",
+            "Changed own admin password",
             "admin",
-            None,
-            f"Admin {user.get('username')} updated the shared platform password; applied to {total_admins_affected} administrator account(s)."
+            session["user_id"],
+            f"Admin {user.get('username')} updated their own password."
         )
-    else:
-        c.execute("UPDATE Users SET password_hash=?, must_change_password=0, password_changed_at=CURRENT_TIMESTAMP WHERE user_id=?", (new_hash, session["user_id"]))
-        conn.commit(); conn.close()
-    return {"success": True, "data": {"message": "Password changed successfully.", "redirect": "/dashboard" if session.get("role") == "admin" else "/home"}}
 
+    return {
+        "success": True,
+        "data": {
+            "message": "Password changed successfully.",
+            "redirect": "/dashboard" if session.get("role") == "admin" else "/home"
+        }
+    }
 
 class PasswordResetRequest(BaseModel):
     email: str
@@ -1844,23 +1976,21 @@ async def verify_password_reset(data: PasswordResetVerifyRequest):
             )
         )
 
+      
         new_hash = generate_password_hash(data.password)
-        if is_admin_reset:
-            c.execute(
-                "UPDATE Users SET password_hash=?, must_change_password=0, password_changed_at=CURRENT_TIMESTAMP WHERE is_admin=1",
-                (new_hash,),
-            )
-            rows_updated = c.rowcount
-        else:
-            c.execute(
-                """
-                UPDATE Users
-                SET password_hash=?, must_change_password=0, password_changed_at=CURRENT_TIMESTAMP
-                WHERE email=?
-                """,
-                (new_hash, email)
-            )
-            rows_updated = c.rowcount
+        c.execute(
+            """
+            UPDATE Users
+            SET password_hash=?, must_change_password=0, password_changed_at=CURRENT_TIMESTAMP
+            WHERE email=?
+            """,
+            (new_hash, email)
+        )
+        rows_updated = c.rowcount
+
+
+
+
 
         if rows_updated == 0:
             raise HTTPException(
@@ -1870,24 +2000,22 @@ async def verify_password_reset(data: PasswordResetVerifyRequest):
 
         conn.commit()
 
-        # When an admin triggers a universal password reset via OTP (Forgot Password flow)
-        # we also record the action under Admin Activity for full audit transparency.
-        if is_admin_reset:
-            c.execute("SELECT user_id, username FROM Users WHERE is_admin=1 AND LOWER(email)=? LIMIT 1", (email,))
+        # Record audit when an admin resets their own password via OTP
+        if is_admin_reset and rows_updated > 0:
+            c.execute(
+                "SELECT user_id, username FROM Users WHERE is_admin=1 AND LOWER(email)=? LIMIT 1",
+                (email,),
+            )
             initiator_row = c.fetchone()
             initiator = dict(initiator_row) if initiator_row else None
             if initiator and initiator.get("user_id"):
                 pseudo_session = {"user_id": initiator["user_id"]}
-                audit_details = (
-                    f"Password reset via OTP for email {email}; "
-                    f"new password universally synced to {rows_updated} administrator account(s)."
-                )
                 record_admin_audit(
                     pseudo_session,
-                    "Changed universal admin password",
+                    "Changed own admin password (via OTP)",
                     "admin",
-                    None,
-                    audit_details,
+                    initiator["user_id"],
+                    f"Password reset via OTP for {email}.",
                 )
 
     except Exception:
@@ -2032,16 +2160,22 @@ async def login(data: LoginRequest, request: Request):
     raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
+@app.post("/api/auth/logout")
 @app.post("/admin/logout")
-async def admin_logout(request: Request):
+async def logout(request: Request):
+    """Clear the current session cookie and DB row (works for admin and customer)."""
     session_id = request.cookies.get("session_id")
+    if not session_id:
+        authorization = request.headers.get("Authorization", "")
+        if authorization.lower().startswith("bearer "):
+            session_id = authorization[7:].strip()
     if session_id:
         conn = get_db_connection()
         c = conn.cursor()
         c.execute("DELETE FROM Sessions WHERE session_id = ?", (session_id,))
         conn.commit()
         conn.close()
-    response = JSONResponse(content={"success": True})
+    response = JSONResponse(content={"success": True, "message": "Logged out successfully."})
     response.delete_cookie("session_id", path="/")
     return response
 
@@ -2971,76 +3105,85 @@ async def check_admin_credential_available(request: Request, username: str = "",
         conn.close()
     return {"success": True, "data": result}
 
-
 @app.post("/api/admin/admins")
 async def create_admin(data: AdminCreateRequest, request: Request):
     session = require_admin(request)
 
-    # Requirement 2: Verify confirmation password before executing the action
+    # Confirm the current admin's password before creating another admin
     if not verify_admin_password(session["user_id"], data.confirm_password or ""):
         raise HTTPException(status_code=403, detail="Invalid administrator password. Action rejected.")
 
     username = data.username.strip()
     email = normalize_email(data.email)
     full_name = data.full_name.strip() or username
+
     if len(username) < 3:
         raise HTTPException(status_code=400, detail="Username must be at least 3 characters.")
     if not is_valid_email(email):
         raise HTTPException(status_code=400, detail="Enter a valid email address.")
 
-    # Requirement 3: Unique admin credential validation with specific error messages
-    conn = get_db_connection(); c = conn.cursor()
-    c.execute("SELECT user_id, username, email FROM Users WHERE is_admin=1 AND LOWER(username)=? LIMIT 1", (username.lower(),))
-    dup_username = c.fetchone()
-    if dup_username:
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    c.execute(
+        "SELECT user_id FROM Users WHERE is_admin=1 AND LOWER(username)=? LIMIT 1",
+        (username.lower(),)
+    )
+    if c.fetchone():
         conn.close()
         raise HTTPException(status_code=409, detail="This username has already been taken")
 
-    c.execute("SELECT user_id, username, email FROM Users WHERE is_admin=1 AND LOWER(email)=? LIMIT 1", (email,))
-    dup_email = c.fetchone()
-    if dup_email:
+    c.execute(
+        "SELECT user_id FROM Users WHERE is_admin=1 AND LOWER(email)=? LIMIT 1",
+        (email,)
+    )
+    if c.fetchone():
         conn.close()
         raise HTTPException(status_code=409, detail="An admin account with this email already exists")
 
-    # Requirement 1: Assign the current shared admin password to new admins
-    shared_hash = get_shared_admin_password_hash()
-    if shared_hash:
-        shared_password_for_email = None
-        password_hash_to_store = shared_hash
-        must_change = 0
-    else:
-        shared_password_for_email = DEFAULT_ADMIN_PASSWORD
-        password_hash_to_store = generate_password_hash(DEFAULT_ADMIN_PASSWORD)
-        must_change = 1
+    # System generates a strong temporary password (always includes a special character)
+    temporary_password = generate_temporary_password(16)
+    password_hash_to_store = generate_password_hash(temporary_password)
+    must_change = 1   # force the new admin to change password on first login
 
     try:
-        c.execute("""INSERT INTO Users
-            (username,password_hash,role,user_type,full_name,email,account_status,is_admin,must_change_password)
-            VALUES (?,?,'admin','admin',?,?, 'active',1,?)""",
-            (username, password_hash_to_store, full_name, email, must_change))
+        c.execute(
+            """INSERT INTO Users
+               (username, password_hash, role, user_type, full_name, email,
+                account_status, is_admin, must_change_password)
+               VALUES (?, ?, 'admin', 'admin', ?, ?, 'active', 1, ?)""",
+            (username, password_hash_to_store, full_name, email, must_change)
+        )
         admin_id = c.lastrowid
         conn.commit()
     except sqlite3.IntegrityError:
-        conn.rollback(); conn.close()
+        conn.rollback()
+        conn.close()
         raise HTTPException(status_code=409, detail="Username or email is already registered.")
     conn.close()
 
+    # Email the temporary password only to the new admin (never returned in the API response)
     email_sent = False
     try:
-        if shared_password_for_email:
-            email_sent = send_bootstrap_admin_email(email, username, shared_password_for_email)
-        else:
-            email_sent = send_new_admin_shared_password_email(email, username)
+        email_sent = send_bootstrap_admin_email(email, username, temporary_password)
     except Exception:
         logger.exception("Failed to send new administrator credentials to %s", email)
-    record_admin_audit(session, "Created administrator", "admin", admin_id, f"Created {username} ({email}); credentials emailed={email_sent}")
+
+    record_admin_audit(
+        session,
+        "Created administrator",
+        "admin",
+        admin_id,
+        f"Created {username} ({email}); system temporary password emailed={email_sent}"
+    )
+
     return {
         "success": True,
         "data": {
             "user_id": admin_id,
             "message": (
-                "Administrator created successfully. The universal administrator password "
-                "was applied to the new account. Credentials were emailed to the new administrator."
+                "Administrator created successfully. A system-generated temporary password "
+                "was emailed to the new administrator. They will be required to change it on first login."
             ),
             "email_sent": email_sent,
         },
@@ -4083,3 +4226,25 @@ async def get_user_analytics(request: Request):
             },
         },
     }
+
+
+# ============================================================
+# PUBLIC PAGE CATCH-ALL (registered last so it never shadows APIs)
+# Serves templates at clean URLs: /profile, /my-bookings, etc.
+# ============================================================
+
+@app.get("/{page}")
+async def render_public_page(request: Request, page: str):
+    """Serve top-level *.html templates at clean URLs (no .html in the bar).
+
+    Registered last so static/API routes like /packages, /api/*, /dashboard
+    always take priority.
+    """
+    if page in _RESERVED_PAGE_NAMES:
+        raise HTTPException(status_code=404, detail="Page not found")
+    if page == "auth":
+        return RedirectResponse(url="/auth/login", status_code=302)
+    try:
+        return templates.TemplateResponse(request, f"{page}.html")
+    except Exception:
+        raise HTTPException(status_code=404, detail="Page not found")
