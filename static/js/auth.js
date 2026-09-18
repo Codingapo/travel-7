@@ -1,6 +1,13 @@
 let isLogin = !window.location.pathname.endsWith("/register");
 let otpCountdownTimer = null;
 let otpVerified = false;
+
+
+ let isFirstLoad = true;
+  let isAnimating = false;
+
+
+
 const OTP_RESEND_WAIT = 90;
 
 function startOtpCountdown() {
@@ -30,7 +37,10 @@ function startOtpCountdown() {
     }, 1000);
 }
 
-function toggleAuth() {
+  function toggleAuth() {
+    if (isAnimating) return;
+    isAnimating = true;
+
     isLogin = !isLogin;
     const loginForm = document.getElementById('login-form');
     const signupForm = document.getElementById('signup-form');
@@ -39,26 +49,388 @@ function toggleAuth() {
 
     if (otpForm) otpForm.classList.add('hidden');
 
+    // ---------- Helpers ----------
+    function animateOut(element, callback) {
+      element.classList.remove(
+        'animate__lightSpeedInRight',
+        'animate__fadeIn',
+        'animate__zoomIn',
+        'animate__bounceIn',
+        'animate__slideInLeft',
+        'animate__slideInRight'
+      );
+
+      element.classList.add('animate__animated', 'animate__fadeOut');
+
+      element.addEventListener('animationend', function handler() {
+        element.classList.add('hidden');
+        element.classList.remove('animate__animated', 'animate__fadeOut');
+        element.removeEventListener('animationend', handler);
+        if (callback) callback();
+      }, { once: true });
+    }
+
+    function animateIn(element, useSpecial = false) {
+      element.classList.remove('hidden');
+
+      // Clean previous classes
+      element.classList.remove(
+        'animate__animated',
+        'animate__bounceIn',
+        'animate__lightSpeedInRight',
+        'animate__fadeIn'
+      );
+
+      // On toggle we use lightSpeed, on first load we handle separately
+      if (!useSpecial) {
+        element.classList.add('animate__animated', 'animate__lightSpeedInRight');
+
+        element.addEventListener('animationend', function handler() {
+          element.classList.remove('animate__animated', 'animate__lightSpeedInRight');
+          isAnimating = false;
+          element.removeEventListener('animationend', handler);
+        }, { once: true });
+      }
+    }
+
+    // ---------- Main Logic ----------
     if (isLogin) {
-        loginForm.classList.remove('hidden');
-        signupForm.classList.add('hidden');
+      if (!signupForm.classList.contains('hidden')) {
+        animateOut(signupForm, () => animateIn(loginForm));
+      } else {
+        animateIn(loginForm);
+      }
+      authTitle.textContent = 'Welcome back! Please login.';
+      history.replaceState({}, '', '/auth/login');
+    } else {
+      if (otpVerified) {
+        isLogin = true;
+        if (!signupForm.classList.contains('hidden')) {
+          animateOut(signupForm, () => animateIn(loginForm));
+        } else {
+          animateIn(loginForm);
+        }
         authTitle.textContent = 'Welcome back! Please login.';
         history.replaceState({}, '', '/auth/login');
-    } else {
-        if (otpVerified) {
-            isLogin = true;
-            loginForm.classList.remove('hidden');
-            signupForm.classList.add('hidden');
-            authTitle.textContent = 'Welcome back! Please login.';
-            history.replaceState({}, '', '/auth/login');
+      } else {
+        if (!loginForm.classList.contains('hidden')) {
+          animateOut(loginForm, () => animateIn(signupForm));
         } else {
-            loginForm.classList.add('hidden');
-            signupForm.classList.remove('hidden');
-            authTitle.textContent = 'Create your account to start booking.';
-            history.replaceState({}, '', '/auth/register');
+          animateIn(signupForm);
+        }
+        authTitle.textContent = 'Create your account to start booking.';
+        history.replaceState({}, '', '/auth/register');
+      }
+    }
+
+    isFirstLoad = false;
+    clearMessages();
+  }
+
+  // ========== FIRST LOAD ANIMATION ==========
+document.addEventListener('DOMContentLoaded', function () {
+
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+
+    if (signupForm && !signupForm.classList.contains('hidden')) {
+        runFirstLoadAnimation(signupForm);
+    }
+
+    else if (loginForm && !loginForm.classList.contains('hidden')) {
+        runFirstLoadAnimation(loginForm);
+    }
+
+});
+
+
+
+function runFirstLoadAnimation(form) {
+    isAnimating = true;
+
+    // Remove previous animation classes and delays
+    form.querySelectorAll('.animate__animated').forEach(el => {
+        el.classList.remove(
+            'animate__animated',
+            'animate__slideInLeft',
+            'animate__slideInRight',
+            'animate__lightSpeedInLeft',
+            'animate__lightSpeedInRight',
+            'animate__zoomIn',
+            'animate__flipInY',
+            'animate__fadeIn'
+        );
+
+        el.style.animationDelay = '';
+    });
+
+    // Force browser reflow so Animate.css starts fresh
+    void form.offsetWidth;
+
+    /*
+    ============================================================
+    LOGIN FORM
+    ============================================================
+    */
+    if (form.id === 'login-form') {
+
+        // 1. Email → slide from LEFT
+        const emailGroup = form.children[0];
+
+        if (emailGroup) {
+            emailGroup.classList.add(
+                'animate__animated',
+                'animate__slideInLeft'
+            );
+
+            emailGroup.style.animationDelay = '0.5s';
+
+            // Envelope → zoomIn
+            const emailIcon = emailGroup.querySelector('i');
+
+            if (emailIcon) {
+                emailIcon.classList.add(
+                    'animate__animated',
+                    'animate__zoomIn'
+                );
+
+                emailIcon.style.animationDelay = '1s';
+            }
+        }
+
+
+        // 2. Password → slide from RIGHT
+        const passwordGroup = form.children[1];
+
+        if (passwordGroup) {
+            passwordGroup.classList.add(
+                'animate__animated',
+                'animate__slideInRight'
+            );
+
+            passwordGroup.style.animationDelay = '1s';
+
+            // Lock → zoomIn
+            const lockIcon = passwordGroup.querySelector('i');
+
+            if (lockIcon) {
+                lockIcon.classList.add(
+                    'animate__animated',
+                    'animate__zoomIn'
+                );
+
+                lockIcon.style.animationDelay = '2.2s';
+            }
+        }
+
+
+        // 3. Sign In button → zoomIn
+        const signInBtn = form.querySelector(
+            'button[type="submit"]'
+        );
+
+        if (signInBtn) {
+            signInBtn.classList.add(
+                'animate__animated',
+                'animate__zoomIn'
+            );
+
+            signInBtn.style.animationDelay = '3s';
+        }
+
+
+        // 4. Forgot password → fadeIn
+        const forgotLink = form.querySelector(
+            'a[href*="forgot"]'
+        );
+
+        if (forgotLink) {
+            forgotLink.classList.add(
+                'animate__animated',
+                'animate__fadeInUp'
+            );
+
+            forgotLink.style.animationDelay = '3.5s';
+        }
+
+
+        // 5. Bottom text → fadeIn
+        const bottomText = form.querySelector('p');
+
+        if (bottomText) {
+            bottomText.classList.add(
+                'animate__animated',
+                'animate__fadeInLeft'
+            );
+
+            bottomText.style.animationDelay = '2.85s';
         }
     }
-    clearMessages();
+
+
+    /*
+    ============================================================
+    SIGNUP FORM
+    ============================================================
+    */
+    else if (form.id === 'signup-form') {
+
+        /*
+        1. EMAIL
+        slideInLeft
+        */
+        const emailGroup = form.children[0];
+
+        if (emailGroup) {
+
+            emailGroup.classList.add(
+                'animate__animated',
+                'animate__slideInLeft'
+            );
+
+            emailGroup.style.animationDelay = '0.5s';
+
+            // Envelope → flipInY
+            const emailIcon = emailGroup.querySelector('i');
+
+            if (emailIcon) {
+                emailIcon.classList.add(
+                    'animate__animated',
+                    'animate__flipInY'
+                );
+
+                emailIcon.style.animationDelay = '0.9s';
+            }
+        }
+
+
+        /*
+        2. PASSWORD
+        lightSpeedInLeft
+        */
+        const passwordGroup = form.children[1];
+
+        if (passwordGroup) {
+
+            passwordGroup.classList.add(
+                'animate__animated',
+                'animate__lightSpeedInLeft'
+            );
+
+            passwordGroup.style.animationDelay = '1s';
+
+            // Lock → flipInY
+            const lockIcon = passwordGroup.querySelector('i');
+
+            if (lockIcon) {
+                lockIcon.classList.add(
+                    'animate__animated',
+                    'animate__flipInY'
+                );
+
+                lockIcon.style.animationDelay = '1.4s';
+            }
+        }
+
+
+        /*
+        3. CONFIRM PASSWORD
+        slideInLeft
+        */
+        const confirmGroup = form.children[2];
+
+        if (confirmGroup) {
+
+            confirmGroup.classList.add(
+                'animate__animated',
+                'animate__slideInLeft'
+            );
+
+            confirmGroup.style.animationDelay = '2s';
+
+            // Shield → flipInY
+            const shieldIcon = confirmGroup.querySelector('i');
+
+            if (shieldIcon) {
+                shieldIcon.classList.add(
+                    'animate__animated',
+                    'animate__fadeInRight'
+                );
+
+                shieldIcon.style.animationDelay = '2.7s';
+            }
+        }
+
+
+        /*
+        4. REGISTER BUTTON
+        flipInY
+        */
+        const registerBtn = form.querySelector(
+            'button[type="submit"]'
+        );
+
+        if (registerBtn) {
+
+            registerBtn.classList.add(
+                'animate__animated',
+                'animate__flipInY'
+            );
+
+            registerBtn.style.animationDelay = '3.1s';
+        }
+
+
+        /*
+        5. BOTTOM TEXT
+        flipInY
+        */
+        const bottomText = form.querySelector('p');
+
+        if (bottomText) {
+
+            bottomText.classList.add(
+                'animate__animated',
+                'animate__flipInY'
+            );
+
+            bottomText.style.animationDelay = '3.5s';
+        }
+    }
+
+
+    /*
+    ============================================================
+    CLEANUP
+    ============================================================
+    Last signup animation starts at 3.5s.
+    Animate.css default duration ≈ 1s.
+    Therefore cleanup at 4.7s.
+    ============================================================
+    */
+
+    setTimeout(() => {
+
+        form.querySelectorAll('.animate__animated').forEach(el => {
+
+            el.classList.remove(
+                'animate__animated',
+                'animate__slideInLeft',
+                'animate__slideInRight',
+                'animate__lightSpeedInLeft',
+                'animate__lightSpeedInRight',
+                'animate__zoomIn',
+                'animate__flipInY',
+                'animate__fadeIn'
+            );
+
+            el.style.animationDelay = '';
+        });
+
+        isAnimating = false;
+        isFirstLoad = false;
+
+    }, 4700);
 }
 
 function applyAuthRoute() {
