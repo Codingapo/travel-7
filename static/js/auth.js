@@ -37,95 +37,191 @@ function startOtpCountdown() {
     }, 1000);
 }
 
-  function toggleAuth() {
+function toggleAuth() {
     if (isAnimating) return;
-    isAnimating = true;
 
-    isLogin = !isLogin;
     const loginForm = document.getElementById('login-form');
     const signupForm = document.getElementById('signup-form');
     const otpForm = document.getElementById('otp-form');
     const authTitle = document.getElementById('auth-title');
 
-    if (otpForm) otpForm.classList.add('hidden');
-
-    // ---------- Helpers ----------
-    function animateOut(element, callback) {
-      element.classList.remove(
-        'animate__lightSpeedInRight',
-        'animate__fadeIn',
-        'animate__zoomIn',
-        'animate__bounceIn',
-        'animate__slideInLeft',
-        'animate__slideInRight'
-      );
-
-      element.classList.add('animate__animated', 'animate__fadeOut');
-
-      element.addEventListener('animationend', function handler() {
-        element.classList.add('hidden');
-        element.classList.remove('animate__animated', 'animate__fadeOut');
-        element.removeEventListener('animationend', handler);
-        if (callback) callback();
-      }, { once: true });
+    if (!loginForm || !signupForm || !authTitle) {
+        console.error('[AUTH] Login or signup form not found');
+        return;
     }
 
-    function animateIn(element, useSpecial = false) {
-      element.classList.remove('hidden');
+    isAnimating = true;
 
-      // Clean previous classes
-      element.classList.remove(
-        'animate__animated',
-        'animate__bounceIn',
-        'animate__lightSpeedInRight',
-        'animate__fadeIn'
-      );
-
-      // On toggle we use lightSpeed, on first load we handle separately
-      if (!useSpecial) {
-        element.classList.add('animate__animated', 'animate__lightSpeedInRight');
-
-        element.addEventListener('animationend', function handler() {
-          element.classList.remove('animate__animated', 'animate__lightSpeedInRight');
-          isAnimating = false;
-          element.removeEventListener('animationend', handler);
-        }, { once: true });
-      }
+    // Hide OTP when switching authentication modes
+    if (otpForm) {
+        otpForm.classList.add('hidden');
     }
 
-    // ---------- Main Logic ----------
+    // Toggle mode
+    isLogin = !isLogin;
+
+    /*
+    ============================================================
+    CLEAN ANIMATION CLASSES
+    ============================================================
+    */
+    function cleanAnimation(element) {
+        if (!element) return;
+
+        element.classList.remove(
+            'animate__animated',
+            'animate__fadeOut',
+            'animate__fadeIn',
+            'animate__lightSpeedInRight',
+            'animate__lightSpeedInLeft',
+            'animate__slideInLeft',
+            'animate__slideInRight',
+            'animate__zoomIn',
+            'animate__bounceIn',
+            'animate__flipInY',
+            'animate__fadeInUp',
+            'animate__fadeInLeft',
+            'animate__fadeInRight'
+        );
+
+        element.style.animationDelay = '';
+    }
+
+    /*
+    ============================================================
+    RESET BOTH FORMS
+    ============================================================
+    */
+    cleanAnimation(loginForm);
+    cleanAnimation(signupForm);
+
+    /*
+    ============================================================
+    WHICH FORM SHOULD BE SHOWN?
+    ============================================================
+    */
+
+    let showForm;
+    let hideForm;
+
     if (isLogin) {
-      if (!signupForm.classList.contains('hidden')) {
-        animateOut(signupForm, () => animateIn(loginForm));
-      } else {
-        animateIn(loginForm);
-      }
-      authTitle.textContent = 'Welcome back! Please login.';
-      history.replaceState({}, '', '/auth/login');
-    } else {
-      if (otpVerified) {
-        isLogin = true;
-        if (!signupForm.classList.contains('hidden')) {
-          animateOut(signupForm, () => animateIn(loginForm));
-        } else {
-          animateIn(loginForm);
-        }
+        showForm = loginForm;
+        hideForm = signupForm;
+
         authTitle.textContent = 'Welcome back! Please login.';
-        history.replaceState({}, '', '/auth/login');
-      } else {
-        if (!loginForm.classList.contains('hidden')) {
-          animateOut(loginForm, () => animateIn(signupForm));
+
+        history.replaceState(
+            {},
+            '',
+            '/auth/login'
+        );
+
+    } else {
+
+        // If OTP has already been verified, don't allow
+        // switching back into registration.
+        if (otpVerified) {
+            isLogin = true;
+
+            showForm = loginForm;
+            hideForm = signupForm;
+
+            authTitle.textContent =
+                'Welcome back! Please login.';
+
+            history.replaceState(
+                {},
+                '',
+                '/auth/login'
+            );
+
         } else {
-          animateIn(signupForm);
+
+            showForm = signupForm;
+            hideForm = loginForm;
+
+            authTitle.textContent =
+                'Create your account to start booking.';
+
+            history.replaceState(
+                {},
+                '',
+                '/auth/register'
+            );
         }
-        authTitle.textContent = 'Create your account to start booking.';
-        history.replaceState({}, '', '/auth/register');
-      }
     }
+
+    /*
+    ============================================================
+    HIDE CURRENT FORM
+    ============================================================
+    */
+
+    hideForm.classList.add('hidden');
+
+    /*
+    ============================================================
+    SHOW TARGET FORM
+    ============================================================
+    */
+
+    showForm.classList.remove('hidden');
+
+    // Force browser reflow.
+    // This guarantees Animate.css starts a fresh animation.
+    void showForm.offsetWidth;
+
+    /*
+    ============================================================
+    TOGGLE ANIMATION
+    ============================================================
+    */
+
+    showForm.classList.add(
+        'animate__animated',
+        'animate__lightSpeedInRight'
+    );
+
+    /*
+    ============================================================
+    ANIMATION CLEANUP
+    ============================================================
+    */
+
+    const finishAnimation = () => {
+
+        cleanAnimation(showForm);
+
+        isAnimating = false;
+    };
+
+    showForm.addEventListener(
+        'animationend',
+        finishAnimation,
+        { once: true }
+    );
+
+    /*
+    ============================================================
+    SAFETY FALLBACK
+    ============================================================
+    
+    If Animate.css fails to fire animationend for any reason,
+    don't leave isAnimating stuck at true.
+    */
+
+    setTimeout(() => {
+
+        if (isAnimating) {
+            finishAnimation();
+        }
+
+    }, 1500);
 
     isFirstLoad = false;
+
     clearMessages();
-  }
+}
 
   // ========== FIRST LOAD ANIMATION ==========
 document.addEventListener('DOMContentLoaded', function () {
