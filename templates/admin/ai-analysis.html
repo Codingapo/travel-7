@@ -402,12 +402,55 @@
                     </div>`;
                 return;
             }
+            function _parseISO(s) {
+                if (!s) return null;
+                const d = new Date(s + 'T00:00:00');
+                return isNaN(d.getTime()) ? null : d;
+            }
+            function _fmtShort(s) {
+                const d = _parseISO(s);
+                if (!d) return '';
+                return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }).replace(',', '');
+            }
             container.innerHTML = recs.map(r => {
-                const disc = Number(r.discount_suggested || 0);
-                const discColor = disc >= 15 ? 'text-red-400' : disc >= 5 ? 'text-amber-400' : disc > 0 ? 'text-sky-400' : 'text-emerald-400';
-                const discBg = disc >= 15 ? 'bg-red-500/10 border-red-500/20' : disc >= 5 ? 'bg-amber-500/10 border-amber-500/20' : disc > 0 ? 'bg-sky-500/10 border-sky-500/20' : 'bg-emerald-500/10 border-emerald-500/20';
-                const discIcon = disc > 0 ? 'fa-tags' : 'fa-chart-line';
-                const discLabel = disc > 0 ? `${disc.toFixed(0)}% OFF suggested` : 'Hold — premium chance';
+                // --- Determine type, percent, and legacy fallback ---
+                let type = (r.price_change_type || '').toString().toLowerCase();
+                let percent = Number(r.price_change_percent || 0);
+                const legacyDisc = Number(r.discount_suggested || 0);
+                if (!type && legacyDisc > 0) { type = 'discount'; }
+                if (!type) { type = 'hold'; }
+                if (type === 'discount' && percent <= 0 && legacyDisc > 0) { percent = legacyDisc; }
+                if (type === 'increase') { percent = Math.abs(percent); }
+                if (type === 'discount') { percent = Math.abs(percent); }
+
+                let label = '', icon = '', pillColor = '', pillBg = '';
+                if (type === 'increase') {
+                    label = `+${percent.toFixed(0)}% Increase suggested`;
+                    icon = 'fa-arrow-trend-up';
+                    pillColor = 'text-amber-400';
+                    pillBg = 'bg-amber-500/10 border-amber-500/20';
+                } else if (type === 'discount') {
+                    label = `${percent.toFixed(0)}% OFF suggested`;
+                    icon = 'fa-tags';
+                    if (percent >= 15) { pillColor = 'text-red-400'; pillBg = 'bg-red-500/10 border-red-500/20'; }
+                    else if (percent >= 5) { pillColor = 'text-amber-400'; pillBg = 'bg-amber-500/10 border-amber-500/20'; }
+                    else { pillColor = 'text-sky-400'; pillBg = 'bg-sky-500/10 border-sky-500/20'; }
+                } else {
+                    label = 'Hold — stable market';
+                    icon = 'fa-chart-line';
+                    pillColor = 'text-emerald-400';
+                    pillBg = 'bg-emerald-500/10 border-emerald-500/20';
+                }
+
+                const s = r.rec_start_date;
+                const e = r.rec_end_date;
+                let windowLine = '';
+                if (s && e) {
+                    windowLine = `<p class="text-[10px] text-indigo-300 mt-2 inline-flex items-center gap-1.5"><i class="fas fa-calendar"></i> Suggested window: <span class="font-bold">${_fmtShort(s)} → ${_fmtShort(e)}</span></p>`;
+                } else if (type === 'discount' && legacyDisc > 0) {
+                    windowLine = `<p class="text-[10px] text-slate-500 mt-2 inline-flex items-center gap-1.5"><i class="fas fa-calendar"></i> Suggested window: Permanent / no end date (legacy)</p>`;
+                }
+
                 return `
                 <div class="glass p-4 rounded-xl border border-white/5 hover:border-indigo-500/30 transition">
                     <div class="flex items-start justify-between gap-3 mb-2">
@@ -416,13 +459,14 @@
                             <p class="text-slate-400 text-xs truncate"><i class="fas fa-map-marker-alt mr-1"></i>${r.destination || 'Unknown destination'}</p>
                         </div>
                         <div class="flex-shrink-0 text-right">
-                            <span class="${discBg} border ${discColor} px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1">
-                                <i class="fas ${discIcon}"></i> ${discLabel}
+                            <span class="${pillBg} border ${pillColor} px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1">
+                                <i class="fas ${icon}"></i> ${label}
                             </span>
                         </div>
                     </div>
                     <p class="text-sm text-slate-300 leading-relaxed">${r.recommendation_text || ''}</p>
-                    <p class="text-[10px] text-slate-500 mt-2">Generated ${r.date || ''}</p>
+                    ${windowLine}
+                    <p class="text-[10px] text-slate-500 mt-1">Generated ${r.date || ''}</p>
                 </div>`;
             }).join('');
         }
@@ -599,7 +643,7 @@
             loadTrainingInfo();
             const end = new Date();
             const start = new Date();
-            start.setDate(end.getDate() - 180);
+            start.setDate(end.getDate() - 1825);
             document.getElementById('aiStartDate').value = start.toISOString().slice(0,10);
             document.getElementById('aiEndDate').value = end.toISOString().slice(0,10);
             loadAnalysis();

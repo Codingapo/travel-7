@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <style>
         :root {
             --bg-dark: #0f172a;
@@ -89,6 +90,9 @@
             </div>
         </div>
     </nav>
+
+    <!-- Flash banner host for in-page transient errors/warnings -->
+    <div id="booking-flash" class="fixed top-[clamp(4rem,7vw,5.5rem)] left-1/2 -translate-x-1/2 z-[60] w-[min(92%,720px)] hidden"></div>
 
     <main class="max-w-7xl mx-auto hero-pad px-4 pb-[clamp(3rem,8vw,5rem)]">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-section">
@@ -248,6 +252,47 @@
         const packageId = params.get('packageId');
         const submitBtn = document.getElementById('submit-booking-btn');
 
+        function redirectHome(errorCode) {
+            const url = new URL('/home', window.location.origin);
+            if (errorCode) url.searchParams.set('error', errorCode);
+            window.location.replace(url.toString());
+        }
+        function showBookingFlash(kind, title, message, actions, ms) {
+            const host = document.getElementById('booking-flash');
+            if (!host) return;
+            const k = kind === 'success' ? 'success' : kind === 'info' ? 'info' : 'error';
+            const palette = {
+                error:   { tint:'border-amber-500/30 bg-amber-500/10 text-amber-200',  icon:'fa-triangle-exclamation', iconTint:'text-amber-400',   btn:'bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 border-amber-400/30' },
+                success: { tint:'border-emerald-500/30 bg-emerald-500/10 text-emerald-200', icon:'fa-circle-check',       iconTint:'text-emerald-400', btn:'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-100 border-emerald-400/30' },
+                info:    { tint:'border-sky-500/30 bg-sky-500/10 text-sky-200',           icon:'fa-circle-info',        iconTint:'text-sky-400',     btn:'bg-sky-500/20 hover:bg-sky-500/30 text-sky-100 border-sky-400/30' }
+            }[k];
+            const buttons = Array.isArray(actions) && actions.length
+                ? `<div class="mt-3 flex flex-wrap gap-2">${actions.map(a => {
+                    const as = a.type === 'primary'
+                        ? 'bg-white/90 text-slate-900 hover:bg-white border border-white/60'
+                        : palette.btn;
+                    return `<button type="button" class="px-3 py-1.5 rounded-xl border text-xs font-black transition ${as}" ${a.href ? `onclick="window.location.href='${a.href.replace(/'/g,"\\'")}'"` : ''} ${a.onclick ? `onclick="${String(a.onclick).replace(/"/g,'&quot;')}"` : ''}>
+                        ${a.icon ? `<i class="fas ${a.icon} mr-1"></i>` : ''}${a.label}</button>`;
+                }).join('')}</div>`
+                : '';
+            host.innerHTML = `
+                <div class="animate__animated animate__fadeInDown glass ${palette.tint} rounded-2xl px-5 py-4 border shadow-2xl backdrop-blur-xl flex items-start gap-4">
+                    <i class="fas ${palette.icon} ${palette.iconTint} text-xl mt-0.5 shrink-0"></i>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-black text-white text-sm md:text-base">${title}</div>
+                        <div class="mt-1 text-xs md:text-sm opacity-95 leading-relaxed">${message}</div>
+                        ${buttons}
+                    </div>
+                    <button type="button" onclick="document.getElementById('booking-flash').classList.add('hidden')"
+                            class="shrink-0 px-3 py-1.5 rounded-xl border text-xs font-black transition ${palette.btn}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>`;
+            host.classList.remove('hidden');
+            const t = typeof ms === 'number' ? ms : 18000;
+            if (t > 0) setTimeout(() => host.classList.add('hidden'), t);
+        }
+
         function togglePaymentFields(method) {
             document.querySelectorAll('.payment-fields').forEach(el => el.classList.add('hidden'));
             if (method === 'credit_card') {
@@ -260,7 +305,118 @@
         let basePrice = 0;
         let originalPrice = 0;
         let discountPct = 0;
+        let discountStartDate = null;
+        let discountEndDate = null;
+        let increasePct = 0;
+        let increaseStartDate = null;
+        let increaseEndDate = null;
         let maxTravelers = 10;
+
+        function _parseISO(s) {
+            if (!s) return null;
+            const d = new Date(s + 'T00:00:00');
+            return isNaN(d.getTime()) ? null : d;
+        }
+        function _fmtRange(startStr, endStr) {
+            const opts = { month: 'short', day: '2-digit', year: 'numeric' };
+            const s = _parseISO(startStr);
+            const e = _parseISO(endStr);
+            if (!s || !e) return '';
+            if (s.getTime() === e.getTime()) {
+                const today = new Date(); today.setHours(0,0,0,0);
+                if (s.getTime() === today.getTime()) {
+                    return 'Today Only';
+                }
+                const on = s.toLocaleDateString(undefined, opts).replace(',', '');
+                return `on ${on} only`;
+            }
+            return s.toLocaleDateString(undefined, opts).replace(',', '') + ' – ' + e.toLocaleDateString(undefined, opts).replace(',', '');
+        }
+        function effectiveIncreaseToday() {
+            const pct = Math.max(0, Math.min(100, parseInt(increasePct || 0, 10)));
+            if (pct <= 0) return 0;
+            const start = increaseStartDate;
+            const end = increaseEndDate;
+            if (!start || !end) return pct;
+            const s = _parseISO(start);
+            const e = _parseISO(end);
+            if (!s || !e) return pct;
+            const today = new Date(); today.setHours(0,0,0,0);
+            if (today > e) return 0;
+            return (today >= s && today <= e) ? pct : 0;
+        }
+        function effectiveDiscountFor(travelDateStr) {
+            const pct = Math.max(0, Math.min(100, parseInt(discountPct || 0, 10)));
+            if (pct <= 0) return { appliedPct: 0, status: 'none', reason: null, windowText: null };
+            const start = discountStartDate;
+            const end = discountEndDate;
+            if (!start || !end) return { appliedPct: pct, status: 'legacy', reason: null, windowText: null };
+            const s = _parseISO(start);
+            const e = _parseISO(end);
+            if (!s || !e) return { appliedPct: pct, status: 'legacy', reason: null, windowText: null };
+            const travel = _parseISO(travelDateStr);
+            if (!travel) return { appliedPct: 0, status: 'upcoming-or-expired', reason: `Discount valid ${_fmtRange(start, end)}. Pick a travel date within the window to unlock it.`, windowText: _fmtRange(start, end) };
+            const today = new Date(); today.setHours(0,0,0,0);
+            if (travel >= s && travel <= e) {
+                return { appliedPct: pct, status: 'active-travel', reason: null, windowText: _fmtRange(start, end) };
+            }
+            if (today < s) {
+                return { appliedPct: 0, status: 'upcoming', reason: `Discount valid starting ${_fmtRange(start,end).split(' – ')[0]}. Book a travel date within the window to unlock it.`, windowText: _fmtRange(start, end) };
+            }
+            if (today > e) {
+                return { appliedPct: 0, status: 'expired', reason: null, windowText: null };
+            }
+            return { appliedPct: 0, status: 'window-outside', reason: `Discount valid ${_fmtRange(start, end)}. Adjust your travel date to fall inside that window.`, windowText: _fmtRange(start, end) };
+        }
+        function renderPriceBlock() {
+            const travelDateStr = document.getElementById('travel-date').value || '';
+            const eff = effectiveDiscountFor(travelDateStr);
+            const pct = eff.appliedPct;
+            const incPct = effectiveIncreaseToday();
+            let bp;
+            if (pct > 0 && originalPrice > 0) {
+                bp = Math.round(originalPrice * (1 - pct / 100) * 100) / 100;
+            } else if (incPct > 0 && originalPrice > 0) {
+                bp = Math.round(originalPrice * (1 + incPct / 100) * 100) / 100;
+            } else {
+                bp = originalPrice;
+            }
+            basePrice = bp;
+            const appliedGlobalPct = pct;
+            const priceBlock = document.getElementById('pkg-price-block');
+            let banner = '';
+            if (eff.status === 'active-travel' && eff.windowText) {
+                banner = `<p class="mt-3 text-emerald-400 text-xs font-bold flex items-center gap-1.5 border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 rounded-lg"><i class="fas fa-calendar-check"></i> Discount applied · Discount valid ${eff.windowText}</p>`;
+            } else if ((eff.status === 'upcoming' || eff.status === 'window-outside' || eff.status === 'upcoming-or-expired') && eff.reason) {
+                banner = `<p class="mt-3 text-amber-400 text-xs font-bold flex items-start gap-1.5 border border-amber-500/20 bg-amber-500/10 px-3 py-2 rounded-lg"><i class="fas fa-info-circle mt-0.5"></i> <span>${eff.reason}</span></p>`;
+            } else if (eff.status === 'legacy') {
+                banner = `<p class="mt-3 text-slate-400 text-[11px] flex items-center gap-1.5"><i class="fas fa-info-circle"></i> Permanent discount (no end date set).</p>`;
+            }
+
+            if (pct > 0 && originalPrice > 0) {
+                priceBlock.innerHTML = `
+                    <div class="glass section-padding-sm rounded-2xl border border-red-500/10">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-gray-500 text-[11px] font-black uppercase tracking-widest">Per-person price</span>
+                            <span class="bg-gradient-to-br from-red-500 to-rose-600 text-white px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow shadow-red-600/20 border border-red-400/30">${pct}% OFF</span>
+                        </div>
+                        <div class="flex items-baseline gap-3">
+                            <div class="text-3xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${bp.toLocaleString()}</div>
+                            <div class="text-gray-500 line-through decoration-gray-500/60 font-bold text-base" style="font-family: 'Inter', sans-serif;">R ${originalPrice.toLocaleString()}</div>
+                        </div>
+                        <p class="mt-2 text-green-400 text-xs font-bold flex items-center gap-1"><i class="fas fa-badge-check"></i> You save R ${(originalPrice - bp).toLocaleString()} per traveler</p>
+                        ${banner}
+                    </div>`;
+            } else {
+                priceBlock.innerHTML = `
+                    <div class="glass section-padding-sm rounded-2xl">
+                        <span class="text-gray-500 text-[11px] font-black uppercase tracking-widest">Per-person price</span>
+                        <div class="text-3xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${bp.toLocaleString()}</div>
+                        ${banner}
+                    </div>`;
+            }
+            return { appliedPct: appliedGlobalPct };
+        }
         
         function updateTotalPrice() {
             const travelersInput = document.getElementById('travelers');
@@ -268,7 +424,12 @@
             const display = document.getElementById('total-price-display');
             const limitMsg = document.getElementById('traveler-limit-msg');
             const breakdownEl = document.getElementById('price-breakdown');
-            
+
+            // Re-evaluate price block based on currently-selected travel date
+            const priceEval = renderPriceBlock();
+            const appliedPct = priceEval.appliedPct;
+            const effectiveBase = basePrice;
+
             // Validate against available spots
             if (maxTravelers > 0 && travelers > maxTravelers) {
                 travelersInput.value = maxTravelers;
@@ -277,18 +438,18 @@
             } else {
                 limitMsg.classList.add('hidden');
             }
-            
-            if (basePrice > 0) {
-                const finalTotal = basePrice * (parseInt(travelersInput.value) || 1);
+
+            if (effectiveBase > 0) {
+                const finalTotal = effectiveBase * (parseInt(travelersInput.value) || 1);
                 display.textContent = 'R ' + finalTotal.toLocaleString();
-                if (discountPct > 0 && originalPrice > 0) {
+                if (appliedPct > 0 && originalPrice > 0) {
                     const origTotal = originalPrice * (parseInt(travelersInput.value) || 1);
                     const savings = origTotal - finalTotal;
                     breakdownEl.classList.remove('hidden');
                     breakdownEl.innerHTML = `
                         <div class="glass rounded-2xl p-4 border border-red-500/10 space-y-2">
                             <div class="flex items-center justify-between text-gray-400">
-                                <span class="font-bold flex items-center gap-2"><i class="fas fa-tags text-red-400"></i> Package discount (${discountPct}% OFF)</span>
+                                <span class="font-bold flex items-center gap-2"><i class="fas fa-tags text-red-400"></i> Package discount (${appliedPct}% OFF)</span>
                                 <span class="line-through decoration-gray-500/60">R ${origTotal.toLocaleString()}</span>
                             </div>
                             <div class="flex items-center justify-between text-green-400 font-bold">
@@ -310,12 +471,11 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const travelDateInput = document.getElementById('travel-date');
             travelDateInput.min = new Date().toISOString().split('T')[0];
+            travelDateInput.addEventListener('change', () => { updateTotalPrice(); });
+            travelDateInput.addEventListener('input', () => { updateTotalPrice(); });
 
             if (!packageId || Number.isNaN(parseInt(packageId, 10))) {
-                alert('Invalid package selection. Please choose a package again.');
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Invalid Package Selection';
-                submitBtn.className = 'bg-gray-800 text-gray-500 px-10 py-5 rounded-2xl font-black text-lg cursor-not-allowed';
+                redirectHome('no_package');
                 return;
             }
 
@@ -349,85 +509,84 @@
             // Load package info for display
             try {
                 const res = await fetch(`/api/packages/${packageId}?v=${Date.now()}`);
+                if (res.status === 404) {
+                    redirectHome('package_404');
+                    return;
+                }
+                if (!res.ok) throw new Error('server_error');
                 const data = await res.json();
+                if (!data || !data.success || !data.data) {
+                    redirectHome('package_404');
+                    return;
+                }
                 const pkg = data.data;
-                if (pkg) {
-                    document.getElementById('pkg-name').textContent = pkg.package_name;
-                    document.getElementById('pkg-destination').textContent = pkg.destination;
-                    document.getElementById('pkg-description').textContent = pkg.description;
-                    document.getElementById('pkg-duration').textContent = pkg.duration + ' Days';
-                    
-                    document.getElementById('pkg-image').src = pkg.image_url || getPackageImage(pkg);
-                    
-                    originalPrice = Number(pkg.price || 0);
-                    discountPct = Math.max(0, Math.min(100, parseInt(pkg.discount_percentage || 0, 10)));
-                    basePrice = discountPct > 0 ? Math.round(originalPrice * (1 - discountPct / 100) * 100) / 100 : originalPrice;
+                document.getElementById('pkg-name').textContent = pkg.package_name;
+                document.getElementById('pkg-destination').textContent = pkg.destination;
+                document.getElementById('pkg-description').textContent = pkg.description;
+                document.getElementById('pkg-duration').textContent = pkg.duration + ' Days';
 
-                    const priceBlock = document.getElementById('pkg-price-block');
-                    if (discountPct > 0 && originalPrice > 0) {
-                        priceBlock.innerHTML = `
-                            <div class="glass section-padding-sm rounded-2xl border border-red-500/10">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-gray-500 text-[11px] font-black uppercase tracking-widest">Per-person price</span>
-                                    <span class="bg-gradient-to-br from-red-500 to-rose-600 text-white px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow shadow-red-600/20 border border-red-400/30">${discountPct}% OFF</span>
-                                </div>
-                                <div class="flex items-baseline gap-3">
-                                    <div class="text-3xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${basePrice.toLocaleString()}</div>
-                                    <div class="text-gray-500 line-through decoration-gray-500/60 font-bold text-base" style="font-family: 'Inter', sans-serif;">R ${originalPrice.toLocaleString()}</div>
-                                </div>
-                                <p class="mt-2 text-green-400 text-xs font-bold flex items-center gap-1"><i class="fas fa-badge-check"></i> You save R ${(originalPrice - basePrice).toLocaleString()} per traveler</p>
-                            </div>`;
-                    } else {
-                        priceBlock.innerHTML = `
-                            <div class="glass section-padding-sm rounded-2xl">
-                                <span class="text-gray-500 text-[11px] font-black uppercase tracking-widest">Per-person price</span>
-                                <div class="text-3xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${originalPrice.toLocaleString()}</div>
-                            </div>`;
+                document.getElementById('pkg-image').src = pkg.image_url || getPackageImage(pkg);
+
+                originalPrice = Number(pkg.price || 0);
+                discountPct = Math.max(0, Math.min(100, parseInt(pkg.discount_percentage || 0, 10)));
+                discountStartDate = (pkg.discount_start_date && String(pkg.discount_start_date).trim()) ? String(pkg.discount_start_date).trim() : null;
+                discountEndDate = (pkg.discount_end_date && String(pkg.discount_end_date).trim()) ? String(pkg.discount_end_date).trim() : null;
+                increasePct = Math.max(0, Math.min(100, parseInt(pkg.increase_percentage || 0, 10)));
+                increaseStartDate = (pkg.increase_start_date && String(pkg.increase_start_date).trim()) ? String(pkg.increase_start_date).trim() : null;
+                increaseEndDate = (pkg.increase_end_date && String(pkg.increase_end_date).trim()) ? String(pkg.increase_end_date).trim() : null;
+                renderPriceBlock();
+                updateTotalPrice();
+
+                const statusEl = document.getElementById('pkg-status');
+                const isAvailable = pkg.availability_status === 'Available';
+                const availableSpots = parseInt(pkg.available_spots || 0, 10);
+                const statusText = isAvailable ? `${availableSpots} Seats Available` : '0 Seats Available';
+                statusEl.textContent = statusText;
+
+                // Set max travelers based on available spots
+                if (isAvailable && availableSpots > 0) {
+                    maxTravelers = Math.min(10, availableSpots);
+                    const travelersInput = document.getElementById('travelers');
+                    travelersInput.max = maxTravelers;
+                    if (parseInt(travelersInput.value, 10) > maxTravelers) {
+                        travelersInput.value = maxTravelers;
                     }
                     updateTotalPrice();
-                    
-                    const statusEl = document.getElementById('pkg-status');
-                    const isAvailable = pkg.availability_status === 'Available';
-                    const availableSpots = parseInt(pkg.available_spots || 0, 10);
-                    const statusText = isAvailable ? `${availableSpots} Seats Available` : '0 Seats Available';
-                    statusEl.textContent = statusText;
-                    
-                    // Set max travelers based on available spots
-                    if (isAvailable && availableSpots > 0) {
-                        maxTravelers = Math.min(10, availableSpots);
-                        const travelersInput = document.getElementById('travelers');
-                        travelersInput.max = maxTravelers;
-                        if (parseInt(travelersInput.value, 10) > maxTravelers) {
-                            travelersInput.value = maxTravelers;
-                        }
-                        updateTotalPrice();
-                    }
-                    
-                    if (isAvailable) {
-                        statusEl.className = 'absolute top-6 left-6 text-green-400 bg-green-500/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-current';
-                    } else {
-                        statusEl.className = 'absolute top-6 left-6 text-red-400 bg-red-500/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-current';
-                        
-                        // Disable booking for unavailable packages
-                        submitBtn.disabled = true;
-                        submitBtn.textContent = 'Package Fully Booked';
-                        submitBtn.className = 'bg-slate-800 text-slate-500 px-10 py-5 rounded-2xl font-black text-lg cursor-not-allowed opacity-50';
-                        
-                        // Visual cues for view-only mode
-                        document.querySelectorAll('input, textarea').forEach(el => {
-                            el.disabled = true;
-                            el.classList.add('opacity-50', 'cursor-not-allowed');
-                        });
-                        document.getElementById('booking-details-form').classList.add('pointer-events-none');
-                        
-                        const msg = document.createElement('p');
-                        msg.className = 'text-red-400 text-sm font-bold mt-4 text-center';
-                        msg.textContent = 'This package is currently fully booked. You are viewing its details in read-only mode.';
-                        submitBtn.parentNode.insertBefore(msg, submitBtn.nextSibling);
-                    }
+                }
+
+                if (isAvailable) {
+                    statusEl.className = 'absolute top-6 left-6 text-green-400 bg-green-500/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-current';
+                } else {
+                    statusEl.className = 'absolute top-6 left-6 text-red-400 bg-red-500/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-current';
+
+                    // Disable booking for unavailable packages
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Package Fully Booked';
+                    submitBtn.className = 'bg-slate-800 text-slate-500 px-10 py-5 rounded-2xl font-black text-lg cursor-not-allowed opacity-50';
+
+                    // Visual cues for view-only mode
+                    document.querySelectorAll('input, textarea').forEach(el => {
+                        el.disabled = true;
+                        el.classList.add('opacity-50', 'cursor-not-allowed');
+                    });
+                    document.getElementById('booking-details-form').classList.add('pointer-events-none');
+
+                    const msg = document.createElement('p');
+                    msg.className = 'text-red-400 text-sm font-bold mt-4 text-center';
+                    msg.textContent = 'This package is currently fully booked. You are viewing its details in read-only mode.';
+                    submitBtn.parentNode.insertBefore(msg, submitBtn.nextSibling);
                 }
             } catch (e) {
-                alert('Unable to load package details. Please return to the home page and try again.');
+                showBookingFlash(
+                    'error',
+                    "Can't load this trip right now",
+                    'Your package details could not be loaded. This is usually temporary — please try again in a moment or pick another package.',
+                    [
+                        { label: 'Browse packages', icon: 'fa-compass', type: 'primary', href: '/home#packages' },
+                        { label: 'Reload page', icon: 'fa-rotate-right', onclick: "window.location.reload()" }
+                    ],
+                    0
+                );
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Package Load Failed';
                 submitBtn.className = 'bg-gray-800 text-gray-500 px-10 py-5 rounded-2xl font-black text-lg cursor-not-allowed';
@@ -647,7 +806,14 @@
             
             const travelerCount = parseInt(document.getElementById('travelers').value);
             if (maxTravelers > 0 && travelerCount > maxTravelers) {
-                alert(`Only ${maxTravelers} spot${maxTravelers === 1 ? '' : 's'} available for this package. Please adjust your traveler count.`);
+                showBookingFlash(
+                    'error',
+                    maxTravelers === 1 ? 'Only 1 seat left' : `Only ${maxTravelers} seats left`,
+                    `Please lower the traveler count — ${maxTravelers === 1 ? 'this package only has 1 spot' : `this package only has ${maxTravelers} spots`} remaining.`,
+                    [{ label: 'Fix traveler count', icon: 'fa-user-group', type: 'primary',
+                       onclick: "const t=document.getElementById('travelers');if(t){t.value=String(Math.min(" + maxTravelers + ", parseInt(t.value,10)||1));t.focus()} document.getElementById('booking-flash').classList.add('hidden');" }],
+                    12000
+                );
                 return;
             }
             
@@ -728,16 +894,47 @@
                         user.full_name = formData.name;
                         localStorage.setItem('user', JSON.stringify(user));
                     }
-                    
+
                     // Add a small delay to ensure DB write is finalized before redirection
                     setTimeout(() => {
-                        window.location.href = `confirmation.html?bookingId=${data.data.booking_id}`;
+                        window.location.href = `/confirmation?bookingId=${data.data.booking_id}`;
                     }, 500);
                 } else {
-                    alert(data.error || 'Booking failed. Please try again.');
+                    const serverMsg = String(data.detail || data.error || data.message || 'Booking failed. Please try again.');
+                    let hint = serverMsg;
+                    let code = null;
+                    if (/package.*not.*found|no.*package|invalid.*package/i.test(serverMsg)) code = 'package_404';
+                    else if (/unavailable|fully.*booked|not.*enough.*spot|sold.?out/i.test(serverMsg)) code = 'package_unavailable';
+                    else if (/past|travel.?date|invalid.*date/i.test(serverMsg)) code = 'bad_date';
+                    if (code) {
+                        redirectHome(code);
+                        return;
+                    }
+                    showBookingFlash(
+                        'error',
+                        'Booking could not be completed',
+                        hint,
+                        [
+                            { label: 'Try again', icon: 'fa-rotate-right', type: 'primary',
+                              onclick: "document.getElementById('booking-flash').classList.add('hidden');" },
+                            { label: 'Pick another package', icon: 'fa-compass', href: '/home#packages' }
+                        ],
+                        20000
+                    );
                 }
             } catch (err) {
-                alert('An error occurred. Please check your connection.');
+                showBookingFlash(
+                    'error',
+                    'Your connection dropped',
+                    'We did not receive a response from the server. Your card was NOT charged. Please check your internet connection and try again.',
+                    [
+                        { label: 'Retry booking', icon: 'fa-rotate-right', type: 'primary',
+                          onclick: "document.getElementById('booking-flash').classList.add('hidden');" +
+                                   "document.getElementById('submit-booking-btn').click();" },
+                        { label: 'Browse packages', icon: 'fa-compass', href: '/home#packages' }
+                    ],
+                    0
+                );
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Confirm Booking';

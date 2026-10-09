@@ -124,8 +124,8 @@
         </div>
            <nav class="flex-grow">
             <a href="/dashboard" class="nav-link"><i class="fas fa-th-large w-5"></i><span>Dashboard</span></a>
-            <a href="/admin/packages" class="nav-link"><i class="fas fa-box-open w-5"></i><span>Packages</span></a>
-            <a href="/admin/ai-analysis" class="nav-link active"><i class="fas fa-brain w-5"></i><span>AI Analysis</span></a>
+            <a href="/admin/packages" class="nav-link active"><i class="fas fa-box-open w-5"></i><span>Packages</span></a>
+            <a href="/admin/ai-analysis" class="nav-link"><i class="fas fa-brain w-5"></i><span>AI Analysis</span></a>
             <a href="/admin/reports" class="nav-link"><i class="fas fa-file-alt w-5"></i><span>Reports</span></a>
             <a href="/admin/reviews" class="nav-link"><i class="fas fa-star w-5"></i><span>Reviews</span></a>
             <a href="/admin/admins" class="nav-link"><i class="fas fa-user-shield w-5"></i><span>Administrators</span></a>
@@ -154,6 +154,23 @@
                 <input id="destination" required class="glass-input" placeholder="Destination *">
                 <input id="price" required min="0.01" step="0.01" type="number" class="glass-input" placeholder="Price (R) *">
                 <input id="discount" min="0" max="100" step="1" type="number" value="0" class="glass-input" placeholder="Discount % (0-100)">
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 ml-1">Discount Valid From</label>
+                    <input id="discountStartDate" type="date" class="glass-input w-full" style="color-scheme: dark;">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 ml-1">Discount Valid Until</label>
+                    <input id="discountEndDate" type="date" class="glass-input w-full" style="color-scheme: dark;">
+                </div>
+                <input id="increase" min="0" max="100" step="1" type="number" value="0" class="glass-input" placeholder="Price Increase % (0-100)">
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 ml-1">Price Increase Valid From</label>
+                    <input id="increaseStartDate" type="date" class="glass-input w-full" style="color-scheme: dark;">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 ml-1">Price Increase Valid Until</label>
+                    <input id="increaseEndDate" type="date" class="glass-input w-full" style="color-scheme: dark;">
+                </div>
                 <input id="available" required min="0" step="1" type="number" class="glass-input" placeholder="Available seats *">
                 <input id="duration" min="1" step="1" type="number" value="1" class="glass-input" placeholder="Duration (days)">
                 <input id="season" class="glass-input" placeholder="Season / category (e.g. Africa, Asia)" class="md:col-span-2">
@@ -241,6 +258,16 @@
                     <input id="epPrice" type="number" min="0.01" step="0.01" class="glass-input w-full" placeholder="Price"></div>
                 <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Discount % (0–100)</label>
                     <input id="epDiscount" type="number" min="0" max="100" step="1" class="glass-input w-full" placeholder="0"></div>
+                <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Discount Valid From</label>
+                    <input id="epDiscountStart" type="date" class="glass-input w-full" style="color-scheme: dark;"></div>
+                <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Discount Valid Until</label>
+                    <input id="epDiscountEnd" type="date" class="glass-input w-full" style="color-scheme: dark;"></div>
+                <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Price Increase % (0–100)</label>
+                    <input id="epIncrease" type="number" min="0" max="100" step="1" class="glass-input w-full" placeholder="0"></div>
+                <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Price Increase Valid From</label>
+                    <input id="epIncreaseStart" type="date" class="glass-input w-full" style="color-scheme: dark;"></div>
+                <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Price Increase Valid Until</label>
+                    <input id="epIncreaseEnd" type="date" class="glass-input w-full" style="color-scheme: dark;"></div>
                 <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Duration (days)</label>
                     <input id="epDuration" type="number" min="1" step="1" class="glass-input w-full" placeholder="Days"></div>
                 <div><label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Available Seats *</label>
@@ -317,6 +344,49 @@
         function formatCurrency(n) {
             return 'R ' + Number(n || 0).toLocaleString();
         }
+        function _parseISO(s) {
+            if (!s) return null;
+            const d = new Date(s + 'T00:00:00');
+            if (isNaN(d.getTime())) return null;
+            return d;
+        }
+        function _fmtDateShort(s) {
+            const d = _parseISO(s);
+            if (!d) return '';
+            return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }).replace(',', '');
+        }
+        function discountStatus(pkg) {
+            const pct = Number(pkg.discount_percentage || 0);
+            if (pct <= 0) return { status: 'none', pct: 0, start: null, end: null };
+            const start = pkg.discount_start_date;
+            const end = pkg.discount_end_date;
+            if (!start || !end) return { status: 'legacy', pct, start: null, end: null };
+            const s = _parseISO(start);
+            const e = _parseISO(end);
+            if (!s || !e) return { status: 'legacy', pct, start, end };
+            const today = new Date(); today.setHours(0,0,0,0);
+            if (today < s) return { status: 'upcoming', pct, start, end };
+            // By 23:59 on end_date the discount is fully gone — treat as 'none' visually, no expired pill.
+            if (today > e) return { status: 'none', pct: 0, start, end };
+            return { status: 'active', pct, start, end };
+        }
+        function isDiscountActive(pkg) {
+            return discountStatus(pkg).status === 'active' || discountStatus(pkg).status === 'legacy';
+        }
+        function increaseStatus(pkg) {
+            const pct = Number(pkg.increase_percentage || 0);
+            if (pct <= 0) return { status: 'none', pct: 0, start: null, end: null };
+            const start = pkg.increase_start_date;
+            const end = pkg.increase_end_date;
+            if (!start || !end) return { status: 'legacy', pct, start: null, end: null };
+            const s = _parseISO(start);
+            const e = _parseISO(end);
+            if (!s || !e) return { status: 'legacy', pct, start, end };
+            const today = new Date(); today.setHours(0,0,0,0);
+            if (today < s) return { status: 'upcoming', pct, start, end };
+            if (today > e) return { status: 'none', pct: 0, start, end };
+            return { status: 'active', pct, start, end };
+        }
 
         async function loadPackages() {
             const tbody = document.getElementById('packagesTableBody');
@@ -342,19 +412,92 @@
                         <td class="p-5 text-slate-300 font-semibold">${escapeHtml(p.destination)}</td>
                         <td class="p-5">
                             ${(() => {
-                                const d = Number(p.discount_percentage || 0);
-                                if (d > 0) {
-                                    const orig = Number(p.price || 0);
-                                    const discounted = orig * (1 - d/100);
+                                const ds = discountStatus(p);
+                                const is = increaseStatus(p);
+                                const orig = Number(p.price || 0);
+
+                                if (ds.status === 'active' || ds.status === 'legacy') {
+                                    const discounted = orig * (1 - ds.pct / 100);
+                                    const sameDayActive = (() => {
+                                        if (ds.status !== 'active' || !ds.start || !ds.end) return false;
+                                        if (ds.start !== ds.end) return false;
+                                        const today = new Date(); today.setHours(0,0,0,0);
+                                        const d = _parseISO(ds.start);
+                                        return !!d && d.getTime() === today.getTime();
+                                    })();
+                                    let sub = '';
+                                    if (ds.status === 'legacy') {
+                                        sub = `<span class="text-slate-500 text-[11px] mt-1"><i class="fas fa-info-circle mr-1"></i> Permanent discount (no end date set)</span>`;
+                                    } else if (sameDayActive) {
+                                        sub = `<span class="text-emerald-400 text-[11px] mt-1 font-bold"><i class="fas fa-bolt mr-1"></i> Discount valid Today Only</span>`;
+                                    } else if (ds.start && ds.end && ds.start === ds.end) {
+                                        sub = `<span class="text-emerald-400 text-[11px] mt-1 font-bold"><i class="fas fa-calendar-check mr-1"></i> Discount valid on ${_fmtDateShort(ds.start)} only</span>`;
+                                    } else {
+                                        sub = `<span class="text-emerald-400 text-[11px] mt-1 font-bold"><i class="fas fa-calendar-check mr-1"></i> Discount valid ${ds.start && ds.end ? `${_fmtDateShort(ds.start)} – ${_fmtDateShort(ds.end)}` : `until ${_fmtDateShort(ds.end)}`}</span>`;
+                                    }
                                     return `<div class="flex flex-col">
                                         <div class="flex items-center gap-2">
                                             <span class="text-white font-black">${formatCurrency(discounted)}</span>
-                                            <span class="bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-500/30">${d}% OFF</span>
+                                            <span class="bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-500/30">${ds.pct}% OFF</span>
                                         </div>
                                         <span class="text-slate-500 text-xs line-through decoration-slate-600/70">${formatCurrency(orig)}</span>
+                                        ${sub}
                                     </div>`;
                                 }
-                                return `<span class="text-white font-black">${formatCurrency(p.price)}</span>`;
+
+                                const increaseActiveNow = is.status === 'active' || is.status === 'legacy';
+                                const displayedPrice = increaseActiveNow ? orig * (1 + is.pct / 100) : orig;
+                                let badges = [];
+                                let subs = [];
+
+                                if (is.status === 'active') {
+                                    const isSameDay = (() => {
+                                        if (!is.start || !is.end) return false;
+                                        if (is.start !== is.end) return false;
+                                        const today = new Date(); today.setHours(0,0,0,0);
+                                        const d = _parseISO(is.start);
+                                        return !!d && d.getTime() === today.getTime();
+                                    })();
+                                    badges.push(`<span class="bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-500/30">+${is.pct}% PRICE</span>`);
+                                    if (isSameDay) {
+                                        subs.push(`<span class="text-amber-400 text-[11px] mt-0.5 font-bold"><i class="fas fa-fire mr-1"></i> Price increase Today Only</span>`);
+                                    } else if (is.start && is.end && is.start === is.end) {
+                                        subs.push(`<span class="text-amber-400 text-[11px] mt-0.5 font-bold"><i class="fas fa-calendar mr-1"></i> Price increase on ${_fmtDateShort(is.start)} only</span>`);
+                                    } else {
+                                        subs.push(`<span class="text-amber-400 text-[11px] mt-0.5 font-bold"><i class="fas fa-calendar-check mr-1"></i> Price increase valid ${is.start && is.end ? `${_fmtDateShort(is.start)} – ${_fmtDateShort(is.end)}` : `until ${_fmtDateShort(is.end)}`}</span>`);
+                                    }
+                                } else if (is.status === 'legacy') {
+                                    badges.push(`<span class="bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-500/30">+${is.pct}% PRICE</span>`);
+                                    subs.push(`<span class="text-slate-500 text-[11px] mt-0.5"><i class="fas fa-info-circle mr-1"></i> Permanent price increase (no end date set)</span>`);
+                                } else if (is.status === 'upcoming') {
+                                    const range = `${_fmtDateShort(is.start)} – ${_fmtDateShort(is.end)}`;
+                                    subs.push(`<span class="mt-1 inline-flex items-center gap-1 text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest w-fit">
+                                        <i class="fas fa-clock"></i> Upcoming +${is.pct}% increase · ${range}
+                                    </span>`);
+                                }
+
+                                if (ds.status === 'upcoming') {
+                                    const range = `${_fmtDateShort(ds.start)} – ${_fmtDateShort(ds.end)}`;
+                                    subs.push(`<span class="mt-1 inline-flex items-center gap-1 text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest w-fit">
+                                        <i class="fas fa-clock"></i> Upcoming ${ds.pct}% discount · ${range}
+                                    </span>`);
+                                } else if (ds.status === 'expired') {
+                                    subs.push(`<span class="mt-1 inline-flex items-center gap-1 text-slate-500 bg-slate-500/10 border border-slate-500/20 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest w-fit">
+                                        <i class="fas fa-check-double"></i> Expired ${ds.pct}% discount · ended ${_fmtDateShort(ds.end)}
+                                    </span>`);
+                                }
+
+                                const badgesRow = badges.length ? `<div class="flex items-center gap-2 mb-1">${badges.join('')}</div>` : '';
+                                const mainLine = increaseActiveNow ? `
+                                    <div class="flex items-baseline gap-2">
+                                        <span class="text-white font-black">${formatCurrency(displayedPrice)}</span>
+                                        <span class="text-slate-500 text-xs line-through decoration-slate-600/70">${formatCurrency(orig)}</span>
+                                    </div>` : `<span class="text-white font-black">${formatCurrency(displayedPrice)}</span>`;
+                                const subsBlock = subs.join('');
+                                if (!badgesRow && !subsBlock && !increaseActiveNow) {
+                                    return `<span class="text-white font-black">${formatCurrency(p.price)}</span>`;
+                                }
+                                return `<div class="flex flex-col">${badgesRow}${mainLine}${subsBlock}</div>`;
                             })()}
                         </td>
                         <td class="p-5">
@@ -423,11 +566,21 @@
             e.preventDefault();
             const msg = document.getElementById('packageFormMsg');
             const discountVal = parseInt(document.getElementById('discount').value || 0, 10);
+            const discountStart = (document.getElementById('discountStartDate').value || '').trim() || null;
+            const discountEnd = (document.getElementById('discountEndDate').value || '').trim() || null;
+            const increaseVal = parseInt(document.getElementById('increase').value || 0, 10);
+            const increaseStart = (document.getElementById('increaseStartDate').value || '').trim() || null;
+            const increaseEnd = (document.getElementById('increaseEndDate').value || '').trim() || null;
             const payload = {
                 package_name: document.getElementById('packageName').value.trim(),
                 destination: document.getElementById('destination').value.trim(),
                 price: Number(document.getElementById('price').value),
                 discount_percentage: Math.max(0, Math.min(100, isNaN(discountVal) ? 0 : discountVal)),
+                discount_start_date: discountStart,
+                discount_end_date: discountEnd,
+                increase_percentage: Math.max(0, Math.min(100, isNaN(increaseVal) ? 0 : increaseVal)),
+                increase_start_date: increaseStart,
+                increase_end_date: increaseEnd,
                 available_spots: Number(document.getElementById('available').value),
                 duration: Number(document.getElementById('duration').value || 1),
                 season_category: document.getElementById('season').value.trim() || 'standard',
@@ -435,6 +588,47 @@
             };
             if (!payload.package_name || !payload.destination || payload.price <= 0 || isNaN(payload.price) || payload.available_spots < 0 || isNaN(payload.available_spots)) {
                 msg.textContent = 'Enter a valid package name, destination, price (R>0), and non-negative seat count.';
+                msg.className = 'text-sm font-bold text-red-400';
+                return;
+            }
+            if (payload.discount_percentage > 0 && (!payload.discount_start_date || !payload.discount_end_date)) {
+                msg.textContent = 'When setting a discount %, fill in both "Discount Valid From" and "Valid Until" dates.';
+                msg.className = 'text-sm font-bold text-red-400';
+                return;
+            }
+            if (payload.discount_start_date && payload.discount_end_date && payload.discount_start_date > payload.discount_end_date) {
+                msg.textContent = 'Discount start date cannot be after the discount end date.';
+                msg.className = 'text-sm font-bold text-red-400';
+                return;
+            }
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (payload.discount_start_date && payload.discount_start_date < todayStr) {
+                msg.textContent = 'Discount start date cannot be in the past. Choose today or a later date.';
+                msg.className = 'text-sm font-bold text-red-400';
+                return;
+            }
+            if (payload.discount_end_date && payload.discount_end_date < todayStr) {
+                msg.textContent = 'Discount end date cannot be in the past. Choose today or a later date.';
+                msg.className = 'text-sm font-bold text-red-400';
+                return;
+            }
+            if (payload.increase_percentage > 0 && (!payload.increase_start_date || !payload.increase_end_date)) {
+                msg.textContent = 'When setting a Price Increase %, fill in both "Price Increase Valid From" and "Valid Until" dates.';
+                msg.className = 'text-sm font-bold text-red-400';
+                return;
+            }
+            if (payload.increase_start_date && payload.increase_end_date && payload.increase_start_date > payload.increase_end_date) {
+                msg.textContent = 'Price Increase Valid From cannot be after Price Increase Valid Until.';
+                msg.className = 'text-sm font-bold text-red-400';
+                return;
+            }
+            if (payload.increase_start_date && payload.increase_start_date < todayStr) {
+                msg.textContent = 'Price Increase Valid From cannot be in the past. Choose today or a later date.';
+                msg.className = 'text-sm font-bold text-red-400';
+                return;
+            }
+            if (payload.increase_end_date && payload.increase_end_date < todayStr) {
+                msg.textContent = 'Price Increase Valid Until cannot be in the past. Choose today or a later date.';
                 msg.className = 'text-sm font-bold text-red-400';
                 return;
             }
@@ -472,6 +666,8 @@
                     e.target.reset();
                     document.getElementById('duration').value = '1';
                     document.getElementById('discount').value = '0';
+                    document.getElementById('discountStartDate').value = '';
+                    document.getElementById('discountEndDate').value = '';
                     addState = { imageSource: 'url', uploadedUrl: '' };
                     switchAddImageTab('url');
                     document.getElementById('addImageUploadStatus').textContent = '';
@@ -506,6 +702,11 @@
             document.getElementById('epDest').value = pkg.destination || '';
             document.getElementById('epPrice').value = pkg.price || 0;
             document.getElementById('epDiscount').value = Number(pkg.discount_percentage || 0);
+            document.getElementById('epDiscountStart').value = pkg.discount_start_date || '';
+            document.getElementById('epDiscountEnd').value = pkg.discount_end_date || '';
+            document.getElementById('epIncrease').value = Number(pkg.increase_percentage || 0);
+            document.getElementById('epIncreaseStart').value = pkg.increase_start_date || '';
+            document.getElementById('epIncreaseEnd').value = pkg.increase_end_date || '';
             document.getElementById('epDuration').value = pkg.duration || 1;
             document.getElementById('epSeats').value = Number(pkg.available_spots || 0);
             document.getElementById('epSeason').value = pkg.season_category || 'standard';
@@ -570,6 +771,12 @@
             const price = Number(document.getElementById('epPrice').value);
             const discountVal = parseInt(document.getElementById('epDiscount').value || 0, 10);
             const discount = Math.max(0, Math.min(100, isNaN(discountVal) ? 0 : discountVal));
+            const discountStart = (document.getElementById('epDiscountStart').value || '').trim() || null;
+            const discountEnd = (document.getElementById('epDiscountEnd').value || '').trim() || null;
+            const increaseVal = parseInt(document.getElementById('epIncrease').value || 0, 10);
+            const increase = Math.max(0, Math.min(100, isNaN(increaseVal) ? 0 : increaseVal));
+            const increaseStart = (document.getElementById('epIncreaseStart').value || '').trim() || null;
+            const increaseEnd = (document.getElementById('epIncreaseEnd').value || '').trim() || null;
             const seats = Number(document.getElementById('epSeats').value);
             const duration = Number(document.getElementById('epDuration').value || 1);
             const season = document.getElementById('epSeason').value.trim() || 'standard';
@@ -580,9 +787,57 @@
                 msg.className = 'mt-3 text-center text-sm font-bold text-red-400';
                 return;
             }
+            if (discount > 0 && (!discountStart || !discountEnd)) {
+                msg.textContent = 'When setting a discount %, fill in both "Discount Valid From" and "Valid Until" dates.';
+                msg.className = 'mt-3 text-center text-sm font-bold text-red-400';
+                return;
+            }
+            if (discountStart && discountEnd && discountStart > discountEnd) {
+                msg.textContent = 'Discount start date cannot be after the discount end date.';
+                msg.className = 'mt-3 text-center text-sm font-bold text-red-400';
+                return;
+            }
+            const todayStrEdit = new Date().toISOString().split('T')[0];
+            const origStart = (currentEditPackage && currentEditPackage.discount_start_date) || '';
+            const origEnd = (currentEditPackage && currentEditPackage.discount_end_date) || '';
+            if (discountStart && discountStart < todayStrEdit && discountStart !== origStart) {
+                msg.textContent = 'Discount start date cannot be in the past. Choose today or a later date.';
+                msg.className = 'mt-3 text-center text-sm font-bold text-red-400';
+                return;
+            }
+            if (discountEnd && discountEnd < todayStrEdit && discountEnd !== origEnd) {
+                msg.textContent = 'Discount end date cannot be in the past. Choose today or a later date.';
+                msg.className = 'mt-3 text-center text-sm font-bold text-red-400';
+                return;
+            }
+            if (increase > 0 && (!increaseStart || !increaseEnd)) {
+                msg.textContent = 'When setting a Price Increase %, fill in both "Price Increase Valid From" and "Valid Until" dates.';
+                msg.className = 'mt-3 text-center text-sm font-bold text-red-400';
+                return;
+            }
+            if (increaseStart && increaseEnd && increaseStart > increaseEnd) {
+                msg.textContent = 'Price Increase Valid From cannot be after Price Increase Valid Until.';
+                msg.className = 'mt-3 text-center text-sm font-bold text-red-400';
+                return;
+            }
+            const origIncStart = (currentEditPackage && currentEditPackage.increase_start_date) || '';
+            const origIncEnd = (currentEditPackage && currentEditPackage.increase_end_date) || '';
+            if (increaseStart && increaseStart < todayStrEdit && increaseStart !== origIncStart) {
+                msg.textContent = 'Price Increase Valid From cannot be in the past. Choose today or a later date.';
+                msg.className = 'mt-3 text-center text-sm font-bold text-red-400';
+                return;
+            }
+            if (increaseEnd && increaseEnd < todayStrEdit && increaseEnd !== origIncEnd) {
+                msg.textContent = 'Price Increase Valid Until cannot be in the past. Choose today or a later date.';
+                msg.className = 'mt-3 text-center text-sm font-bold text-red-400';
+                return;
+            }
             const urlVal = document.getElementById('epImageUrl').value.trim();
             const payload = {
-                package_name: name, destination: dest, price, discount_percentage: discount, available_spots: seats, duration,
+                package_name: name, destination: dest, price, discount_percentage: discount,
+                discount_start_date: discountStart, discount_end_date: discountEnd,
+                increase_percentage: increase, increase_start_date: increaseStart, increase_end_date: increaseEnd,
+                available_spots: seats, duration,
                 season_category: season, description: desc,
                 image_url: (editState.imageSource === 'url' && urlVal) ? urlVal : '',
                 image_file_ref: (editState.imageSource === 'upload' && editState.uploadedUrl) ? editState.uploadedUrl : (urlVal ? '' : (editState.uploadedUrl || ''))
@@ -744,6 +999,11 @@
             loadPackages();
             // Image tab defaults
             refreshAddImagePreview();
+            const todayISO = new Date().toISOString().split('T')[0];
+            ['discountStartDate', 'discountEndDate', 'epDiscountStart', 'epDiscountEnd', 'increaseStartDate', 'increaseEndDate', 'epIncreaseStart', 'epIncreaseEnd'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.min = todayISO;
+            });
             // Auto-refresh package inventory every 15s — ensures available spots
             // and new packages appear immediately after customer bookings.
             setInterval(() => {

@@ -134,9 +134,9 @@
                         <div class="flex flex-col md:items-end items-center">
                             <span id="username-display" class="text-white font-bold text-sm"></span>
                             <div class="flex space-x-3 justify-center">
-                                <a href="/profile.html" class="text-blue-400 text-xs hover:underline" onclick="closeMobileMenu()">Manage Profile</a>
+                                <a href="/profile" class="text-blue-400 text-xs hover:underline" onclick="closeMobileMenu()">Manage Profile</a>
                                 <span class="text-gray-700 text-xs hidden md:inline">•</span>
-                                <a href="/profile.html#bookings" class="text-blue-400 text-xs hover:underline" onclick="closeMobileMenu()">My Bookings</a>
+                                <a href="/profile#bookings" class="text-blue-400 text-xs hover:underline" onclick="closeMobileMenu()">My Bookings</a>
                             </div>
                         </div>
                         <button onclick="logout()" class="text-gray-400 hover:text-red-400 transition py-2"><i class="fas fa-power-off"></i></button>
@@ -145,6 +145,9 @@
             </div>
         </div>
     </nav>
+
+    <!-- Flash banner host – displays transient errors/info from URL query params (e.g. ?error=no_package) -->
+    <div id="flash-banner" class="fixed top-[clamp(4rem,7vw,5.5rem)] left-1/2 -translate-x-1/2 z-[60] w-[min(92%,720px)] hidden"></div>
 
     <!-- Hero Section (gentle on-load only – already in view) -->
     <header class="hero-gradient section-pt section-pb relative overflow-hidden">
@@ -159,7 +162,7 @@
             </p>
             <div class="flex flex-col sm:flex-row justify-center items-center gap-[clamp(0.75rem,2vw,1.5rem)] animate__animated animate__fadeInUp animate__delay-1s">
                 <a href="#packages" class="w-full sm:w-auto bg-blue-600 text-white btn-px btn-py rounded-full font-black text-[clamp(0.875rem,1.5vw,1.125rem)] hover:bg-blue-700 transition shadow-2xl shadow-blue-600/40" onclick="closeMobileMenu()">Browse Packages</a>
-                <a href="/profile.html#bookings" id="hero-bookings-btn" class="hidden w-full sm:w-auto glass text-white btn-px btn-py rounded-full font-black text-[clamp(0.875rem,1.5vw,1.125rem)] hover:bg-white/10 transition">My Bookings</a>
+                <a href="/profile#bookings" id="hero-bookings-btn" class="hidden w-full sm:w-auto glass text-white btn-px btn-py rounded-full font-black text-[clamp(0.875rem,1.5vw,1.125rem)] hover:bg-white/10 transition">My Bookings</a>
             </div>
         </div>
     </header>
@@ -264,8 +267,8 @@
         </div>
     </div>
 
-    <script src="/static/js/package-images.js"></script>
-    <script src="/static/js/main.js?v=1.2"></script>
+    <script src="/static/js/package-images.js?v=1.1"></script>
+    <script src="/static/js/main.js?v=1.5"></script>
     <script>
         function toggleMobileMenu() {
             const menu = document.getElementById('nav-menu');
@@ -279,6 +282,90 @@
             try { await fetch('/admin/logout', { method: 'POST' }); } catch(e) {}
             localStorage.clear();
             window.location.reload();
+        }
+
+        /* ---------- Transient flash banner (errors/warnings from redirects) ---------- */
+        (function showFlashFromUrl() {
+            const host = document.getElementById('flash-banner');
+            if (!host) return;
+            const params = new URLSearchParams(window.location.search);
+            const rawError = params.get('error');
+            const rawSuccess = params.get('success');
+            let banner = null;
+            if (rawError) {
+                const err = String(rawError).toLowerCase();
+                let title = 'Heads up!';
+                let message = 'Something went wrong. Please try again.';
+                if (err === 'no_package') {
+                    title = 'Pick a package first';
+                    message = 'Select a package below to start booking — the booking page needs to know which trip you want.';
+                } else if (err === 'package_404') {
+                    title = 'Package not available';
+                    message = 'That package is no longer listed. Browse the latest options below instead.';
+                } else if (err === 'package_unavailable') {
+                    title = 'Package fully booked';
+                    message = 'That trip has sold out. Check out other great packages below.';
+                } else if (err === 'bad_date') {
+                    title = 'Invalid travel date';
+                    message = 'Please choose a valid travel date in the future.';
+                } else {
+                    message = decodeURIComponent(rawError.replace(/\+/g, ' '));
+                }
+                banner = { kind: 'error', title, message };
+            } else if (rawSuccess) {
+                const msg = decodeURIComponent(String(rawSuccess).replace(/\+/g, ' '));
+                banner = { kind: 'success', title: 'Done!', message: msg };
+            }
+            if (!banner) {
+                host.classList.add('hidden');
+                return;
+            }
+            const icon = banner.kind === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-check';
+            const tint = banner.kind === 'error'
+                ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200';
+            const iconTint = banner.kind === 'error' ? 'text-amber-400' : 'text-emerald-400';
+            const btnTint = banner.kind === 'error'
+                ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 border-amber-400/30'
+                : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-100 border-emerald-400/30';
+            host.innerHTML = `
+                <div class="animate__animated animate__fadeInDown glass ${tint} rounded-2xl px-5 py-4 border shadow-2xl backdrop-blur-xl flex items-start gap-4">
+                    <i class="fas ${icon} ${iconTint} text-xl mt-0.5 shrink-0"></i>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-black text-white text-sm md:text-base">${banner.title}</div>
+                        <div class="mt-1 text-xs md:text-sm opacity-95 leading-relaxed">${banner.message}</div>
+                    </div>
+                    <button type="button" onclick="document.getElementById('flash-banner').classList.add('hidden')"
+                            class="shrink-0 px-3 py-1.5 rounded-xl border text-xs font-black transition ${btnTint}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>`;
+            host.classList.remove('hidden');
+            const url = new URL(window.location.href);
+            url.searchParams.delete('error');
+            url.searchParams.delete('success');
+            window.history.replaceState({}, document.title, url.toString());
+            setTimeout(() => host.classList.add('hidden'), 14000);
+        })();
+
+        // Sort + load packages (calls the async `loadPackages(sort)` in main.js)
+        function sortPackages(sort = 'default') {
+            if (typeof loadPackages === 'function') loadPackages(sort);
+            const buttons = document.querySelectorAll('[data-sort]');
+            buttons.forEach(b => {
+                const active = b.getAttribute('data-sort') === String(sort || 'default');
+                b.classList.toggle('!bg-teal-500/20', active);
+                b.classList.toggle('!text-teal-300', active);
+                b.classList.toggle('!border-teal-400/40', active);
+            });
+        }
+
+        // Kick off package grid rendering as soon as the DOM is ready.
+        // (main.js cache is busted via ?v=1.3 so discount date-range edits are picked up.)
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => sortPackages('default'));
+        } else {
+            sortPackages('default');
         }
 
         /* ---------- Intersection Observer animations (mobile-friendly) ---------- */

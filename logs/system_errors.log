@@ -1731,3 +1731,714 @@ sqlite3.OperationalError: no such table: Sessions
 2026-09-17 11:38:12,598 INFO Background review sync merged 0 new review(s).
 2026-09-17 12:07:17,794 INFO Background review sync merged 0 new review(s).
 2026-09-17 12:25:25,269 INFO Background review sync merged 0 new review(s).
+2026-09-20 18:41:37,155 INFO Email sent successfully via Resend. to=ajayipeter858@gmail.com subject=Your TravelIntel AI administrator account resend_id={'id': '01a0bfb1-cfc3-70a9-9666-6e071b44be81', 'http_headers': {'Date': 'Sun, 20 Sep 2026 16:41:36 GMT', 'Content-Type':
+2026-09-26 22:08:27,348 INFO Background review sync merged 0 new review(s).
+2026-09-27 02:36:10,220 INFO Email sent successfully via Resend. to=ajayipeter858@gmail.com subject=Your TravelIntel AI password reset code resend_id={'id': '01a0e04a-6ce6-71ec-baf6-2bfca2a5b768', 'http_headers': {'Date': 'Sun, 27 Sep 2026 00:36:09 GMT', 'Content-Type':
+2026-09-27 02:36:10,221 INFO Password reset OTP dispatched to ajayipeter858@gmail.com (is_admin=True)
+2026-09-27 02:41:43,637 INFO Background review sync merged 0 new review(s).
+2026-10-03 10:23:25,195 INFO Email sent successfully via Resend. to=ajayipeter135@gmail.com subject=Your TravelIntel AI administrator account resend_id={'id': '01a100dc-6d2c-7d9e-b04b-db52ea9ec9c9', 'http_headers': {'Date': 'Sat, 03 Oct 2026 08:23:28 GMT', 'Content-Type':
+2026-10-04 18:11:59,900 INFO Background review sync merged 0 new review(s).
+2026-10-05 09:30:25,473 INFO Background review sync merged 0 new review(s).
+2026-10-05 11:50:46,816 INFO Background review sync merged 0 new review(s).
+2026-10-05 12:53:13,573 INFO Email sent successfully via Resend. to=ajayiabel858@gmail.com subject=✈️ Booking Confirmed — Venda | TI-00075 resend_id={'id': '01a10bb2-3e14-7874-9d8e-928e65c3f1c9', 'http_headers': {'Date': 'Mon, 05 Oct 2026 10:53:13 GMT', 'Content-Type':
+2026-10-05 12:53:51,697 INFO Email sent successfully via Resend. to=ajayiabel858@gmail.com subject=✈️ Booking Confirmed — Venda | TI-00076 resend_id={'id': '01a10bb2-d2f8-7560-b915-066755d48056', 'http_headers': {'Date': 'Mon, 05 Oct 2026 10:53:51 GMT', 'Content-Type':
+2026-10-05 17:21:30,035 INFO Background review sync merged 0 new review(s).
+2026-10-05 17:27:36,525 INFO Email sent successfully via Resend. to=adivhahopretty7@gmail.com subject=Verify your TravelIntel AI account resend_id={'id': '01a10cad-7068-778c-a2be-61bea4ca3989', 'http_headers': {'Date': 'Mon, 05 Oct 2026 15:27:35 GMT', 'Content-Type':
+2026-10-05 17:28:30,569 ERROR Unhandled exception on path=/api/auth/verify-registration
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 77, in collapse_excgroups
+  |     yield
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 186, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ~~~~~~~~~~~~~~~~~~~~~~~^^
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\anyio\_backends\_asyncio.py", line 799, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 185, in __call__
+    |     with collapse_excgroups():
+    |          ~~~~~~~~~~~~~~~~~~^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    |     self.gen.throw(value)
+    |     ~~~~~~~~~~~~~~^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 187, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 284, in no_cache_admin_and_api
+    |     response = await call_next(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 163, in call_next
+    |     raise app_exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 149, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    |     await responder(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    |     await self.app(scope, receive, self.send_with_gzip)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 735, in app
+    |     await route.handle(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 288, in handle
+    |     await self.app(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 76, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 73, in app
+    |     response = await f(request)
+    |                ^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 301, in app
+    |     raw_response = await run_endpoint_function(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ...<3 lines>...
+    |     )
+    |     ^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    |     return await dependant.call(**values)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1465, in verify_registration
+    |     if record["otp"] != data.otp:
+    |                         ^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\pydantic\main.py", line 1042, in __getattr__
+    |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+    | AttributeError: 'VerifyRegistrationRequest' object has no attribute 'otp'
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 185, in __call__
+    with collapse_excgroups():
+         ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 187, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 284, in no_cache_admin_and_api
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 163, in call_next
+    raise app_exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1465, in verify_registration
+    if record["otp"] != data.otp:
+                        ^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\pydantic\main.py", line 1042, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'VerifyRegistrationRequest' object has no attribute 'otp'
+2026-10-05 17:28:40,858 ERROR Unhandled exception on path=/api/auth/verify-registration
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 77, in collapse_excgroups
+  |     yield
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 186, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ~~~~~~~~~~~~~~~~~~~~~~~^^
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\anyio\_backends\_asyncio.py", line 799, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 185, in __call__
+    |     with collapse_excgroups():
+    |          ~~~~~~~~~~~~~~~~~~^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    |     self.gen.throw(value)
+    |     ~~~~~~~~~~~~~~^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 187, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 284, in no_cache_admin_and_api
+    |     response = await call_next(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 163, in call_next
+    |     raise app_exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 149, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    |     await responder(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    |     await self.app(scope, receive, self.send_with_gzip)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 735, in app
+    |     await route.handle(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 288, in handle
+    |     await self.app(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 76, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 73, in app
+    |     response = await f(request)
+    |                ^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 301, in app
+    |     raw_response = await run_endpoint_function(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ...<3 lines>...
+    |     )
+    |     ^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    |     return await dependant.call(**values)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1465, in verify_registration
+    |     if record["otp"] != data.otp:
+    |                         ^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\pydantic\main.py", line 1042, in __getattr__
+    |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+    | AttributeError: 'VerifyRegistrationRequest' object has no attribute 'otp'
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 185, in __call__
+    with collapse_excgroups():
+         ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 187, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 284, in no_cache_admin_and_api
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 163, in call_next
+    raise app_exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1465, in verify_registration
+    if record["otp"] != data.otp:
+                        ^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\pydantic\main.py", line 1042, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'VerifyRegistrationRequest' object has no attribute 'otp'
+2026-10-05 17:29:57,264 INFO Email sent successfully via Resend. to=adivhahopretty7@gmail.com subject=Verify your TravelIntel AI account resend_id={'id': '01a10caf-9551-7059-a33a-5b08c0810481', 'http_headers': {'Date': 'Mon, 05 Oct 2026 15:29:56 GMT', 'Content-Type':
+2026-10-05 17:30:24,524 ERROR Unhandled exception on path=/api/auth/verify-registration
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 77, in collapse_excgroups
+  |     yield
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 186, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ~~~~~~~~~~~~~~~~~~~~~~~^^
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\anyio\_backends\_asyncio.py", line 799, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 185, in __call__
+    |     with collapse_excgroups():
+    |          ~~~~~~~~~~~~~~~~~~^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    |     self.gen.throw(value)
+    |     ~~~~~~~~~~~~~~^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 187, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 284, in no_cache_admin_and_api
+    |     response = await call_next(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 163, in call_next
+    |     raise app_exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 149, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    |     await responder(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    |     await self.app(scope, receive, self.send_with_gzip)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 735, in app
+    |     await route.handle(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 288, in handle
+    |     await self.app(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 76, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 73, in app
+    |     response = await f(request)
+    |                ^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 301, in app
+    |     raw_response = await run_endpoint_function(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ...<3 lines>...
+    |     )
+    |     ^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    |     return await dependant.call(**values)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1465, in verify_registration
+    |     if record["otp"] != data.otp:
+    |                         ^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\pydantic\main.py", line 1042, in __getattr__
+    |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+    | AttributeError: 'VerifyRegistrationRequest' object has no attribute 'otp'
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 185, in __call__
+    with collapse_excgroups():
+         ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 187, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 284, in no_cache_admin_and_api
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 163, in call_next
+    raise app_exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1465, in verify_registration
+    if record["otp"] != data.otp:
+                        ^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\pydantic\main.py", line 1042, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'VerifyRegistrationRequest' object has no attribute 'otp'
+2026-10-05 17:30:54,739 ERROR Unhandled exception on path=/api/auth/verify-registration
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 77, in collapse_excgroups
+  |     yield
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 186, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ~~~~~~~~~~~~~~~~~~~~~~~^^
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\anyio\_backends\_asyncio.py", line 799, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 185, in __call__
+    |     with collapse_excgroups():
+    |          ~~~~~~~~~~~~~~~~~~^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    |     self.gen.throw(value)
+    |     ~~~~~~~~~~~~~~^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 187, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 284, in no_cache_admin_and_api
+    |     response = await call_next(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 163, in call_next
+    |     raise app_exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 149, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    |     await responder(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    |     await self.app(scope, receive, self.send_with_gzip)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 735, in app
+    |     await route.handle(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 288, in handle
+    |     await self.app(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 76, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 73, in app
+    |     response = await f(request)
+    |                ^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 301, in app
+    |     raw_response = await run_endpoint_function(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ...<3 lines>...
+    |     )
+    |     ^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    |     return await dependant.call(**values)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1465, in verify_registration
+    |     if record["otp"] != data.otp:
+    |                         ^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\pydantic\main.py", line 1042, in __getattr__
+    |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+    | AttributeError: 'VerifyRegistrationRequest' object has no attribute 'otp'
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 185, in __call__
+    with collapse_excgroups():
+         ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 187, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 284, in no_cache_admin_and_api
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 163, in call_next
+    raise app_exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1465, in verify_registration
+    if record["otp"] != data.otp:
+                        ^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\pydantic\main.py", line 1042, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'VerifyRegistrationRequest' object has no attribute 'otp'
+2026-10-05 17:32:17,026 INFO Email sent successfully via Resend. to=adivhahopretty7@gmail.com subject=Verify your TravelIntel AI account resend_id={'id': '01a10cb1-b843-7171-ab3e-311b1e489057', 'http_headers': {'Date': 'Mon, 05 Oct 2026 15:32:16 GMT', 'Content-Type':
+2026-10-05 17:32:52,110 ERROR Unhandled exception on path=/api/auth/verify-registration
+  + Exception Group Traceback (most recent call last):
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 77, in collapse_excgroups
+  |     yield
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 186, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ~~~~~~~~~~~~~~~~~~~~~~~^^
+  |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\anyio\_backends\_asyncio.py", line 799, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 185, in __call__
+    |     with collapse_excgroups():
+    |          ~~~~~~~~~~~~~~~~~~^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    |     self.gen.throw(value)
+    |     ~~~~~~~~~~~~~~^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 187, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 284, in no_cache_admin_and_api
+    |     response = await call_next(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 163, in call_next
+    |     raise app_exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 149, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    |     await responder(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    |     await self.app(scope, receive, self.send_with_gzip)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 735, in app
+    |     await route.handle(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 288, in handle
+    |     await self.app(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 76, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    |     raise exc
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 73, in app
+    |     response = await f(request)
+    |                ^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 301, in app
+    |     raw_response = await run_endpoint_function(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ...<3 lines>...
+    |     )
+    |     ^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    |     return await dependant.call(**values)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1465, in verify_registration
+    |     if record["otp"] != data.otp:
+    |                         ^^^^^^^^
+    |   File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\pydantic\main.py", line 1042, in __getattr__
+    |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+    | AttributeError: 'VerifyRegistrationRequest' object has no attribute 'otp'
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 185, in __call__
+    with collapse_excgroups():
+         ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_utils.py", line 83, in collapse_excgroups
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 187, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 284, in no_cache_admin_and_api
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 163, in call_next
+    raise app_exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\base.py", line 149, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 20, in __call__
+    await responder(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\gzip.py", line 39, in __call__
+    await self.app(scope, receive, self.send_with_gzip)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 212, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ajayi\OneDrive\Documents\GitHub\travel-7\app.py", line 1465, in verify_registration
+    if record["otp"] != data.otp:
+                        ^^^^^^^^
+  File "C:\Users\ajayi\AppData\Local\Programs\Python\Python314\Lib\site-packages\pydantic\main.py", line 1042, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'VerifyRegistrationRequest' object has no attribute 'otp'
+2026-10-05 18:00:14,116 INFO Email sent successfully via Resend. to=ajayiabel858@gmail.com subject=✈️ Booking Confirmed — Europe | TI-00077 resend_id={'id': '01a10ccb-4f33-76f6-bf08-337abab0465a', 'http_headers': {'Date': 'Mon, 05 Oct 2026 16:00:13 GMT', 'Content-Type':

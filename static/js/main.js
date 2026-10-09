@@ -427,6 +427,32 @@ async function checkAuthStatus() {
 async function loadPackages(sort = 'default') {
     const container = document.getElementById('packages-container');
     if (!container) return;
+
+    function _parseISO(s) {
+        if (!s) return null;
+        const d = new Date(s + 'T00:00:00');
+        return isNaN(d.getTime()) ? null : d;
+    }
+    function _fmtShort(s) {
+        const d = _parseISO(s);
+        if (!d) return '';
+        return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }).replace(',', '');
+    }
+    function _browseDiscountStatus(pkg) {
+        const pct = Math.max(0, Math.min(100, parseInt(pkg.discount_percentage || 0, 10)));
+        if (pct <= 0) return { tier: 'none', pct: 0 };
+        const start = pkg.discount_start_date;
+        const end = pkg.discount_end_date;
+        if (!start || !end) return { tier: 'legacy', pct };
+        const s = _parseISO(start);
+        const e = _parseISO(end);
+        if (!s || !e) return { tier: 'legacy', pct };
+        const today = new Date(); today.setHours(0,0,0,0);
+        if (today < s) return { tier: 'upcoming', pct, start, end };
+        // On and after end_date+1 the discount has fully disappeared (end of 23:59 on end_date).
+        if (today > e) return { tier: 'none', pct: 0 };
+        return { tier: 'active', pct, start, end };
+    }
     
     try {
         // Cache buster to ensure fresh data
@@ -446,24 +472,64 @@ async function loadPackages(sort = 'default') {
                 
                 const imageUrl = pkg.image_url || getPackageImage(pkg);
 
-                const discountPct = Math.max(0, Math.min(100, parseInt(pkg.discount_percentage || 0, 10)));
+                const ds = _browseDiscountStatus(pkg);
                 const origPrice = Number(pkg.price || 0);
-                const discountedPrice = discountPct > 0 ? origPrice * (1 - discountPct / 100) : origPrice;
-                const priceBlock = discountPct > 0
-                    ? `<div class="flex flex-col">
+                const effectivePrice = Number(pkg.effective_price != null ? pkg.effective_price : origPrice);
+                const effectivePct = (ds.tier === 'active' || ds.tier === 'legacy') ? ds.pct : 0;
+                const displayPrice = effectivePrice > 0 ? effectivePrice : origPrice;
+
+                let priceBlock;
+                let cornerBadge = '';
+                let subCaption = '';
+                if (effectivePct > 0) {
+                    const hasRange = ds.tier === 'active' && ds.start && ds.end;
+                    const dateRange = hasRange ? `${_fmtShort(ds.start)} – ${_fmtShort(ds.end)}` : '';
+                    const sameDayActive = (() => {
+                        if (ds.tier !== 'active' || !ds.start || !ds.end) return false;
+                        if (ds.start !== ds.end) return false;
+                        const today = new Date(); today.setHours(0,0,0,0);
+                        const s = _parseISO(ds.start);
+                        return !!s && s.getTime() === today.getTime();
+                    })();
+                    let validHint = '';
+                    if (ds.tier === 'legacy') {
+                        validHint = `<span class="text-slate-500 text-[10px] mt-0.5 flex items-center gap-1"><i class="fas fa-info-circle"></i> Permanent discount offer</span>`;
+                    } else if (sameDayActive) {
+                        validHint = `<span class="text-emerald-400 text-[10px] mt-0.5 font-bold flex items-center gap-1"><i class="fas fa-bolt"></i> Discount valid Today Only</span>`;
+                    } else if (ds.tier === 'active' && ds.start && ds.end && ds.start === ds.end) {
+                        validHint = `<span class="text-emerald-400 text-[10px] mt-0.5 font-bold flex items-center gap-1"><i class="fas fa-calendar-check"></i> Discount valid on ${_fmtShort(ds.start)} only</span>`;
+                    } else if (dateRange) {
+                        validHint = `<span class="text-emerald-400 text-[10px] mt-0.5 font-bold flex items-center gap-1"><i class="fas fa-calendar-check"></i> Discount valid ${dateRange}</span>`;
+                    } else if (ds.end) {
+                        validHint = `<span class="text-emerald-400 text-[10px] mt-0.5 font-bold flex items-center gap-1"><i class="fas fa-calendar-check"></i> Discount valid until ${_fmtShort(ds.end)}</span>`;
+                    }
+                    priceBlock = `<div class="flex flex-col">
                             <div class="flex items-center gap-2 mb-0.5">
                                 <span class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">From</span>
-                                <span class="bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-500/30">${discountPct}% OFF</span>
+                                <span class="bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-500/30">${effectivePct}% OFF</span>
                             </div>
                             <div class="flex items-baseline gap-2">
-                                <span class="text-2xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${discountedPrice.toLocaleString()}</span>
+                                <span class="text-2xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${displayPrice.toLocaleString()}</span>
                                 <span class="text-sm text-gray-500 line-through decoration-gray-500/60" style="font-family: 'Inter', sans-serif;">R ${origPrice.toLocaleString()}</span>
                             </div>
-                       </div>`
-                    : `<div class="flex flex-col">
-                            <span class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">From</span>
-                            <span class="text-2xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${origPrice.toLocaleString()}</span>
+                            ${validHint}
                        </div>`;
+                    cornerBadge = `<div class="bg-gradient-to-br from-red-500 to-rose-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-600/30 border border-red-400/30">Save ${effectivePct}%</div>`;
+                } else if (ds.tier === 'upcoming') {
+                    const range = `${_fmtShort(ds.start)} – ${_fmtShort(ds.end)}`;
+                    priceBlock = `<div class="flex flex-col">
+                            <span class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">From</span>
+                            <span class="text-2xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${displayPrice.toLocaleString()}</span>
+                            <span class="mt-0.5 text-sky-400 bg-sky-500/10 border border-sky-500/20 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest font-black w-fit">
+                                <i class="fas fa-clock"></i> Upcoming ${ds.pct}% · ${range}
+                            </span>
+                       </div>`;
+                } else {
+                    priceBlock = `<div class="flex flex-col">
+                            <span class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">From</span>
+                            <span class="text-2xl font-black text-white" style="font-family: 'Inter', sans-serif;">R ${displayPrice.toLocaleString()}</span>
+                       </div>`;
+                }
                 
                 // ← 2. add io-animate + data-animate + data-delay on the card root
                 const card = `
@@ -485,7 +551,7 @@ async function loadPackages(sort = 'default') {
                                 <div class="glass px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest text-white">
                                     ${pkg.duration} Days
                                 </div>
-                                ${discountPct > 0 ? `<div class="bg-gradient-to-br from-red-500 to-rose-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-600/30 border border-red-400/30">Save ${discountPct}%</div>` : ''}
+                                ${cornerBadge}
                             </div>
                         </div>
                         <div class="p-8">
@@ -527,7 +593,7 @@ function handleBooking(packageId, viewOnly = false) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
     } else {
-        window.location.href = `booking.html?packageId=${packageId}${viewOnly ? '&viewOnly=true' : ''}`;
+        window.location.href = `/booking?packageId=${encodeURIComponent(packageId)}${viewOnly ? '&viewOnly=true' : ''}`;
     }
 }
 

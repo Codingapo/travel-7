@@ -1347,17 +1347,22 @@ async def render_admin_page(request: Request, page: str):
 
 # ---- Backward-compatible redirects: old .html URLs → clean URLs ----
 @app.get("/admin/{page}.html")
-async def redirect_admin_html(page: str):
-    return RedirectResponse(url=f"/admin/{page}", status_code=301)
+async def redirect_admin_html(page: str, request: Request):
+    qs = request.url.query
+    base = f"/admin/{page}"
+    return RedirectResponse(url=base if not qs else f"{base}?{qs}", status_code=301)
 
 
 @app.get("/{page}.html")
-async def redirect_page_html(page: str):
+async def redirect_page_html(page: str, request: Request):
+    qs = request.url.query
     if page == "auth":
-        return RedirectResponse(url="/auth/login", status_code=301)
-    if page == "forgot-password":
-        return RedirectResponse(url="/forgot-password", status_code=301)
-    return RedirectResponse(url=f"/{page}", status_code=301)
+        base = "/auth/login"
+    elif page == "forgot-password":
+        base = "/forgot-password"
+    else:
+        base = f"/{page}"
+    return RedirectResponse(url=base if not qs else f"{base}?{qs}", status_code=301)
 
 # ============================================================
 # CUSTOMER AUTH API ROUTES (NEW — were missing entirely)
@@ -2201,13 +2206,22 @@ async def get_packages(sort: str = "default"):
                COALESCE(p.available_spots,0) AS available_spots,
                COALESCE(p.total_spots,0) AS total_spots,
                COALESCE(p.discount_percentage,0) AS discount_percentage,
+               p.discount_start_date,
+               p.discount_end_date,
+               COALESCE(p.increase_percentage,0) AS increase_percentage,
+               p.increase_start_date,
+               p.increase_end_date,
                COUNT(CASE WHEN b.status != 'cancelled' THEN b.booking_id END) AS booking_count
         FROM Packages p
         LEFT JOIN Bookings b ON b.package_id = p.package_id
         GROUP BY p.package_id
         ORDER BY {order_by}
     """)
-    packages = [dict(row) for row in c.fetchall()]
+    raw_packages = [dict(row) for row in c.fetchall()]
+    packages = []
+    for p in raw_packages:
+        p["effective_price"] = _compute_effective_unit_price(p, None)
+        packages.append(p)
     conn.close()
     return {"success": True, "data": packages, "sort": sort}
 
@@ -2223,6 +2237,11 @@ class PackageCreateRequest(BaseModel):
     image_url: str = ""
     image_file_ref: str = ""
     discount_percentage: int = 0
+    discount_start_date: str | None = None
+    discount_end_date: str | None = None
+    increase_percentage: int = 0
+    increase_start_date: str | None = None
+    increase_end_date: str | None = None
     confirm_password: str = ""
 
 class PackageUpdateRequest(PackageCreateRequest):
@@ -2235,6 +2254,129 @@ def _resolve_package_image(image_url: str, image_file_ref: str) -> str:
     if not chosen:
         chosen = (image_file_ref or "").strip()
     return chosen
+
+
+def _parse_iso_date(s):
+    """Parse an ISO date string (YYYY-MM-DD) into a datetime.date, or return None."""
+    if not s:
+        return None
+    try:
+        return datetime.date.fromisoformat(str(s).strip())
+    except Exception:
+        return None
+
+
+def _effective_package_discount(pkg_row, travel_date_iso=None) -> int:
+    """Compute the effective discount percent for a package, gated by date window.
+
+    Rules:
+    - If discount_percentage == 0, return 0.
+    - If discount_start_date/end_date are both NULL (legacy rows), treat as permanently
+      active and return discount_percentage.
+    - If travel_date_iso is supplied (booking flow): return discount_pct only if
+      BOTH (a) travel_date is within [start, end] AND (b) the current server date
+      has not passed the discount end_date (i.e. the offer hasn't auto-expired).
+      Otherwise 0.
+    - If travel_date_iso is None (browse/display contexts): return discount_pct only
+      if TODAY falls within [start, end]; otherwise 0 so UIs render clean full price
+      with no discount badge once the window has ended (end of day 23:59 on end_date).
+    """
+    pct = max(0, min(100, int((pkg_row.get("discount_percentage") if hasattr(pkg_row, "get") else pkg_row["discount_percentage"]) or 0)))
+    if pct <= 0:
+        return 0
+    start_str = pkg_row.get("discount_start_date") if hasattr(pkg_row, "get") else None
+    end_str = pkg_row.get("discount_end_date") if hasattr(pkg_row, "get") else None
+    if not start_str or not end_str:
+        return pct
+    start_d = _parse_iso_date(start_str)
+    end_d = _parse_iso_date(end_str)
+    if not start_d or not end_d:
+        return pct
+    today = datetime.date.today()
+    # Offer window has closed server-side: always hide/expire
+    if today > end_d:
+        return 0
+    if travel_date_iso:
+        travel_d = _parse_iso_date(travel_date_iso)
+        if travel_d is None:
+            return 0
+        # Travel date also needs to land inside the discount window
+        if travel_d < start_d or travel_d > end_d:
+            return 0
+        # Both today's booking date + travel date are valid
+        return pct
+    # Browse/display context: discount is still currently running
+    return pct if (start_d <= today <= end_d) else 0
+
+
+def _discount_window_status(pkg_row) -> str:
+    """Return 'active' | 'upcoming' | 'expired' | 'legacy' | 'none' for display use.
+
+    Note: UIs may choose to render 'expired' identically to 'none' so that the
+    discount visually disappears (no pill/badge/strikethrough) once 23:59 of the
+    end_date has passed.
+    """
+    pct = max(0, min(100, int((pkg_row.get("discount_percentage") if hasattr(pkg_row, "get") else pkg_row.get("discount_percentage", 0)) or 0)))
+    if pct <= 0:
+        return "none"
+    start_str = pkg_row.get("discount_start_date") if hasattr(pkg_row, "get") else None
+    end_str = pkg_row.get("discount_end_date") if hasattr(pkg_row, "get") else None
+    if not start_str or not end_str:
+        return "legacy"
+    start_d = _parse_iso_date(start_str)
+    end_d = _parse_iso_date(end_str)
+    if not start_d or not end_d:
+        return "legacy"
+    today = datetime.date.today()
+    if today < start_d:
+        return "upcoming"
+    if today > end_d:
+        return "expired"
+    return "active"
+
+
+def _effective_package_increase_pct(pkg_row, travel_date_iso=None) -> int:
+    """Return the effective price-increase percent for a package.
+
+    Unlike discounts (which are gated by both booking date and travel date),
+    a price increase applies to **all travel dates** as long as TODAY (the
+    booking date) falls within the [start, end] window. After 23:59 on the
+    end_date the increase automatically reverts and the original base price
+    is restored everywhere.
+
+    The travel_date_iso argument is accepted for call-signature compatibility
+    with _effective_package_discount but is intentionally ignored.
+    """
+    has = lambda k: pkg_row.get(k) if hasattr(pkg_row, "get") else (pkg_row[k] if isinstance(pkg_row, dict) else None)
+    pct = max(0, min(100, int(has("increase_percentage") or 0)))
+    if pct <= 0:
+        return 0
+    start_str = has("increase_start_date")
+    end_str = has("increase_end_date")
+    if not start_str or not end_str:
+        return pct
+    start_d = _parse_iso_date(start_str)
+    end_d = _parse_iso_date(end_str)
+    if not start_d or not end_d:
+        return pct
+    today = datetime.date.today()
+    if today > end_d:
+        return 0
+    return pct if (start_d <= today <= end_d) else 0
+
+
+def _compute_effective_unit_price(pkg_row, travel_date_iso=None) -> float:
+    get_price = pkg_row.get("price") if hasattr(pkg_row, "get") else (pkg_row["price"] if isinstance(pkg_row, dict) else None)
+    base = float(get_price or 0.0)
+    disc = _effective_package_discount(pkg_row, travel_date_iso)
+    if disc > 0:
+        unit = base * (1.0 - disc / 100.0)
+    else:
+        inc = _effective_package_increase_pct(pkg_row, travel_date_iso)
+        unit = base * (1.0 + inc / 100.0)
+    if unit < 0.01:
+        unit = 0.01
+    return round(unit, 2)
 
 
 @app.post("/api/admin/packages")
@@ -2257,6 +2399,46 @@ async def create_package(data: PackageCreateRequest, request: Request):
     discount = int(data.discount_percentage or 0)
     if discount < 0 or discount > 100:
         raise HTTPException(status_code=400, detail="Discount % must be between 0 and 100.")
+    start_raw = (data.discount_start_date or "").strip() or None
+    end_raw = (data.discount_end_date or "").strip() or None
+    if discount > 0 and (not start_raw or not end_raw):
+        raise HTTPException(status_code=400, detail="When a discount % is set, both discount start date and end date are required.")
+    start_d = _parse_iso_date(start_raw)
+    end_d = _parse_iso_date(end_raw)
+    if start_raw and not start_d:
+        raise HTTPException(status_code=400, detail="Discount start date is invalid. Use YYYY-MM-DD.")
+    if end_raw and not end_d:
+        raise HTTPException(status_code=400, detail="Discount end date is invalid. Use YYYY-MM-DD.")
+    today = datetime.date.today()
+    if start_d and start_d < today:
+        raise HTTPException(status_code=400, detail="Discount start date cannot be in the past. Choose today or a later date.")
+    if end_d and end_d < today:
+        raise HTTPException(status_code=400, detail="Discount end date cannot be in the past. Choose today or a later date.")
+    if start_d and end_d and start_d > end_d:
+        raise HTTPException(status_code=400, detail="Discount start date cannot be after discount end date.")
+    start_iso = start_d.isoformat() if start_d else None
+    end_iso = end_d.isoformat() if end_d else None
+    increase = int(data.increase_percentage or 0)
+    if increase < 0 or increase > 100:
+        raise HTTPException(status_code=400, detail="Price Increase % must be between 0 and 100.")
+    inc_start_raw = (data.increase_start_date or "").strip() or None
+    inc_end_raw = (data.increase_end_date or "").strip() or None
+    if increase > 0 and (not inc_start_raw or not inc_end_raw):
+        raise HTTPException(status_code=400, detail="When a price increase % is set, both Price Increase Valid From and Price Increase Valid Until are required.")
+    inc_start_d = _parse_iso_date(inc_start_raw)
+    inc_end_d = _parse_iso_date(inc_end_raw)
+    if inc_start_raw and not inc_start_d:
+        raise HTTPException(status_code=400, detail="Price Increase Valid From is invalid. Use YYYY-MM-DD.")
+    if inc_end_raw and not inc_end_d:
+        raise HTTPException(status_code=400, detail="Price Increase Valid Until is invalid. Use YYYY-MM-DD.")
+    if inc_start_d and inc_start_d < today:
+        raise HTTPException(status_code=400, detail="Price Increase Valid From cannot be in the past. Choose today or a later date.")
+    if inc_end_d and inc_end_d < today:
+        raise HTTPException(status_code=400, detail="Price Increase Valid Until cannot be in the past. Choose today or a later date.")
+    if inc_start_d and inc_end_d and inc_start_d > inc_end_d:
+        raise HTTPException(status_code=400, detail="Price Increase Valid From cannot be after Price Increase Valid Until.")
+    inc_start_iso = inc_start_d.isoformat() if inc_start_d else None
+    inc_end_iso = inc_end_d.isoformat() if inc_end_d else None
 
     final_image = _resolve_package_image(data.image_url, data.image_file_ref)
 
@@ -2264,9 +2446,9 @@ async def create_package(data: PackageCreateRequest, request: Request):
     try:
         status = "Available" if data.available_spots > 0 else "Unavailable"
         c.execute("""INSERT INTO Packages
-            (package_name,destination,price,duration,description,availability_status,season_category,image_url,available_spots,total_spots,discount_percentage)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-            (name,destination,float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),final_image,int(data.available_spots),int(data.available_spots),discount))
+            (package_name,destination,price,duration,description,availability_status,season_category,image_url,available_spots,total_spots,discount_percentage,discount_start_date,discount_end_date,increase_percentage,increase_start_date,increase_end_date)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (name,destination,float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),final_image,int(data.available_spots),int(data.available_spots),discount,start_iso,end_iso,increase,inc_start_iso,inc_end_iso))
         package_id = c.lastrowid
         conn.commit()
     except sqlite3.IntegrityError as exc:
@@ -2274,7 +2456,13 @@ async def create_package(data: PackageCreateRequest, request: Request):
         raise HTTPException(status_code=409, detail="Unable to create package. A package with these details may already exist.") from exc
     finally:
         conn.close()
-    record_admin_audit(session, "Created package", "package", package_id, f"{name} | price={data.price} | seats={data.available_spots} | discount={discount}%")
+    window_snippet = ""
+    if start_iso and end_iso:
+        window_snippet = f" | discount_window={start_iso}→{end_iso}"
+    inc_window_snippet = ""
+    if inc_start_iso and inc_end_iso:
+        inc_window_snippet = f" | increase_window={inc_start_iso}→{inc_end_iso}"
+    record_admin_audit(session, "Created package", "package", package_id, f"{name} | price={data.price} | seats={data.available_spots} | discount={discount}%{window_snippet} | increase={increase}%{inc_window_snippet}")
     return {"success": True, "data": {"package_id": package_id, "message": "Package created successfully."}}
 
 
@@ -2290,19 +2478,67 @@ async def update_package(package_id: int, data: PackageUpdateRequest, request: R
     discount = int(data.discount_percentage or 0)
     if discount < 0 or discount > 100:
         raise HTTPException(status_code=400, detail="Discount % must be between 0 and 100.")
+    start_raw = (data.discount_start_date or "").strip() or None
+    end_raw = (data.discount_end_date or "").strip() or None
+    if discount > 0 and (not start_raw or not end_raw):
+        raise HTTPException(status_code=400, detail="When a discount % is set, both discount start date and end date are required.")
+    start_d = _parse_iso_date(start_raw)
+    end_d = _parse_iso_date(end_raw)
+    if start_raw and not start_d:
+        raise HTTPException(status_code=400, detail="Discount start date is invalid. Use YYYY-MM-DD.")
+    if end_raw and not end_d:
+        raise HTTPException(status_code=400, detail="Discount end date is invalid. Use YYYY-MM-DD.")
+    if start_d and end_d and start_d > end_d:
+        raise HTTPException(status_code=400, detail="Discount start date cannot be after discount end date.")
+    start_iso = start_d.isoformat() if start_d else None
+    end_iso = end_d.isoformat() if end_d else None
+    increase = int(data.increase_percentage or 0)
+    if increase < 0 or increase > 100:
+        raise HTTPException(status_code=400, detail="Price Increase % must be between 0 and 100.")
+    inc_start_raw = (data.increase_start_date or "").strip() or None
+    inc_end_raw = (data.increase_end_date or "").strip() or None
+    if increase > 0 and (not inc_start_raw or not inc_end_raw):
+        raise HTTPException(status_code=400, detail="When a price increase % is set, both Price Increase Valid From and Price Increase Valid Until are required.")
+    inc_start_d = _parse_iso_date(inc_start_raw)
+    inc_end_d = _parse_iso_date(inc_end_raw)
+    if inc_start_raw and not inc_start_d:
+        raise HTTPException(status_code=400, detail="Price Increase Valid From is invalid. Use YYYY-MM-DD.")
+    if inc_end_raw and not inc_end_d:
+        raise HTTPException(status_code=400, detail="Price Increase Valid Until is invalid. Use YYYY-MM-DD.")
+    if inc_start_d and inc_end_d and inc_start_d > inc_end_d:
+        raise HTTPException(status_code=400, detail="Price Increase Valid From cannot be after Price Increase Valid Until.")
+    inc_start_iso = inc_start_d.isoformat() if inc_start_d else None
+    inc_end_iso = inc_end_d.isoformat() if inc_end_d else None
     conn = get_db_connection(); c = conn.cursor()
     c.execute("SELECT * FROM Packages WHERE package_id=?", (package_id,))
     before_row = c.fetchone()
     if not before_row:
         conn.close(); raise HTTPException(status_code=404, detail="Package not found")
     before = dict(before_row)
+    today = datetime.date.today()
+    existing_start = before.get("discount_start_date")
+    existing_end = before.get("discount_end_date")
+    if start_d and start_d < today and start_iso != existing_start:
+        raise HTTPException(status_code=400, detail="Discount start date cannot be in the past. Choose today or a later date.")
+    if end_d and end_d < today and end_iso != existing_end:
+        raise HTTPException(status_code=400, detail="Discount end date cannot be in the past. Choose today or a later date.")
+    existing_inc_start = before.get("increase_start_date")
+    existing_inc_end = before.get("increase_end_date")
+    if inc_start_d and inc_start_d < today and inc_start_iso != existing_inc_start:
+        raise HTTPException(status_code=400, detail="Price Increase Valid From cannot be in the past. Choose today or a later date.")
+    if inc_end_d and inc_end_d < today and inc_end_iso != existing_inc_end:
+        raise HTTPException(status_code=400, detail="Price Increase Valid Until cannot be in the past. Choose today or a later date.")
     final_image = _resolve_package_image(data.image_url, data.image_file_ref)
     status = "Available" if data.available_spots > 0 else "Unavailable"
-    c.execute("""UPDATE Packages SET package_name=?,destination=?,price=?,duration=?,description=?,availability_status=?,season_category=?,image_url=?,available_spots=?,total_spots=?,discount_percentage=? WHERE package_id=?""",
-              (data.package_name.strip(),data.destination.strip(),float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),final_image,int(data.available_spots),int(data.available_spots),discount,package_id))
+    c.execute("""UPDATE Packages SET package_name=?,destination=?,price=?,duration=?,description=?,availability_status=?,season_category=?,image_url=?,available_spots=?,total_spots=?,discount_percentage=?,discount_start_date=?,discount_end_date=?,increase_percentage=?,increase_start_date=?,increase_end_date=? WHERE package_id=?""",
+              (data.package_name.strip(),data.destination.strip(),float(data.price),int(data.duration),data.description.strip(),status,data.season_category.strip(),final_image,int(data.available_spots),int(data.available_spots),discount,start_iso,end_iso,increase,inc_start_iso,inc_end_iso,package_id))
     conn.commit(); conn.close()
-    before_snippet = f"{before.get('package_name','')} | price={before.get('price','')} | seats={before.get('available_spots','')} | discount={before.get('discount_percentage',0)}%"
-    after_snippet = f"{data.package_name} | price={data.price} | seats={data.available_spots} | discount={discount}%"
+    before_window = f"{before.get('discount_start_date','') or ''}→{before.get('discount_end_date','') or ''}" if (before.get('discount_start_date') and before.get('discount_end_date')) else 'none'
+    after_window = f"{start_iso}→{end_iso}" if (start_iso and end_iso) else 'none'
+    before_inc_window = f"{before.get('increase_start_date','') or ''}→{before.get('increase_end_date','') or ''}" if (before.get('increase_start_date') and before.get('increase_end_date')) else 'none'
+    after_inc_window = f"{inc_start_iso}→{inc_end_iso}" if (inc_start_iso and inc_end_iso) else 'none'
+    before_snippet = f"{before.get('package_name','')} | price={before.get('price','')} | seats={before.get('available_spots','')} | discount={before.get('discount_percentage',0)}% | window={before_window} | increase={before.get('increase_percentage',0)}% | increase_window={before_inc_window}"
+    after_snippet = f"{data.package_name} | price={data.price} | seats={data.available_spots} | discount={discount}% | window={after_window} | increase={increase}% | increase_window={after_inc_window}"
     record_admin_audit(
         session, "Updated package", "package", package_id,
         f"BEFORE: ({before_snippet})  AFTER: ({after_snippet})"
@@ -2353,7 +2589,7 @@ async def get_admin_packages(request: Request):
     require_admin(request)
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT package_id, package_name, destination, price, duration, description, availability_status, season_category, image_url, COALESCE(available_spots,0) as available_spots, COALESCE(total_spots,0) as total_spots, COALESCE(discount_percentage,0) as discount_percentage FROM Packages ORDER BY package_id ASC")
+    c.execute("SELECT package_id, package_name, destination, price, duration, description, availability_status, season_category, image_url, COALESCE(available_spots,0) as available_spots, COALESCE(total_spots,0) as total_spots, COALESCE(discount_percentage,0) as discount_percentage, discount_start_date, discount_end_date, COALESCE(increase_percentage,0) as increase_percentage, increase_start_date, increase_end_date FROM Packages ORDER BY package_id ASC")
     packages = [dict(row) for row in c.fetchall()]
     conn.close()
     return {"success": True, "data": packages}
@@ -2476,13 +2712,18 @@ async def get_package_by_id(package_id: int):
                         description, availability_status, season_category, image_url,
                         COALESCE(available_spots,0) AS available_spots,
                         COALESCE(total_spots,0) AS total_spots,
-                        COALESCE(discount_percentage,0) AS discount_percentage
+                        COALESCE(discount_percentage,0) AS discount_percentage,
+                        discount_start_date, discount_end_date,
+                        COALESCE(increase_percentage,0) AS increase_percentage,
+                        increase_start_date, increase_end_date
                  FROM Packages WHERE package_id=?""", (package_id,))
-    package = c.fetchone()
+    package_row = c.fetchone()
     conn.close()
-    if not package:
+    if not package_row:
         raise HTTPException(status_code=404, detail="Package not found")
-    return {"success": True, "data": dict(package)}
+    package = dict(package_row)
+    package["effective_price"] = _compute_effective_unit_price(package, None)
+    return {"success": True, "data": package}
 
 # ============================================================
 # BOOKINGS API
@@ -2577,7 +2818,7 @@ async def create_booking(data: BookingRequest, request: Request):
                 customer_id = c.lastrowid
 
         # 2. Package Validation
-        c.execute("SELECT package_name, destination, duration, price, availability_status, COALESCE(available_spots,0) as available_spots, COALESCE(discount_percentage,0) as discount_percentage FROM Packages WHERE package_id=?", (data.package_id,))
+        c.execute("SELECT package_name, destination, duration, price, availability_status, COALESCE(available_spots,0) as available_spots, COALESCE(discount_percentage,0) as discount_percentage, discount_start_date, discount_end_date, COALESCE(increase_percentage,0) as increase_percentage, increase_start_date, increase_end_date FROM Packages WHERE package_id=?", (data.package_id,))
         pkg = c.fetchone()
         if not pkg:
             raise HTTPException(status_code=404, detail="Package not found")
@@ -2586,10 +2827,18 @@ async def create_booking(data: BookingRequest, request: Request):
         if int(pkg["available_spots"] or 0) < data.number_of_travelers:
             raise HTTPException(status_code=400, detail="Not enough available spots for this package")
 
-        discount_pct = max(0, min(100, int(pkg["discount_percentage"] or 0)))
-        unit_price = float(pkg['price'])
-        if discount_pct > 0:
-            unit_price = unit_price * (1 - discount_pct / 100.0)
+        pkg_dict = dict(pkg)
+        discount_pct = _effective_package_discount(pkg_dict, travel_date_obj.isoformat())
+        raw_discount_pct = max(0, min(100, int(pkg["discount_percentage"] or 0)))
+        discount_applied_note = None
+        if raw_discount_pct > 0 and discount_pct == 0:
+            ws = pkg_dict.get("discount_start_date")
+            we = pkg_dict.get("discount_end_date")
+            if ws and we:
+                discount_applied_note = f"Package has a {raw_discount_pct}% discount valid for travel {ws} to {we}, but selected travel date ({travel_date_obj.isoformat()}) is outside this window."
+            else:
+                discount_applied_note = "Package discount configured but could not be applied (no valid date window)."
+        unit_price = _compute_effective_unit_price(pkg_dict, travel_date_obj.isoformat())
         total_amount = round(unit_price, 2) * data.number_of_travelers
 
         # 3. Create Booking
@@ -2626,6 +2875,8 @@ async def create_booking(data: BookingRequest, request: Request):
             "total_amount": total_amount,
             "booking_date": today,
             "payment_method": data.payment_method or "unknown",
+            "discount_applied_percent": discount_pct,
+            "discount_note": discount_applied_note,
         }
         email_sent = send_booking_email(email, booking_summary)
     except Exception as e:
@@ -2635,7 +2886,7 @@ async def create_booking(data: BookingRequest, request: Request):
     finally:
         conn.close()
 
-    return {"success": True, "data": {"message": "Booking successful!", "booking_id": booking_id, "booking": booking_summary, "email_sent": email_sent}}
+    return {"success": True, "data": {"message": "Booking successful!", "booking_id": booking_id, "booking": booking_summary, "email_sent": email_sent, "discount": {"applied_percent": discount_pct, "note": discount_applied_note}}}
 
 
 @app.post("/api/bookings/{booking_id}/resend-email")
@@ -3273,7 +3524,7 @@ async def get_ai_analysis(
 
     today = datetime.date.today()
     try:
-        start = datetime.date.fromisoformat(start_date) if start_date else today - datetime.timedelta(days=180)
+        start = datetime.date.fromisoformat(start_date) if start_date else today - datetime.timedelta(days=1825)
         end = datetime.date.fromisoformat(end_date) if end_date else today
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date filter. Use YYYY-MM-DD.")
@@ -3471,11 +3722,13 @@ async def get_ai_analysis(
     # Recommendations table data (will be populated by generate_recommendations)
     conn2 = get_db_connection(); c2 = conn2.cursor()
     c2.execute("""SELECT r.recommendation_id, r.package_id, r.date, r.recommendation_text,
-                         r.discount_suggested, p.package_name, p.destination
+                         r.discount_suggested, r.price_change_type, r.price_change_percent,
+                         r.rec_start_date, r.rec_end_date,
+                         p.package_name, p.destination
                   FROM Recommendations r
                   LEFT JOIN Packages p ON r.package_id = p.package_id
                   WHERE r.date = date('now')
-                  ORDER BY r.date DESC, r.discount_suggested DESC
+                  ORDER BY r.date DESC, r.price_change_percent DESC, r.discount_suggested DESC
                   LIMIT 20""")
     rec_table_rows = [dict(r) for r in c2.fetchall()]
     conn2.close()
@@ -3745,13 +3998,9 @@ async def export_bookings_csv(request: Request,
             b.number_of_travelers,
             p.price                                              AS price_per_person,
             COALESCE(p.discount_percentage, 0)                   AS discount_percentage,
+            p.discount_start_date                                AS discount_start_date,
+            p.discount_end_date                                  AS discount_end_date,
             b.total_amount,
-            ROUND(
-                CAST(b.total_amount AS REAL)
-                / (CASE WHEN b.number_of_travelers > 0 THEN b.number_of_travelers ELSE 1 END)
-                * (1.0 - COALESCE(p.discount_percentage, 0) / 100.0),
-                2
-            )                                                    AS final_amount_per_traveler,
             COALESCE(b.payment_method, 'unknown')                AS payment_method,
             b.status
         FROM Bookings b
@@ -3761,7 +4010,17 @@ async def export_bookings_csv(request: Request,
         WHERE {where_sql}
         ORDER BY b.booking_id ASC
     """, params)
-    rows = c.fetchall()
+    raw_rows = [dict(r) for r in c.fetchall()]
+    rows = []
+    for r in raw_rows:
+        # Compute effective discount actually applied based on travel_date.
+        effective_pct = _effective_package_discount(r, r.get("travel_date"))
+        per_traveler_raw = float(r.get("price_per_person") or 0)
+        travelers = max(1, int(r.get("number_of_travelers") or 1))
+        effective_unit = per_traveler_raw * (1.0 - effective_pct / 100.0)
+        r["effective_discount_percent"] = effective_pct
+        r["final_amount_per_traveler"] = round(effective_unit, 2)
+        rows.append(r)
     conn.close()
 
     buf = io.StringIO()
@@ -3780,7 +4039,10 @@ async def export_bookings_csv(request: Request,
         "Travel_Date",
         "Number_of_Travelers",
         "Price_Per_Person",
-        "Discount_Percentage",
+        "Stated_Discount_Percentage",
+        "Discount_Valid_From",
+        "Discount_Valid_Until",
+        "Effective_Discount_Applied_Percent",
         "Total_Amount",
         "Final_Amount_Per_Traveler",
         "Payment_Method",
@@ -3802,6 +4064,9 @@ async def export_bookings_csv(request: Request,
             r["number_of_travelers"],
             r["price_per_person"],
             r["discount_percentage"],
+            r.get("discount_start_date", ""),
+            r.get("discount_end_date", ""),
+            r.get("effective_discount_percent", 0),
             r["total_amount"],
             r["final_amount_per_traveler"],
             r["payment_method"],
@@ -4236,9 +4501,18 @@ async def get_user_analytics(request: Request):
 async def render_public_page(request: Request, page: str):
     """Serve top-level *.html templates at clean URLs (no .html in the bar).
 
+    Also accepts the legacy ".html" suffix (e.g. "/booking.html") and
+    normalizes it to "/booking" so old links & cached bookmarks keep working.
+
     Registered last so static/API routes like /packages, /api/*, /dashboard
     always take priority.
     """
+    # Normalize "booking.html", "confirmation.html" etc. to "booking".
+    if page.lower().endswith(".html"):
+        clean = page[:-5]
+        qs = request.url.query
+        dest = f"/{clean}" if not qs else f"/{clean}?{qs}"
+        return RedirectResponse(url=dest, status_code=301)
     if page in _RESERVED_PAGE_NAMES:
         raise HTTPException(status_code=404, detail="Page not found")
     if page == "auth":

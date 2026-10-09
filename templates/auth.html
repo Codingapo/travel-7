@@ -68,6 +68,8 @@
             --glass-border: rgba(255, 255, 255, 0.10);
             --primary: #2563eb;
             --primary-light: #60a5fa;
+            --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+            --ease-snappy: cubic-bezier(0.4, 0, 0.2, 1);
         }
         html { font-size: clamp(14px, 1vw, 18px); }
 
@@ -106,10 +108,14 @@
                 sans-serif;
 
             overflow-x: hidden;
+
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
 
 
-        /* Animated background glow */
+        /* Animated background glow (cheap — single blurred element, GPU-friendly) */
 
         body::before {
             content: "";
@@ -129,6 +135,9 @@
             border-radius: 50%;
 
             pointer-events: none;
+            will-change: transform;
+            z-index: -2;
+            animation: slowFloatA 22s linear infinite;
         }
 
 
@@ -150,6 +159,21 @@
             border-radius: 50%;
 
             pointer-events: none;
+            will-change: transform;
+            z-index: -2;
+            animation: slowFloatB 28s linear infinite;
+        }
+
+
+        @keyframes slowFloatA {
+            0%   { transform: translate(0, 0)     scale(1); }
+            50%  { transform: translate(-3vw, 2vw) scale(1.08); }
+            100% { transform: translate(0, 0)     scale(1); }
+        }
+        @keyframes slowFloatB {
+            0%   { transform: translate(0, 0)     scale(1); }
+            50%  { transform: translate(3vw, -2vw) scale(1.06); }
+            100% { transform: translate(0, 0)     scale(1); }
         }
 
 
@@ -164,20 +188,22 @@
                     rgba(255, 255, 255, 0.018)
                 );
 
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
+            backdrop-filter: blur(20px) saturate(140%);
+            -webkit-backdrop-filter: blur(20px) saturate(140%);
 
             border: 1px solid var(--glass-border);
 
             box-shadow:
-                0 clamp(12px, 3vw, 25px) clamp(35px, 8vw, 70px) rgba(0, 0, 0, 0.45),
+                0 clamp(10px, 2.5vw, 22px) clamp(28px, 6vw, 55px) rgba(0, 0, 0, 0.42),
                 inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
             position: relative;
 
             overflow: hidden;
 
-            animation: cardAppear 0.7s ease-out;
+            will-change: transform, opacity;
+            transform: translateZ(0);
+            animation: cardAppear 0.35s var(--ease-smooth) both;
         }
         .card-padding { padding: clamp(1.25rem, 4vw, 3rem); }
         .auth-card-round { border-radius: clamp(1.5rem, 4vw, 2.5rem); }
@@ -187,18 +213,18 @@
 
             from {
                 opacity: 0;
-                transform: translateY(clamp(12px, 3vw, 25px)) scale(0.98);
+                transform: translateY(clamp(8px, 2vw, 18px)) scale(0.985) translateZ(0);
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0) scale(1);
+                transform: translateY(0) scale(1) translateZ(0);
             }
 
         }
 
 
-        /* Decorative glow inside card */
+        /* Decorative glow inside card — statically blurred, no per-frame repaint */
 
         .card-glow {
 
@@ -217,6 +243,9 @@
             border-radius: 50%;
 
             pointer-events: none;
+            z-index: 0;
+            will-change: transform;
+            animation: innerGlowA 18s ease-in-out infinite alternate;
         }
 
 
@@ -237,6 +266,19 @@
             border-radius: 50%;
 
             pointer-events: none;
+            z-index: 0;
+            will-change: transform;
+            animation: innerGlowB 22s ease-in-out infinite alternate;
+        }
+
+
+        @keyframes innerGlowA {
+            from { transform: translate3d(0, 0, 0) scale(1); }
+            to   { transform: translate3d(-8%, 6%, 0) scale(1.08); }
+        }
+        @keyframes innerGlowB {
+            from { transform: translate3d(0, 0, 0) scale(1); }
+            to   { transform: translate3d(8%, -6%, 0) scale(1.08); }
         }
 
 
@@ -258,21 +300,23 @@
                 0 clamp(8px, 2vw, 12px) clamp(15px, 4vw, 30px) rgba(37, 99, 235, 0.35),
                 inset 0 1px 0 rgba(255, 255, 255, 0.2);
 
-            transition: all 0.3s ease;
+            will-change: transform;
+            transform: translateZ(0);
+            transition: transform 0.18s var(--ease-snappy), box-shadow 0.18s var(--ease-snappy);
         }
         .logo-box i { font-size: clamp(1.1rem, 2.5vw, 1.5rem); }
 
 
         .logo-box:hover {
 
-            transform: translateY(clamp(-1px, -0.5vw, -3px)) rotate(-2deg);
+            transform: translateY(clamp(-1px, -0.5vw, -3px)) rotate(-2deg) translateZ(0);
 
             box-shadow:
                 0 clamp(12px, 3vw, 18px) clamp(20px, 5vw, 40px) rgba(37, 99, 235, 0.45);
         }
 
 
-        /* Input fields */
+        /* Input fields — only transition cheap properties */
 
         .auth-input {
 
@@ -280,11 +324,13 @@
 
             border: 1px solid rgba(255, 255, 255, 0.09);
 
+            will-change: border-color, box-shadow, transform;
+            transform: translateZ(0);
             transition:
-                border-color 0.25s ease,
-                background 0.25s ease,
-                box-shadow 0.25s ease,
-                transform 0.25s ease;
+                border-color 0.18s var(--ease-snappy),
+                background-color 0.18s var(--ease-snappy),
+                box-shadow 0.18s var(--ease-snappy),
+                transform 0.18s var(--ease-snappy);
         }
         .input-py { padding-top: clamp(0.75rem, 1.5vw, 1rem); padding-bottom: clamp(0.75rem, 1.5vw, 1rem); }
         .input-px { padding-left: clamp(2.75rem, 6vw, 3rem); padding-right: clamp(1rem, 2vw, 1.25rem); }
@@ -303,12 +349,13 @@
 
             background: rgba(37, 99, 235, 0.06);
 
-            border-color: rgba(59, 130, 246, 0.8);
+            border-color: rgba(59, 130, 246, 0.85);
 
             box-shadow:
                 0 0 0 4px rgba(37, 99, 235, 0.10),
                 0 clamp(4px, 1vw, 8px) clamp(12px, 3vw, 25px) rgba(0, 0, 0, 0.15);
 
+            transform: translateZ(0);
             outline: none;
         }
 
@@ -327,16 +374,18 @@
             box-shadow:
                 0 clamp(8px, 2vw, 12px) clamp(12px, 3vw, 25px) rgba(37, 99, 235, 0.25);
 
+            will-change: transform, filter;
+            transform: translateZ(0);
             transition:
-                transform 0.25s ease,
-                box-shadow 0.25s ease,
-                filter 0.25s ease;
+                transform 0.16s var(--ease-snappy),
+                box-shadow 0.18s var(--ease-snappy),
+                filter 0.18s var(--ease-snappy);
         }
 
 
         .auth-button:hover {
 
-            transform: translateY(clamp(-1px, -0.5vw, -2px));
+            transform: translateY(clamp(-1px, -0.5vw, -2px)) translateZ(0);
 
             filter: brightness(1.08);
 
@@ -347,7 +396,8 @@
 
         .auth-button:active {
 
-            transform: translateY(0);
+            transform: translateY(1px) scale(0.995) translateZ(0);
+            transition-duration: 0.06s;
         }
 
 
@@ -376,7 +426,13 @@
 
             border: 1px solid rgba(59, 130, 246, 0.25);
 
-            transition: all 0.25s ease;
+            will-change: border-color, box-shadow;
+            transform: translateZ(0);
+            transition:
+                border-color 0.18s var(--ease-snappy),
+                box-shadow 0.18s var(--ease-snappy),
+                background-color 0.18s var(--ease-snappy),
+                transform 0.18s var(--ease-snappy);
         }
 
 
@@ -397,7 +453,9 @@
         #auth-error,
         #auth-success {
 
-            animation: messageAppear 0.3s ease-out;
+            will-change: transform, opacity;
+            transform: translateZ(0);
+            animation: messageAppear 0.2s var(--ease-snappy) both;
         }
 
 
@@ -405,12 +463,12 @@
 
             from {
                 opacity: 0;
-                transform: translateY(-5px);
+                transform: translateY(-4px) translateZ(0);
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY(0) translateZ(0);
             }
 
         }
@@ -421,8 +479,8 @@
         .auth-link {
 
             transition:
-                color 0.2s ease,
-                opacity 0.2s ease;
+                color 0.16s var(--ease-snappy),
+                opacity 0.16s var(--ease-snappy);
         }
 
 
@@ -450,11 +508,13 @@
         }
 
 
-        /* Smooth form switching */
+        /* Smooth form switching — accelerated */
 
         .form-section {
 
-            animation: formFade 0.35s ease-out;
+            will-change: transform, opacity;
+            transform: translateZ(0);
+            animation: formFade 0.22s var(--ease-smooth) both;
         }
 
 
@@ -462,12 +522,12 @@
 
             from {
                 opacity: 0;
-                transform: translateX(10px);
+                transform: translateX(8px) translateZ(0);
             }
 
             to {
                 opacity: 1;
-                transform: translateX(0);
+                transform: translateX(0) translateZ(0);
             }
 
         }
@@ -483,6 +543,49 @@
 
             }
 
+        }
+
+        /* Low-power / low-end GPU tuning: reduce backdrop-filter cost and drop soft shadows */
+        @media (prefers-reduced-motion: reduce), (max-width: 480px) {
+            body::before,
+            body::after,
+            .card-glow,
+            .card-glow-bottom {
+                animation: none !important;
+            }
+            .auth-card {
+                backdrop-filter: blur(10px) saturate(120%);
+                -webkit-backdrop-filter: blur(10px) saturate(120%);
+                animation-duration: 0.22s;
+            }
+            .form-section { animation-duration: 0.14s; }
+            #auth-error,
+            #auth-success { animation-duration: 0.14s; }
+        }
+
+        /* Reduced-motion strict: disable decorative transforms completely */
+        @media (prefers-reduced-motion: reduce) {
+            .logo-box,
+            .auth-button,
+            .auth-input,
+            .otp-input {
+                transition-duration: 0.08s !important;
+            }
+            .logo-box:hover { transform: none !important; }
+            .auth-button:hover { transform: none !important; filter: brightness(1.05); }
+        }
+
+        /* GPU-layer cache hints for elements that animate on interaction */
+        .auth-card,
+        .form-section,
+        .auth-button,
+        .logo-box,
+        .auth-input,
+        .otp-input,
+        #auth-error,
+        #auth-success {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         }
 
 .form-space {
@@ -643,7 +746,7 @@
             <div class="flex justify-end">
 
                 <a
-                    href="/forgot-password.html"
+                    href="/forgot-password"
                     class="auth-link text-blue-400 text-[clamp(0.7rem,1.3vw,0.875rem)] font-semibold"
                 >
                     Forgot password?

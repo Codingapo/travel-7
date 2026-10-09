@@ -1206,7 +1206,9 @@ def _package_demand_level(conn, package_id, today):
           AND booking_date BETWEEN date(?, '-60 days') AND date(?, '-31 days')
     """, (package_id, horizon_start, horizon_start))
     prior_30 = int(c.fetchone()['cnt'] or 0)
-    if prior_30 == 0:
+    if prior_30 == 0 and recent_30 == 0:
+        ratio = 1.0
+    elif prior_30 == 0:
         ratio = 1.0 if recent_30 > 0 else 0.5
     else:
         ratio = recent_30 / prior_30
@@ -1373,54 +1375,147 @@ def generate_recommendations():
         dest_positive_pct = float(dest_reviews.get("positive_pct", 0.0))
         demand_level, demand_ratio = _package_demand_level(conn, pkg['package_id'], today)
 
-        discount = 0.0
+        # price_score orientation:
+        #   POSITIVE values  → premium signals → recommend PRICE INCREASE
+        #   NEGATIVE values  → weakness signals → recommend PRICE DISCOUNT
+        #   Values near zero → recommend HOLD (no price change)
+        price_score = 0.0
+
+        # Demand signals
         if 'low' in demand_level:
-            discount += 10.0
+            price_score -= 10.0
+        if 'high' in demand_level:
+            price_score += 10.0
+
+        # Seasonal / weather signals
         if 'winter' in season or 'autumn' in season:
-            discount += 5.0
+            price_score -= 5.0
+        if 'summer' in season or 'peak' in season:
+            price_score += 5.0
+
+        # News sentiment
         if sentiment_score <= -0.3:
-            discount += 7.0
+            price_score -= 7.0
+        if sentiment_score >= 0.4:
+            price_score += 7.0
+
+        # Inventory (seat fill ratio)
         spots = int(pkg.get('available_spots') or 0)
         total = int(pkg.get('total_spots') or 0)
-        if total > 0 and spots / total >= 0.8:
-            discount += 5.0
-        if 'high' in demand_level and spots / max(total, 1) <= 0.3:
-            discount = max(0.0, discount - 10.0)
-        if sentiment_score >= 0.4 and ('summer' in season or 'peak' in season):
-            discount = max(0.0, discount - 5.0)
+        seat_ratio = spots / total if total > 0 else 0.5
+        if total > 0 and seat_ratio >= 0.8:
+            price_score -= 5.0
+        if total > 0 and seat_ratio <= 0.3:
+            price_score += 5.0
 
-        # Google review-based discount adjustments.
-        # High-rated / high-sentiment destinations deserve smaller discounts
-        # (premium pricing); low-rated destinations deserve deeper discounts
-        # to drive bookings and generate better review volume.
+        # Google review-based pricing adjustments.
+        # High-rated / high-sentiment destinations support a premium (INCREASE).
+        # Low-rated destinations deserve a discount to attract bookings and
+        # improve review volume.
         if dest_review_count >= 3:
             if dest_avg_rating >= 4.5:
-                discount = max(0.0, discount - 7.0)
+                price_score += 7.0
             elif dest_avg_rating >= 4.0:
-                discount = max(0.0, discount - 4.0)
+                price_score += 4.0
             elif dest_avg_rating <= 3.0:
-                discount += 8.0
+                price_score -= 8.0
             elif dest_avg_rating < 4.0:
-                discount += 4.0
+                price_score -= 4.0
+
             if dest_positive_pct >= 0.75:
-                discount = max(0.0, discount - 3.0)
+                price_score += 3.0
             elif dest_positive_pct < 0.4:
-                discount += 5.0
+                price_score -= 5.0
+
             if dest_avg_sentiment <= -0.15:
-                discount += 4.0
+                price_score -= 4.0
             elif dest_avg_sentiment >= 0.3:
-                discount = max(0.0, discount - 2.0)
+                price_score += 2.0
 
-        discount = min(30.0, round(discount, 1))
+        # Clamp magnitude to ±30% (max sensible price swing for a single recommendation)
+        price_score = max(-30.0, min(30.0, round(price_score, 1)))
 
-        if discount >= 15:
-            pricing_word = f"recommend {discount:.0f}% discount"
-        elif discount >= 5:
-            pricing_word = f"suggest {discount:.0f}% discount"
-        elif discount > 0:
-            pricing_word = f"light {discount:.0f}% discount option"
+        # ---------------- 3-way pricing classification ----------------
+        if price_score >= 6.0:
+            price_change_type = 'increase'
+            price_change_percent = round(min(30.0, price_score), 1)
+        elif price_score <= -6.0:
+            price_change_type = 'discount'
+            price_change_percent = round(min(30.0, -price_score), 1)
         else:
-            pricing_word = "hold current price (premium opportunity)"
+            price_change_type = 'hold'
+            price_change_percent = 0.0
+
+        # Backward-compat: discount_suggested is magnitude when type is discount, else 0.
+        legacy_discount_suggested = price_change_percent if price_change_type == 'discount' else 0.0
+
+        # ---------------- Build human-readable pricing wording ----------------
+        if price_change_type == 'increase':
+            if price_change_percent >= 20:
+                pricing_word = f"recommend {price_change_percent:.0f}% price increase"
+            elif price_change_percent >= 10:
+                pricing_word = f"suggest {price_change_percent:.0f}% price increase"
+            else:
+                pricing_word = f"light {price_change_percent:.0f}% price increase option"
+        elif price_change_type == 'discount':
+            if price_change_percent >= 15:
+                pricing_word = f"recommend {price_change_percent:.0f}% discount"
+            elif price_change_percent >= 5:
+                pricing_word = f"suggest {price_change_percent:.0f}% discount"
+            else:
+                pricing_word = f"light {price_change_percent:.0f}% discount option"
+        else:  # hold
+            if price_score >= 0:
+                pricing_word = "hold current price (leaning premium — high demand window)"
+            else:
+                pricing_word = "hold current price (stable, no change needed)"
+
+        # ---------------- Recommended date window ----------------
+        # Only assign a date window for INCREASE and DISCOUNT recommendations
+        # (actions that require a scheduling window). HOLD recs are observational
+        # and should not carry a window — they simply flag "no change needed now".
+        if price_change_type == 'hold':
+            rec_start_date = None
+            rec_end_date = None
+        else:
+            # Use the package's peak travel month (computed earlier: tmonth).
+            # If the peak month is in the past for this calendar year, roll forward
+            # to next calendar year. Discounts target the OFF-PEAK month.
+            year_for_window = today.year
+            if tmonth < today.month:
+                year_for_window += 1
+            elif tmonth == today.month:
+                # If we're already in the peak month this year, keep it this year
+                # (we'll widen end to at least 2 weeks out).
+                year_for_window = today.year
+
+            window_start_month = tmonth
+            if price_change_type == 'discount':
+                # Discount window = off-peak: 3 months before the peak month
+                window_start_month = ((tmonth - 2 - 1) % 12) + 1
+                if window_start_month >= tmonth:
+                    year_for_window += 1
+            try:
+                w_start = datetime.date(year_for_window, window_start_month, 1)
+                # End = last day of the (single) target month
+                if window_start_month == 12:
+                    next_month_1st = datetime.date(year_for_window + 1, 1, 1)
+                else:
+                    next_month_1st = datetime.date(year_for_window, window_start_month + 1, 1)
+                w_end = next_month_1st - datetime.timedelta(days=1)
+                # Safety: ensure end date at least 2 weeks from today so rec is actionable
+                min_end = today + datetime.timedelta(days=14)
+                if w_end < min_end:
+                    w_end = min_end
+                # Ensure start not in past (unless it's the "already-in-window" case)
+                if w_start < today:
+                    w_start = today
+            except Exception:
+                # Fallback 30-day window from today
+                w_start = today
+                w_end = today + datetime.timedelta(days=30)
+            rec_start_date = w_start.isoformat()
+            rec_end_date = w_end.isoformat()
 
         text_parts = []
         text_parts.append(f"{pkg['package_name']}: {season}, {weather_sentence}")
@@ -1429,8 +1524,10 @@ def generate_recommendations():
             review_snippet = f"google reviews {dest_avg_rating:.1f}/5 from {dest_review_count}"
             text_parts.append(review_snippet)
         text_parts.append(f"booking trend is {demand_level}")
-        if discount > 0:
-            text_parts.append(f"— {pricing_word} to fill seats")
+        if price_change_type == 'increase':
+            text_parts.append(f"— {pricing_word} for high-demand window {rec_start_date} → {rec_end_date}")
+        elif price_change_type == 'discount':
+            text_parts.append(f"— {pricing_word} to fill seats for window {rec_start_date} → {rec_end_date}")
         else:
             text_parts.append(f"— {pricing_word}")
         recommendation_text = '. '.join(text_parts).replace('. —', ' —')
@@ -1439,19 +1536,28 @@ def generate_recommendations():
             'package_id': pkg['package_id'],
             'date': today.isoformat(),
             'recommendation_text': recommendation_text,
-            'discount_suggested': discount,
+            'discount_suggested': legacy_discount_suggested,
+            'price_change_type': price_change_type,
+            'price_change_percent': price_change_percent,
+            'rec_start_date': rec_start_date,
+            'rec_end_date': rec_end_date,
         })
 
     c.execute("DELETE FROM Recommendations WHERE date = ?", (today.isoformat(),))
     for r in results:
         c.execute(
-            """INSERT INTO Recommendations (package_id, date, recommendation_text, discount_suggested)
-               VALUES (?, ?, ?, ?)""",
-            (r['package_id'], r['date'], r['recommendation_text'], r['discount_suggested'])
+            """INSERT INTO Recommendations
+                 (package_id, date, recommendation_text, discount_suggested,
+                  price_change_type, price_change_percent, rec_start_date, rec_end_date)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (r['package_id'], r['date'], r['recommendation_text'], r['discount_suggested'],
+             r['price_change_type'], r['price_change_percent'], r['rec_start_date'], r['rec_end_date'])
         )
     conn.commit()
     conn.close()
     print(f"Generated {len(results)} package recommendations for {today.isoformat()}.")
+
+    return results
 
 
 if __name__ == '__main__':
