@@ -494,20 +494,23 @@ def get_session_from_request(request: Request) -> Optional[dict]:
         conn.close()
         return None
         
-    # Check timeout
+    # Check timeout — admin sessions only. Customer sessions have no expiry
+    # so shoppers are never kicked out mid-flow.
     try:
         # SQLite CURRENT_TIMESTAMP is UTC
         last_activity = datetime.datetime.fromisoformat(row["last_activity"].replace(' ', 'T'))
     except:
         last_activity = datetime.datetime.utcnow()
-        
-    now = datetime.datetime.utcnow()
-    if (now - last_activity).total_seconds() > SESSION_TIMEOUT_MINUTES * 60:
-        c.execute("DELETE FROM Sessions WHERE session_id = ?", (session_id,))
-        conn.commit()
-        conn.close()
-        return None
-    
+
+    role = (row["role"] or "").lower()
+    if role == "admin":
+        now = datetime.datetime.utcnow()
+        if (now - last_activity).total_seconds() > SESSION_TIMEOUT_MINUTES * 60:
+            c.execute("DELETE FROM Sessions WHERE session_id = ?", (session_id,))
+            conn.commit()
+            conn.close()
+            return None
+
     # Update last activity
     c.execute("UPDATE Sessions SET last_activity = CURRENT_TIMESTAMP WHERE session_id = ?", (session_id,))
     conn.commit()

@@ -1466,7 +1466,7 @@ def generate_recommendations():
                 pricing_word = f"light {price_change_percent:.0f}% discount option"
         else:  # hold
             if price_score >= 0:
-                pricing_word = "hold current price (leaning premium — high demand window)"
+                pricing_word = "hold current price (leaning premium — strong demand, no change needed)"
             else:
                 pricing_word = "hold current price (stable, no change needed)"
 
