@@ -1437,6 +1437,7 @@ async def customer_register(data: CustomerRegisterRequest):
 
 class VerifyRegistrationRequest(BaseModel):
     email: str
+    otp: str = ""  # Required by verification; empty only for the resend endpoint.
 
 
 
